@@ -16,9 +16,9 @@
   --success:#10b981;--success-foreground:#047857;--warning:#f59e0b;--warning-foreground:#b45309;
   --error:#ef4444;--error-foreground:#b91c1c;--info:#3b82f6;--info-foreground:#1d4ed8;
   --st-good:#0ca30c;--st-warn:#fab219;--st-crit:#d03b3b;
-  --acc-1:#2a78d6;--acc-2:#eb6834;--acc-3:#1baf7a;--acc-4:#eda100;--acc-5:#e87ba4;--acc-6:#6250d6;
+  --acc-1:#ce6234;--acc-2:#008aa3;--acc-3:#be8700;--acc-4:#bf4a7f;--acc-5:#7250ba;--acc-6:#319751;
   --claude:#d97757;--radius:.5rem;color-scheme:light;
-  --surf-a:#fff;--surf-b:#f6f6f7;--track:#e9e9ec;--layer-op:.22;--focus:#2563eb;
+  --surf-a:#fff;--surf-b:#f6f6f7;--track:#e9e9ec;--band-op:.24;--lg-top:.30;--lg-bot:.03;--focus:#2563eb;
   --font-mono:ui-monospace,"SF Mono","SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme:dark){:root{
@@ -26,8 +26,8 @@
   --muted:rgba(255,255,255,.07);--muted-foreground:#a3a3a3;--accent:rgba(255,255,255,.05);
   --border:rgba(255,255,255,.09);--input:rgba(255,255,255,.11);
   --success-foreground:#34d399;--warning-foreground:#fbbf24;--error:#f05252;--error-foreground:#f87171;--info-foreground:#60a5fa;
-  --acc-1:#3987e5;--acc-2:#d95926;--acc-3:#199e70;--acc-4:#c98500;--acc-5:#d55181;--acc-6:#9085e9;
-  --surf-a:rgba(255,255,255,.045);--surf-b:rgba(255,255,255,.012);--track:rgba(255,255,255,.09);--layer-op:.28;--focus:#60a5fa;
+  --acc-1:#d16b42;--acc-2:#0096af;--acc-3:#b68b16;--acc-4:#c25485;--acc-5:#8264c8;--acc-6:#459f5d;
+  --surf-a:rgba(255,255,255,.045);--surf-b:rgba(255,255,255,.012);--track:rgba(255,255,255,.09);--band-op:.30;--lg-top:.40;--lg-bot:.04;--focus:#60a5fa;
   color-scheme:dark;
 }}
 *{box-sizing:border-box}
@@ -45,8 +45,7 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--background) 80%,transparent);
   backdrop-filter:blur(12px) saturate(1.14);-webkit-backdrop-filter:blur(12px) saturate(1.14)}
 .tb{max-width:72rem;margin:0 auto;min-height:56px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 24px}
-.topbar h1{font-size:15px;font-weight:600;margin:0;display:flex;align-items:center;gap:8px}
-.live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-foreground);margin-left:6px;white-space:nowrap}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-foreground);white-space:nowrap}
 .live i{width:8px;height:8px;border-radius:50%;background:var(--st-good);animation:pulse 2.4s ease-in-out infinite}
 .live.stale i{background:var(--st-warn);animation:none}
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-good) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
@@ -208,12 +207,11 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ylabels span{position:absolute;right:0;transform:translateY(-50%);font-size:10px;color:var(--muted-foreground)}
 .plot{position:relative;flex:1;height:240px;min-width:0}
 .plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.plot .grid{stroke:var(--border);stroke-width:1}
+.plot .grid{stroke:var(--border);stroke-width:1;opacity:.55}
 .plot .hover{position:absolute;top:8px;bottom:0;width:1px;background:var(--muted-foreground);opacity:0;pointer-events:none}
 .xlabels{display:flex;justify-content:space-between;padding-left:56px;font-size:10px;color:var(--muted-foreground);text-transform:uppercase}
-.plot .layer{fill:var(--c);fill-opacity:var(--layer-op)}
-.plot .halo{fill:none;stroke:var(--card);stroke-width:4;stroke-linejoin:round;stroke-linecap:round}
-.plot .ln{fill:none;stroke:var(--c);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.plot .halo{fill:none;stroke:var(--card);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round}
+.plot .ln{fill:none;stroke:var(--c);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
 .plot .dot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--card);pointer-events:none;display:none}
 /* one tooltip look for every chart and mark */
 .tip,.gtip{border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45;color:var(--foreground);
@@ -227,6 +225,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tip .r.tot{margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
 .tip .r.tot span{color:var(--foreground)}
 .chart-legend{padding-left:56px}
+.chart-legend .lg i{width:12px;height:10px;border-radius:2px;background:linear-gradient(to bottom,color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 8%,transparent));border-top:2px solid var(--c)}
 .heat-card{padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
 .heat-top{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
 .heat-top b{color:var(--foreground);font-weight:600}
@@ -255,49 +254,71 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 
 /* timeline: next 7 days */
 .tl-card{--g:56px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px}
-.tl-cap{display:flex;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
+.tl-cap{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
 .tl-cap b{color:var(--foreground);font-weight:500}
-.tl-cap .lg{display:inline-flex;align-items:center;gap:6px}
-.tl-cap .lg i{display:inline-block;width:14px;height:0;border-top:2px solid var(--claude);border-radius:2px}
-.tl-cap .lg i.dash{border-top:2px dashed var(--muted-foreground);opacity:.8}
+.tl-leg{display:flex;flex-wrap:wrap;gap:4px 14px;min-width:0}
+.tl-leg span{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.tl-leg i{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
 .tl-chart{display:grid;grid-template-columns:var(--g) minmax(0,1fr)}
-.tl-y{position:relative;height:220px}
+.tl-y{position:relative;height:240px}
 .tl-y span{position:absolute;right:8px;transform:translateY(-50%);font-size:10px;color:var(--muted-foreground)}
-.tl-plot{position:relative;height:220px;min-width:0;touch-action:pan-y}
+.tl-plot{position:relative;height:240px;min-width:0;touch-action:pan-y}
 .tl-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .tl-plot .gl{stroke:var(--border);stroke-width:1}
 .tl-plot .gv{stroke:var(--border);stroke-width:1;opacity:.6}
 .tl-plot .base{stroke:var(--input);stroke-width:1}
-.tl-plot .capl{stroke:var(--muted-foreground);stroke-width:1;stroke-dasharray:4 4;opacity:.75}
+.tl-plot .capl{stroke:var(--muted-foreground);stroke-width:1;stroke-dasharray:4 4;opacity:.6}
+.tl-band{fill:var(--c);fill-opacity:var(--band-op)}
+.tl-halo{fill:none;stroke:var(--card);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round}
+.tl-edge{fill:none;stroke:var(--c);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.tl-rs{stroke:var(--c);stroke-opacity:.4;stroke-width:1}
+.tl-nr{stroke:var(--foreground);stroke-opacity:.6;stroke-width:1.5;stroke-dasharray:5 4;fill:none}
 .tl-hover{position:absolute;top:8px;bottom:6px;width:1px;background:var(--muted-foreground);opacity:0;pointer-events:none}
-.tl-capl{position:absolute;right:0;font-size:11px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap}
-.tl-mk{position:absolute;width:0;height:0;pointer-events:none}
-.tl-mk i{position:absolute;left:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--background)}
-.tl-mk b{position:absolute;left:0;bottom:9px;transform:translateX(-50%);font-size:11px;font-weight:600;line-height:16px;padding:0 4px;border-radius:4px;white-space:nowrap;
-  background:color-mix(in srgb,var(--background) 78%,transparent)}
-.tl-mk.below b{bottom:auto;top:9px}
-.tl-mk.l b{transform:none;left:-6px}
-.tl-mk.r b{transform:none;left:auto;right:-6px}
-.tl-zero{position:absolute;pointer-events:none;font-size:11px;line-height:1.35;color:var(--error-foreground);display:flex;flex-direction:column;gap:1px;white-space:nowrap;padding:0 6px}
+.tl-capl,.tl-nrl{position:absolute;font-size:11px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap}
+.tl-capl{right:0}
+.tl-chip{position:absolute;transform:translateX(-50%);z-index:2;font-size:11px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;white-space:nowrap;pointer-events:none;
+  background:var(--card);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);color:var(--foreground)}
+.tl-zero{position:absolute;z-index:1;font-size:11px;line-height:1.35;color:var(--error-foreground);white-space:nowrap;padding:0 6px}
 .tl-zero b{font-weight:600;display:inline-flex;align-items:center;gap:4px}
 .tl-zero b svg.i{width:12px;height:12px}
-.tl-zero span{opacity:.85}
 .tl-x{display:grid;grid-template-columns:var(--g) minmax(0,1fr)}
 .tl-xl{position:relative;height:18px;font-size:10.5px;color:var(--muted-foreground)}
-.tl-xl span{position:absolute;top:4px;transform:translateX(-50%);white-space:nowrap}
-.tl-xl span.first{transform:none}
-.tl-lanes{display:flex;flex-direction:column;gap:10px;margin-top:6px;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
-.tl-lane{display:grid;grid-template-columns:var(--g) minmax(0,1fr);row-gap:3px;align-items:center;min-height:16px}
-.tl-who{grid-column:1/-1;display:flex;align-items:center;gap:8px;min-width:0;font:12px/1.2 var(--font-mono);color:var(--muted-foreground)}
-.tl-who span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tl-track{grid-column:2;position:relative;height:12px;border-radius:999px;background:var(--track)}
-.tl-lm{position:absolute;top:0;height:12px;width:0}
-.tl-lm i{position:absolute;left:-6px;top:0;width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--background)}
-.tl-lm span{position:absolute;left:12px;top:0;line-height:12px;font-size:11px;color:var(--muted-foreground);white-space:nowrap}
-.tl-lm.r span{left:auto;right:12px}
+.tl-xl span{position:absolute;top:4px;white-space:nowrap;padding-left:4px}
+.tl-xl span.first{padding-left:0}
 .tl-empty{font-size:13px;color:var(--muted-foreground)}
+/* agenda de recargas */
+.ag{display:flex;flex-direction:column;gap:10px;margin-top:2px;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.ag-t{font-size:12px;font-weight:500}
+.ag-row{display:grid;grid-template-columns:var(--g) minmax(0,1fr)}
+.ag-cols{display:grid;min-width:0}
+.ag-col{container-type:inline-size;min-width:0;min-height:84px;padding:6px 4px;display:flex;flex-direction:column;gap:6px;border-left:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+.ag-col:first-child{border-left:0;padding-left:0}
+.ag-col.today{background:color-mix(in srgb,var(--foreground) 4%,transparent);border-radius:8px 0 0 8px}
+.ag-d{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;padding-left:2px}
+.ag-d em{font-style:normal;font-weight:600;color:var(--foreground);font-size:10px;padding:0 5px;border-radius:999px;background:color-mix(in srgb,var(--foreground) 10%,transparent)}
+.ag-chip{display:flex;align-items:center;gap:7px;min-width:0;padding:4px 7px 4px 4px;border-radius:7px;background:color-mix(in srgb,var(--foreground) 6%,transparent);overflow:hidden}
+.ag-chip .bar{align-self:stretch;flex:none;width:3px;min-height:26px;border-radius:3px;background:var(--c)}
+.ag-chip .tx{min-width:0;flex:1;font-size:11px;line-height:1.35}
+.ag-chip .r1,.ag-chip .r2{display:flex;gap:5px;white-space:nowrap;overflow:hidden}
+.ag-chip .r1 b{font-weight:600}
+.ag-chip .nm{color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono);font-size:10.5px}
+.ag-chip .r2 b{font-weight:600}
+.ag-chip .mut{color:var(--muted-foreground)}
+.ag-chip .cd{font-size:12px;color:var(--muted-foreground);white-space:nowrap}
+.ag-list{display:none}
+@container (max-width:118px){.ag-chip .nm,.ag-chip .r2 .mut{display:none}}
+@container (max-width:96px){.ag-d .wd{display:none}.ag-d{padding-left:0}}
+@container (max-width:58px){.ag-chip .tx{display:none}.ag-chip{padding:4px 0 4px 4px}}
+@container (max-width:30px){.ag-d{display:none}}
 @media (max-width:640px){
-  .tl-card{--g:48px;padding:16px 14px 16px}
+  .tl-card{--g:44px;padding:16px 14px 16px}
+  .ag-row{display:none}
+  .ag-list{display:flex;flex-direction:column;gap:6px}
+  .ag-list .ag-chip{padding:6px 10px 6px 6px}
+  .ag-list .tx{font-size:12px}
+  .ag-list .r1,.ag-list .r2{gap:6px}
+  .ag-list .dy{order:-1}
+  .ag-list .nm,.ag-list .r2 .mut{display:inline}
 }
 
 /* global tooltip */
@@ -327,7 +348,6 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
 </head>
 <body>
 <header class="topbar"><div class="tb">
-  <h1 id="logoH"></h1>
   <span class="live" id="live"><i></i><span id="liveTxt">carregando…</span></span>
   <div class="spacer"></div>
   <div class="seg" id="period">
@@ -405,7 +425,6 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
 const state={period:store.get("usage.period","7d"),metric:store.get("usage.metric","tokens"),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
-$("#logoH").innerHTML=LOGO.claude+"Uso do Claude";
 $("#emptyLogo").innerHTML=LOGO.claude;
 
 /* formatting (after T3 Code usageFormat) */
@@ -539,23 +558,30 @@ function accountForecast(a,now){
 // Simulates the provider's account pool hour by hour: daily burn drawn from the account that
 // resets first, accounts refill at reset. Returns hours until nothing is left (Infinity within the
 // 60-day cap). With `rec`, also records the first 7 days for the timeline chart:
-// rec.series = [[unixSec,totalLeft]...] (hourly, plus the exact zero crossing), rec.events = refills.
+// rec.ts = sample times (unix s), rec.vals[k][i] = weekly % left of accs[i] at rec.ts[k]
+// (hourly, plus a vertical step at every reset and the exact zero crossing), rec.events = refills.
 function simulate(accs,perHour,now,rec){
-  const pool=accs.map(a=>{const w=weeklyOf(a);return{a,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY}});
+  const pool=accs.map((a,i)=>{const w=weeklyOf(a);return{a,i,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY}});
   const cap=60*24,hz=7*24,total=()=>pool.reduce((s,p)=>s+p.left,0),t0=now/1000;
+  const snap=()=>{const v=new Array(pool.length).fill(0);for(const p of pool)v[p.i]=p.left;return v};
   let t=t0,first=Infinity;
-  if(rec){rec.series=[[t,total()]];rec.events=[];rec.cap=pool.length*100;rec.hz=hz}
+  const push=(tt,v)=>{rec.ts.push(tt);rec.vals.push(v)},lastT=()=>rec.ts[rec.ts.length-1];
+  if(rec){rec.ts=[];rec.vals=[];rec.events=[];rec.cap=pool.length*100;rec.hz=hz;push(t,snap())}
   for(let h=0;h<cap;h++){
     if(first<Infinity&&(!rec||h>=hz))break;
     t+=3600;let need=perHour;const evs=[];
-    for(const p of pool)while(p.reset<=t){evs.push({t,at:p.reset,a:p.a,gain:100-p.left});p.left=100;p.reset+=p.period}
+    for(const p of pool)while(p.reset<=t){evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left});p.left=100;p.reset+=p.period}
+    if(rec&&h<hz&&evs.length){
+      evs.sort((x,y)=>x.at-y.at);const cur=rec.vals[rec.vals.length-1].slice();
+      for(const e of evs){const ta=Math.min(t-2,Math.max(e.at,lastT()+2));push(ta-1,cur.slice());cur[e.i]=100;push(ta,cur.slice())}
+    }
     pool.sort((x,y)=>x.reset-y.reset);
     for(const p of pool){if(need<=0)break;const take=Math.min(p.left,need);p.left-=take;need-=take}
     if(need>1e-9&&first===Infinity){
       first=h+(perHour-need)/perHour;
-      if(rec&&h<hz)rec.series.push([t0+first*3600,0]);
+      if(rec&&h<hz)push(Math.min(t-1,Math.max(lastT()+1,t0+first*3600)),new Array(pool.length).fill(0));
     }
-    if(rec&&h<hz){const sum=total();for(const e of evs){e.total=sum;rec.events.push(e)}rec.series.push([t,sum])}
+    if(rec&&h<hz){for(const e of evs){e.total=total();rec.events.push(e)}push(t,snap())}
   }
   return first;
 }
@@ -678,10 +704,11 @@ function renderRunway(now){
 }
 function renderHero(){const now=Date.now();renderCapacity(now);renderNow(now);renderRunway(now)}
 
-/* ---- next 7 days: projected total weekly capacity ---- */
+/* ---- next 7 days: projected remaining capacity, stacked by account ---- */
 const fmtWd=d=>d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","");
 const fmtLane=d=>fmtWd(d)+" "+fmtHour(d);
 const fmtSpan=h=>h<1?"<1h":h<48?Math.round(h)+"h":fmtLeft(h*3600e3);
+const sameDay=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
 function renderTimeline(){
   const el=$("#tl"),now=Date.now(),accs=runwayAccs();
   if(!accs.length){el.dataset.key="";el.innerHTML=`<div class="tl-empty">Nenhuma conta com limite semanal para projetar.</div>`;return}
@@ -690,70 +717,118 @@ function renderTimeline(){
   const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,Object.values(ACC).join(","),accs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
-  const PH=220,TOP=24,BOT=PH-6,HZ=7*DAY,t0=now/1000,sc=niceScale(rec.cap,3);
-  const X=t=>(t-t0)/HZ*1000,P=t=>(t-t0)/HZ*100,Y=v=>BOT-v/sc.max*(BOT-TOP);
+  const PH=240,TOP=26,BOT=PH-6,HZ=7*DAY,t0=now/1000,cap=rec.cap,ts=rec.ts,K=ts.length;
+  const X=t=>(t-t0)/HZ*1000,P=t=>(t-t0)/HZ*100,Y=v=>BOT-v/cap*(BOT-TOP);
   const nm=a=>legendName(a.email||a.auth_id);
+  const ord=accs.map((a,i)=>i).sort((i,j)=>accs[i].auth_id<accs[j].auth_id?-1:1);// stack order = colour order
+  const cum=ord.map(()=>new Array(K).fill(0));
+  for(let k=0;k<K;k++){let s=0;ord.forEach((ai,r)=>{s+=rec.vals[k][ai];cum[r][k]=s})}
+  const tot=cum[cum.length-1];
   // local midnights inside the horizon
   const d0=new Date(now),mids=[];
   for(let k=1;;k++){const m=new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()+k).getTime()/1000;if(m>=t0+HZ)break;mids.push(m)}
 
-  const pts=rec.series.map(p=>`${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`),line="M"+pts.join(" L");
+  // Band r spans cum[r-1] .. cum[r]; its edge is drawn only where the band has thickness.
+  const px=(k,v)=>`${X(ts[k]).toFixed(1)},${Y(v).toFixed(1)}`;
+  const fill=r=>{let d="";for(let k=0;k<K;k++)d+=(k?"L":"M")+px(k,cum[r][k]);
+    for(let k=K-1;k>=0;k--)d+="L"+px(k,r?cum[r-1][k]:0);return d+"Z"};
+  const edge=r=>{const th=k=>k>=0&&k<K&&cum[r][k]-(r?cum[r-1][k]:0)>.5;let d="",open=false;
+    for(let k=0;k<K;k++){const inc=th(k)||th(k-1)||th(k+1);
+      if(inc){d+=(open?"L":"M")+px(k,cum[r][k]);open=true}else open=false}return d};
   const zs=[];let zi=null;
-  for(const p of rec.series){const z=p[1]<=.5;
-    if(z&&zi===null)zi=p[0];
-    else if(!z&&zi!==null){const ev=rec.events.find(e=>e.t===p[0]);zs.push([zi,ev?Math.max(zi,ev.at):p[0]]);zi=null}}
+  for(let k=0;k<K;k++){const z=tot[k]<=.5;
+    if(z&&zi===null)zi=ts[k];else if(!z&&zi!==null){zs.push([zi,ts[k]]);zi=null}}
   if(zi!==null)zs.push([zi,t0+HZ]);
 
-  const grid=sc.ticks.filter(v=>v>0&&v!==rec.cap).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" vector-effect="non-scaling-stroke"/>`).join("")
-    +mids.map(m=>`<line class="gv" x1="${X(m).toFixed(1)}" x2="${X(m).toFixed(1)}" y1="${TOP-6}" y2="${BOT}" vector-effect="non-scaling-stroke"/>`).join("");
-  const zrect=zs.map(([s,e])=>`<rect x="${X(s).toFixed(1)}" y="${TOP-6}" width="${Math.max(2,X(e)-X(s)).toFixed(1)}" height="${BOT-TOP+6}" fill="var(--st-crit)" fill-opacity=".14"/>`).join("");
-  const svg=`${grid}${zrect}<path d="${line} L1000,${BOT} L0,${BOT} Z" fill="var(--claude)" fill-opacity=".14"/>
-    <line class="capl" x1="0" x2="1000" y1="${Y(rec.cap)}" y2="${Y(rec.cap)}" vector-effect="non-scaling-stroke"/>
-    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" vector-effect="non-scaling-stroke"/>
-    <path d="${line}" fill="none" stroke="var(--claude)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
-  const ylab=sc.ticks.map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("");
-  const capLabel=`<div class="tl-capl" style="top:${Y(rec.cap)-17}px">${rec.cap}% = ${rec.cap===100?"conta cheia":"todas cheias"}</div>`;
-  const zlab=zs.map(([s,e])=>{const dur=(e-s)/3600,right=P(s)>60;
-    return `<div class="tl-zero" style="top:${TOP+6}px;${right?`right:${(100-P(e)).toFixed(2)}%;align-items:flex-end`:`left:${P(s).toFixed(2)}%`}">
-      <b>${ICON_X}sem limite · ${fmtSpan(dur)}</b><span>${esc(fmtLane(new Date(s*1000)))} → ${e>=t0+HZ-1?"depois":esc(fmtLane(new Date(e*1000)))}</span></div>`}).join("");
-  const marks=rec.events.filter(e=>e.gain>=1).map(e=>{const x=P(e.t),y=Y(e.total),cls=(y<TOP+24?" below":"")+(x>92?" r":x<8?" l":"");
-    return `<div class="tl-mk${cls}" style="left:${x.toFixed(2)}%;top:${y.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"><i></i><b>+${Math.round(e.gain)}%</b></div>`}).join("");
+  const step=accs.length<=4?100:200,ticks=[];for(let v=0;v<=cap;v+=step)ticks.push(v);if(ticks[ticks.length-1]!==cap)ticks.push(cap);
+  const NS='vector-effect="non-scaling-stroke"';
+  const grid=ticks.filter(v=>v>0&&v!==cap).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")
+    +mids.map(m=>`<line class="gv" x1="${X(m).toFixed(1)}" x2="${X(m).toFixed(1)}" y1="${TOP-6}" y2="${BOT}" ${NS}/>`).join("");
+  const zrect=zs.map(([s,e])=>`<rect x="${X(s).toFixed(1)}" y="${TOP-6}" width="${Math.max(2,X(e)-X(s)).toFixed(1)}" height="${BOT-TOP+6}" fill="var(--st-crit)" fill-opacity=".12"/>`).join("");
+  const bands=ord.map((ai,r)=>`<path class="tl-band" style="--c:${ACC[accs[ai].auth_id]}" d="${fill(r)}"/>`).join("");
+  const edges=ord.map((ai,r)=>({d:edge(r),c:ACC[accs[ai].auth_id]})).filter(e=>e.d);
+  const halos=edges.map(e=>`<path class="tl-halo" d="${e.d}" ${NS}/>`).join("");
+  const lines=edges.map(e=>`<path class="tl-edge" style="--c:${e.c}" d="${e.d}" ${NS}/>`).join("");
+  const evs=rec.events.map(e=>({...e,x:Math.max(e.at,t0)})).sort((a,b)=>a.x-b.x);
+  const rs=evs.map(e=>`<line class="tl-rs" style="--c:${ACC[e.a.auth_id]}" x1="${X(e.x).toFixed(1)}" x2="${X(e.x).toFixed(1)}" y1="0" y2="${BOT}" ${NS}/>`).join("");
+  // Same pace, no refills: straight descent to zero.
+  let nr="",nrLab="";
+  if(perHour>0&&tot[0]>0){
+    const hrs=Math.min(HZ/3600,tot[0]/perHour),vEnd=Math.max(0,tot[0]-perHour*hrs);
+    nr=`<line class="tl-nr" x1="0" y1="${Y(tot[0]).toFixed(1)}" x2="${X(t0+hrs*3600).toFixed(1)}" y2="${Y(vEnd).toFixed(1)}" ${NS}/>`;
+    const vAt=Math.max(0,tot[0]-perHour*HZ/3600*.04);
+    nrLab=`<div class="tl-nrl" style="left:4%;top:${Math.max(TOP+2,Y(vAt)-22).toFixed(1)}px">sem recargas · −${Math.round(br.perDay)}%/dia</div>`;
+  }
+  const svg=`${grid}${zrect}${bands}${halos}${lines}
+    <line class="capl" x1="0" x2="1000" y1="${Y(cap)}" y2="${Y(cap)}" ${NS}/>
+    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${rs}${nr}`;
+  const ylab=ticks.map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("");
+  const capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${cap===100?"conta cheia":"todas cheias"}</div>`;
+  const zlab=zs.map(([s,e])=>{const right=P(s)>60;
+    return `<div class="tl-zero" style="top:${TOP+4}px;${right?`right:${(100-P(e)).toFixed(2)}%`:`left:${P(s).toFixed(2)}%`}" data-tip="${esc(`Sem limite de ${fmtDate(new Date(s*1000))} até ${e>=t0+HZ-1?"depois do fim da projeção":fmtDate(new Date(e*1000))}`)}">
+      <b>${ICON_X}sem limite · ${fmtSpan((e-s)/3600)}</b></div>`}).join("");
 
-  const lanes=accs.map(a=>{
-    const ms=rec.events.filter(e=>e.a===a).map(e=>{const at=Math.max(e.at,t0),x=P(at),d=new Date(e.at*1000);
-      const tip=`${nm(a)}\nReseta ${fmtDate(d)} (em ${fmtLeft(e.at*1000-now)})\n+${Math.round(e.gain)}%, volta a 100%`;
-      return `<div class="tl-lm${x>78?" r":""}" data-tip="${esc(tip)}" style="left:${x.toFixed(2)}%;--c:${ACC[a.auth_id]}"><i></i><span>${esc(fmtLane(d))}</span></div>`}).join("");
-    return `<div class="tl-lane"><span class="tl-who"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span>${esc(nm(a))}</span></span><div class="tl-track">${ms}</div></div>`}).join("");
-
+  const legend=ord.map(ai=>`<span><i style="--c:${ACC[accs[ai].auth_id]}"></i>${esc(nm(accs[ai]))}</span>`).join("");
   const rate=br.ok
-    ?`Gasto médio <b>${Math.round(br.perDay)}%/dia</b> · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
+    ?`gasto médio <b>${Math.round(br.perDay)}%/dia</b> · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
-  el.innerHTML=`<div class="tl-cap"><span class="lg"><i></i>Capacidade semanal restante, somada</span><span>${rate}</span></div>
+
+  // Agenda: one column per day, aligned with the chart's midnight gridlines.
+  // The chip shows the same simulated gain as the chart marker; today's usage is secondary.
+  const cuts=[t0,...mids,t0+HZ],used=new Set(),items=evs.map(e=>{
+    const first=!used.has(e.a.auth_id);used.add(e.a.auth_id);
+    const amt=Math.round(e.gain),today=first?Math.round(clampPct(weeklyOf(e.a).used_percent)):null,d=new Date(e.at*1000);
+    return{e,d,amt,today,short:nm(e.a).split("@")[0],
+      tip:`${nm(e.a)}\nReseta ${fmtDate(d)} (em ${fmtLeft(e.at*1000-now)})\nNo ritmo atual recupera +${amt}% e volta a 100%`+(today!=null?`\nHoje faltam ${today}%`:"")}});
+  const chip=(it,extra)=>`<div class="ag-chip" data-tip="${esc(it.tip)}" style="--c:${ACC[it.e.a.auth_id]}"><i class="bar"></i>
+    <div class="tx"><div class="r1"><b>${esc(fmtHour(it.d))}</b>${extra||""}<span class="nm">${esc(it.short)}</span></div>
+    <div class="r2">${it.amt>=1?`<b>+${it.amt}%</b> `:""}<span class="mut">${it.today!=null?`${it.today}% hoje`:"volta a 100%"}</span></div></div></div>`;
+  let agenda;
+  if(!items.length)agenda=`<div class="tl-empty">Nenhuma recarga semanal nos próximos 7 dias.</div>`;
+  else{
+    const cols=cuts.slice(0,-1).map((a,c)=>{const b=cuts[c+1],d=new Date(a*1000),today=c===0;
+      const mine=items.filter(it=>Math.max(it.e.at,t0)>=a&&Math.max(it.e.at,t0)<b);
+      return `<div class="ag-col${today?" today":""}" style="grid-column:${c+1}"><div class="ag-d"><span class="wd">${esc(fmtWd(d))} ${d.getDate()}</span>${today?`<em>hoje</em>`:""}</div>${mine.map(it=>chip(it)).join("")}</div>`}).join("");
+    const tpl=cuts.slice(0,-1).map((a,c)=>`minmax(0,${Math.round(cuts[c+1]-a)}fr)`).join(" ");
+    const list=items.map(it=>{const today=sameDay(it.d,d0);
+      return chip(it,`<span class="mut dy">${today?"hoje":esc(fmtWd(it.d))}</span>`).replace(/<\/div><\/div><\/div>$/,`</div></div><span class="cd">em ${fmtLeft(it.e.at*1000-now)}</span></div>`)}).join("");
+    agenda=`<div class="ag-row"><div></div><div class="ag-cols" style="grid-template-columns:${tpl}">${cols}</div></div><div class="ag-list">${list}</div>`;
+  }
+
+  el.innerHTML=`<div class="tl-cap"><div class="tl-leg">${legend}</div><span>${rate}</span></div>
     <div class="tl-chart"><div class="tl-y">${ylab}</div>
-      <div class="tl-plot" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none">${svg}</svg>${zlab}${capLabel}${marks}
+      <div class="tl-plot" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none">${svg}</svg>${zlab}${capLabel}${nrLab}
         <div class="tl-hover" id="tlHover"></div><div class="tip" id="tlTip"></div></div></div>
     <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>
-    <div class="tl-lanes">${lanes}</div>`;
+    <div class="ag"><div class="ag-t">Agenda de recargas</div>${agenda}</div>`;
 
   const plot=$("#tlPlot"),W=plot.clientWidth||800;
   let xl=`<span class="first" style="left:0">agora</span>`;
-  mids.forEach((m,i)=>{const end=Math.min(m+DAY,t0+HZ),c=(m+end)/2,px=P(c)/100*W;
-    if(end-m<9*3600||px-14<42||px+14>W)return;
-    xl+=`<span style="left:${P(c).toFixed(2)}%">${esc(fmtWd(new Date(c*1000)))}</span>`});
+  mids.forEach(m=>{const x=P(m)/100*W;
+    if(x<46||x+22>W)return;
+    xl+=`<span style="left:${P(m).toFixed(2)}%">${esc(fmtWd(new Date((m+12*3600)*1000)))}</span>`});
   $("#tlXl").innerHTML=xl;
+  // Reset chips along the top; a second row when two would overlap.
+  const CW=46,rowEnd=[-1e9,-1e9];let chips="";
+  for(const e of evs){if(e.gain<1)continue;
+    const x=P(e.x)/100*W,l=Math.max(CW/2,Math.min(W-CW/2,x));
+    let row=rowEnd.findIndex(r=>l-CW/2>=r+4);if(row<0)row=1;rowEnd[row]=l+CW/2;
+    chips+=`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${row*20}px;--c:${ACC[e.a.auth_id]}">+${Math.round(e.gain)}%</div>`}
+  plot.insertAdjacentHTML("beforeend",chips);
 
   const tip=$("#tlTip"),hl=$("#tlHover");
-  const valueAt=t=>{const s=rec.series;if(t<=s[0][0])return s[0][1];
-    for(let i=1;i<s.length;i++)if(t<=s[i][0]){const a=s[i-1],b=s[i];return a[1]+(b[1]-a[1])*(t-a[0])/Math.max(1e-6,b[0]-a[0])}
-    return s[s.length-1][1]};
+  const valsAt=t=>{let k=1;while(k<K-1&&ts[k]<t)k++;
+    const u=Math.max(0,Math.min(1,(t-ts[k-1])/Math.max(1e-6,ts[k]-ts[k-1])));
+    return rec.vals[k-1].map((v,i)=>v+(rec.vals[k][i]-v)*u)};
   plot.onpointermove=plot.onpointerdown=ev=>{
     const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=t0+x/r.width*HZ;
-    const past=rec.events.filter(e=>e.t<=t&&e.gain>=1);
+    const v=valsAt(t),next=evs.find(e=>e.at>t);
     hl.style.left=x+"px";hl.style.opacity=.6;
     tip.innerHTML=`<div class="d">${x<2?"agora":esc(fmtDate(new Date(t*1000)))}</div>
-      <div class="r"><span>Restante projetado</span><b class="tabular">${Math.round(valueAt(t))}%</b></div>
-      <div class="d" style="margin:6px 0 2px">${past.length?"Resets até aqui":"Nenhum reset até aqui"}</div>
-      ${past.map(e=>`<div class="r"><span><i class="adot" style="--c:${ACC[e.a.auth_id]}"></i>${esc(nm(e.a))}</span><b class="tabular">+${Math.round(e.gain)}%</b></div>`).join("")}`;
+      ${ord.slice().reverse().map(ai=>`<div class="r"><span><i class="adot" style="--c:${ACC[accs[ai].auth_id]}"></i>${esc(nm(accs[ai]))}</span><b class="tabular">${Math.round(v[ai])}%</b></div>`).join("")}
+      <div class="r tot"><span>Total restante</span><b class="tabular">${Math.round(v.reduce((s,q)=>s+q,0))}% de ${cap}%</b></div>
+      <div class="d" style="margin:6px 0 2px">${next?"Próxima recarga":"Nenhuma recarga até o fim"}</div>
+      ${next?`<div class="r"><span><i class="adot" style="--c:${ACC[next.a.auth_id]}"></i>${esc(nm(next.a))}</span><b class="tabular">${next.gain>=1?"+"+Math.round(next.gain)+"% · ":""}${esc(fmtShort(new Date(next.at*1000)))}</b></div>`:""}`;
     tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
     let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
     tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"};
@@ -869,9 +944,10 @@ function renderActivity(){
   let svg=sc.ticks.map(t=>`<line class="grid" x1="0" x2="960" y1="${Y(t)}" y2="${Y(t)}" ${NS}/>`).join("");
   if(total&&n>1){
     const tops=cs.map(pathOf),st=id=>`style="--c:${accColor(id)}"`;
+    svg+=`<defs>${ids.map((id,j)=>`<linearGradient id="ag${j}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${accColor(id)};stop-opacity:var(--lg-top)"/><stop offset="1" style="stop-color:${accColor(id)};stop-opacity:var(--lg-bot)"/></linearGradient>`).join("")}</defs>`;
     svg+=ids.map((id,j)=>{
       const bottom=j?cs[j-1].map((v,k)=>[k,v]).reverse().map(([k,v])=>`L${X(k).toFixed(1)},${Y(v).toFixed(1)}`).join(" "):`L${X(N-1)},260 L${X(0)},260`;
-      return `<path class="layer" ${st(id)} d="${tops[j]} ${bottom} Z"/>`}).join("")
+      return `<path ${st(id)} fill="url(#ag${j})" d="${tops[j]} ${bottom} Z"/>`}).join("")
       +tops.map(d=>`<path class="halo" d="${d}" ${NS}/>`).join("")
       +ids.map((id,j)=>`<path class="ln" ${st(id)} d="${tops[j]}" ${NS}/>`).join("")}
   $("#chartSvg").innerHTML=svg;
