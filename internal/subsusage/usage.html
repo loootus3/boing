@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uso das Assinaturas</title>
+<style>
+:root{--bg:#f7f7f5;--card:#fff;--fg:#1b1b1a;--muted:#77756f;--line:#e6e4de;--track:#ecebe6;
+--claude:#c96442;--codex:#3b6fd8;--ok:#2f8a57;--warn:#c98a12;--bad:#c2412d}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1d1d1b;--fg:#ecebe6;--muted:#9a978f;--line:#2c2b28;--track:#2c2b28}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:28px 16px 48px}
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+h1{font-size:18px;font-weight:600;margin:0;flex:1}
+button{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button:disabled{opacity:.5;cursor:default}
+h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:22px 0 8px;display:flex;align-items:center;gap:8px}
+h2 i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.card.active{border-color:var(--accent)}
+.top{display:flex;align-items:baseline;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.email{font-weight:600;overflow-wrap:anywhere;flex:1}
+.tag{font-size:11px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.tag.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.row{display:grid;grid-template-columns:64px 1fr 52px;gap:10px;align-items:center;margin:6px 0}
+.lbl{color:var(--muted);font-size:12px}
+.bar{height:8px;background:var(--track);border-radius:99px;overflow:hidden}
+.bar b{display:block;height:100%;border-radius:99px}
+.pct{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.reset{grid-column:2/4;color:var(--muted);font-size:12px;margin-top:-4px}
+.err{color:var(--bad);font-size:12px;margin-top:6px}
+.empty{color:var(--muted);padding:6px 2px}
+footer{color:var(--muted);font-size:12px;margin-top:20px}
+#msg{color:var(--muted);font-size:12px;width:100%}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Uso das assinaturas</h1>
+  <button id="addClaude">+ Claude</button>
+  <button id="addCodex">+ Codex</button>
+  <button id="refresh" title="Atualizar">↻</button>
+  <div id="msg"></div>
+</header>
+<div id="list"></div>
+<footer id="foot"></footer>
+</main>
+<script>
+const PROVIDERS=[["claude","Claude","var(--claude)"],["codex","Codex","var(--codex)"]];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate=d=>d.toLocaleString("pt-BR",{weekday:"short",day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+function fmtLeft(ms){if(ms<=0)return"agora";const m=Math.round(ms/60000),d=Math.floor(m/1440),h=Math.floor(m%1440/60),mm=m%60;
+  return d?`${d}d ${h}h`:h?`${h}h ${mm}min`:`${mm}min`}
+const color=p=>p>=90?"var(--bad)":p>=70?"var(--warn)":"var(--ok)";
+function render(data){
+  const now=Date.now();let html="";
+  for(const[key,name,accent]of PROVIDERS){
+    const accs=data.accounts.filter(a=>a.provider===key);
+    html+=`<h2 style="--accent:${accent}"><i style="background:${accent}"></i>${name}</h2>`;
+    if(!accs.length){html+=`<div class="empty">Nenhuma conta. Use “+ ${name}”.</div>`;continue}
+    for(const a of accs){
+      html+=`<div class="card${a.active?" active":""}" style="--accent:${accent}"><div class="top"><span class="email">${esc(a.email||a.auth_id)}</span>`;
+      if(a.plan)html+=`<span class="tag">${esc(a.plan)}</span>`;
+      if(a.disabled)html+=`<span class="tag">desativada</span>`;
+      if(a.active)html+=`<span class="tag on">em uso</span>`;
+      html+=`</div>`;
+      for(const w of (a.windows||[])){
+        const p=Math.max(0,Math.min(100,w.used_percent||0));
+        html+=`<div class="row"><span class="lbl">${esc(w.label)}</span><div class="bar"><b style="width:${p}%;background:${color(p)}"></b></div><span class="pct">${Math.round(p)}%</span>`;
+        if(w.reset_at){const d=new Date(w.reset_at);html+=`<span class="reset">reseta em ${fmtLeft(d-now)} · ${fmtDate(d)}</span>`}
+        html+=`</div>`;
+      }
+      if(!(a.windows||[]).length&&!a.error)html+=`<div class="empty">Carregando…</div>`;
+      if(a.error)html+=`<div class="err">Erro ao consultar: ${esc(a.error)}</div>`;
+      html+=`</div>`;
+    }
+  }
+  $("#list").innerHTML=html;
+  $("#foot").textContent="Prioridade: a conta cujo limite semanal reseta primeiro é usada antes. Atualizado "+new Date().toLocaleTimeString("pt-BR");
+}
+async function load(refresh){
+  try{const r=await fetch("api/data"+(refresh?"?refresh=1":""),{cache:"no-store",headers:{"X-Usage-UI":"1"}});render(await r.json())}
+  catch(e){$("#msg").textContent="Falha ao carregar: "+e}
+}
+async function login(provider,btn){
+  btn.disabled=true;$("#msg").textContent="Abrindo login…";
+  const win=window.open("about:blank","_blank"); // open synchronously to avoid popup blockers
+  try{
+    const r=await fetch("api/login/"+provider,{method:"POST",headers:{"X-Usage-UI":"1"}});const j=await r.json();
+    if(!j.url)throw new Error(j.error||"sem URL");
+    if(win){win.opener=null;win.location.href=j.url}else{window.open(j.url,"_blank","noopener")}
+    $("#msg").textContent="Conclua o login na aba aberta…";
+    const t0=Date.now();
+    while(Date.now()-t0<5*60*1000){
+      await new Promise(r=>setTimeout(r,2000));
+      const s=await (await fetch("api/login/status?state="+encodeURIComponent(j.state),{cache:"no-store"})).json();
+      if(s.status==="ok"){$("#msg").textContent="Conta adicionada.";setTimeout(()=>load(true),1500);return}
+      if(s.status==="error"){throw new Error(s.error||"falhou")}
+    }
+    throw new Error("tempo esgotado");
+  }catch(e){if(win&&win.location.href==="about:blank")win.close();$("#msg").textContent="Login falhou: "+e.message}
+  finally{btn.disabled=false}
+}
+$("#addClaude").onclick=e=>login("claude",e.currentTarget);
+$("#addCodex").onclick=e=>login("codex",e.currentTarget);
+$("#refresh").onclick=()=>load(true);
+load(false);setInterval(()=>load(false),60000);
+</script>
+</body>
+</html>
