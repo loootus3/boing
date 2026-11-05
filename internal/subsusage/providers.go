@@ -28,7 +28,6 @@ var claudeWindows = []struct{ key, kind, label string }{
 	{"seven_day", "weekly", "Semanal"},
 	{"seven_day_opus", "model", "Opus"},
 	{"seven_day_sonnet", "model", "Sonnet"},
-	{"iguana_necktie", "model", "Fable"},
 	{"seven_day_oauth_apps", "model", "Apps"},
 	{"seven_day_cowork", "model", "Cowork"},
 }
@@ -141,6 +140,9 @@ func parseCodexUsage(body []byte, entry *Entry, now time.Time) error {
 			w.Kind, w.Label = "monthly", "Mensal"
 		case secs > 0:
 			w.Kind, w.Label = "weekly", "Semanal"
+		case !node.Get("used_percent").Exists() && !node.Get("reset_at").Exists() && !node.Get("reset_after_seconds").Exists():
+			// An empty window object without a duration is not a real limit.
+			continue
 		case i == 0:
 			w.Kind, w.Label, w.DurationSec = "short", "5h", fiveHourSeconds
 		default:

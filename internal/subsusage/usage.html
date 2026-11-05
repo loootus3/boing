@@ -86,6 +86,28 @@ section{display:flex;flex-direction:column;gap:10px}
 [data-tip]:hover::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 6px);z-index:10;width:max-content;max-width:18rem;
   white-space:pre-line;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--popover);
   color:var(--foreground);font-size:12px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.badge.warn{background:color-mix(in srgb,var(--warning) 10%,transparent);color:var(--warning-foreground)}
+.sel{height:24px;padding:0 22px 0 8px;border:1px solid var(--input);border-radius:6px;background:var(--popover);color:var(--muted-foreground);
+  font:500 12px/1 inherit;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 11px) 10px,calc(100% - 7px) 10px;background-size:4px 4px;background-repeat:no-repeat}
+.sel:hover{color:var(--foreground)}
+.btn.sm{height:24px;padding:0 8px;font-size:12px;border-radius:6px}
+.acct.off{opacity:.6}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);z-index:20;min-width:15rem;padding:4px;border:1px solid var(--border);border-radius:10px;
+  background:var(--popover);box-shadow:0 8px 24px rgba(0,0,0,.14);display:none}
+.menu.open{display:block}
+.menu button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 10px;border:0;border-radius:6px;
+  background:none;color:var(--foreground);font:500 13px/1.3 inherit;text-align:left;cursor:pointer}
+.menu button:hover{background:var(--accent)}
+.menu button small{font-size:12px;font-weight:400;color:var(--muted-foreground)}
+.paste{display:none;flex-direction:column;gap:8px;border:1px solid color-mix(in srgb,var(--border) 60%,transparent);border-radius:12px;padding:14px 16px;margin-top:-16px}
+.paste.open{display:flex}
+.paste p{margin:0;font-size:12px;color:var(--muted-foreground)}
+.paste .row{display:flex;gap:8px}
+.paste input{flex:1;min-width:0;height:32px;padding:0 10px;border:1px solid var(--input);border-radius:var(--radius);background:var(--popover);
+  color:var(--foreground);font:13px/1 var(--font-mono,ui-monospace,monospace)}
 @media (max-width:640px){
   .limit{grid-template-columns:minmax(0,7.5rem) minmax(3rem,1fr) auto;column-gap:10px}
 }
@@ -94,16 +116,23 @@ section{display:flex;flex-direction:column;gap:10px}
 <body>
 <header class="topbar">
   <h1><svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Usage</h1>
-  <button class="btn" id="addClaude"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Claude</button>
-  <button class="btn" id="addCodex"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Codex</button>
+  <div class="menu-wrap"><button class="btn" data-menu="claude"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Claude</button></div>
+  <div class="menu-wrap"><button class="btn" data-menu="codex"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Codex</button></div>
   <button class="btn icon" id="refresh" title="Atualizar"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
 </header>
 <main>
   <div class="toast" id="toast"></div>
+  <div class="paste" id="paste">
+    <p><b>Conectando de outro computador?</b> Depois de autorizar, a aba vai para um endereço <code>localhost</code> que não abre.
+       Copie a URL inteira dessa aba e cole aqui.</p>
+    <div class="row"><input id="pasteUrl" placeholder="http://localhost:54545/callback?code=…" autocomplete="off" spellcheck="false">
+      <button class="btn" id="pasteBtn">Concluir</button></div>
+  </div>
   <div id="list"></div>
   <div class="info-card">
     <h3>Prioridade de gasto</h3>
     <p>Em cada provedor, a conta cujo limite semanal reseta primeiro é usada antes; contas no limite ficam por último.
+       Contas em “Por último” só são usadas quando nenhuma normal está disponível; “Não usar” só mostra o uso.
        O traço na barra marca onde o uso estaria se você gastasse por igual até o reset.</p>
   </div>
 </main>
@@ -153,11 +182,17 @@ function render(data){
     }
     for(const a of accs){
       const exhausted=a.limit_reached||(a.windows||[]).some(w=>w.kind!=="model"&&w.used_percent>=100);
-      html+=`<div class="acct"><div class="acct-head"><span class="email">${esc(a.email||a.auth_id)}</span>`;
+      const mode=a.mode||"normal";
+      html+=`<div class="acct${mode==="off"?" off":""}"><div class="acct-head"><span class="email">${esc(a.email||a.auth_id)}</span>`;
       if(a.plan)html+=`<span class="badge outline">${esc(a.plan)}</span>`;
-      if(a.disabled)html+=`<span class="badge outline">desativada</span>`;
+      if(a.needs_login)html+=`<span class="badge err">desconectada</span><button class="btn sm" data-login="${p.key}" data-auth="${esc(a.auth_id)}" data-keep="${esc(mode)}">Reconectar</button>`;
+      else if(a.disabled)html+=`<span class="badge outline">desativada</span>`;
       else if(a.active)html+=`<span class="badge info"><span class="dot"></span>em uso</span>`;
       else if(exhausted)html+=`<span class="badge err">no limite</span>`;
+      html+=`<select class="sel" data-mode="${esc(a.auth_id)}" title="Modo de uso">
+        <option value="normal"${mode==="normal"?" selected":""}>Normal</option>
+        <option value="last"${mode==="last"?" selected":""}>Por último</option>
+        <option value="off"${mode==="off"?" selected":""}>Não usar</option></select>`;
       html+=`</div>`;
       for(const w of (a.windows||[]))html+=limitRow(w,p.color,now);
       if(!(a.windows||[]).length&&!a.error)html+=`<div class="note">Consultando uso…</div>`;
@@ -167,38 +202,90 @@ function render(data){
     html+=`</div></section>`;
   }
   $("#list").innerHTML=html;
-  document.querySelectorAll("[data-login]").forEach(b=>b.onclick=()=>login(b.dataset.login,b));
+  lastData=data;
+  document.querySelectorAll("#list [data-login]").forEach(b=>b.onclick=()=>login(b.dataset.login,b,b.dataset.keep||"normal",b.dataset.auth));
+  document.querySelectorAll("[data-mode]").forEach(s=>s.onchange=()=>setMode(s.dataset.mode,s.value));
 }
 
 async function load(refresh){
   const btn=$("#refresh");if(refresh)btn.classList.add("spin");
-  try{const r=await fetch("api/data"+(refresh?"?refresh=1":""),{cache:"no-store",headers:{"X-Usage-UI":"1"}});
+  try{const r=await fetch("/usage/api/data"+(refresh?"?refresh=1":""),{cache:"no-store",headers:{"X-Usage-UI":"1"}});
     if(!r.ok)throw new Error("HTTP "+r.status);render(await r.json())}
   catch(e){toast("Falha ao carregar: "+e.message,true)}
   finally{btn.classList.remove("spin")}
 }
 
-async function login(provider,btn){
+let lastData={accounts:[]};
+async function setMode(authId,mode){
+  try{
+    const r=await fetch("/usage/api/mode",{method:"POST",headers:{"X-Usage-UI":"1","Content-Type":"application/json"},
+      body:JSON.stringify({auth_id:authId,mode})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||("HTTP "+r.status))}
+    toast(mode==="normal"?"Conta em modo normal.":mode==="last"?"Conta será usada por último.":"Conta não será usada.");
+  }catch(e){toast("Falha ao mudar modo: "+e.message,true)}
+  load(false);
+}
+async function submitPaste(){
+  const v=$("#pasteUrl").value.trim();if(!v)return;
+  try{
+    const r=await fetch("/usage/api/login/callback",{method:"POST",headers:{"X-Usage-UI":"1","Content-Type":"application/json"},
+      body:JSON.stringify({redirect_url:v})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok||j.status==="error")throw new Error(j.error||("HTTP "+r.status));
+    toast("URL recebida, finalizando…");
+  }catch(e){toast("URL inválida: "+e.message,true)}
+}
+$("#pasteBtn").onclick=submitPaste;
+$("#pasteUrl").onkeydown=e=>{if(e.key==="Enter")submitPaste()};
+
+async function login(provider,btn,mode,reconnectId){
   btn.disabled=true;toast("Abrindo login…");
+  const before=new Set((lastData.accounts||[]).map(a=>a.auth_id));
   const win=window.open("about:blank","_blank"); // open synchronously to avoid popup blockers
   try{
-    const r=await fetch("api/login/"+provider,{method:"POST",headers:{"X-Usage-UI":"1"}});const j=await r.json();
+    const r=await fetch("/usage/api/login/"+provider,{method:"POST",headers:{"X-Usage-UI":"1"}});const j=await r.json();
     if(!j.url)throw new Error(j.error||"sem URL");
     if(win){win.opener=null;win.location.href=j.url}else{window.open(j.url,"_blank","noopener")}
     toast("Conclua o login na aba que abriu…");
+    $("#pasteUrl").value="";$("#paste").classList.add("open");
     const t0=Date.now();
     while(Date.now()-t0<5*60*1000){
       await new Promise(r=>setTimeout(r,2000));
-      const s=await (await fetch("api/login/status?state="+encodeURIComponent(j.state),{cache:"no-store"})).json();
-      if(s.status==="ok"){toast("Conta conectada.");setTimeout(()=>load(true),1500);setTimeout(()=>load(false),8000);return}
+      const s=await (await fetch("/usage/api/login/status?state="+encodeURIComponent(j.state),{cache:"no-store"})).json();
+      if(s.status==="ok"){
+        $("#paste").classList.remove("open");toast("Conta conectada.");
+        if(mode&&mode!=="normal"){
+          // The new credential file can take a moment to load; retry before giving up.
+          let added=null;
+          for(let i=0;i<10&&!added;i++){
+            await new Promise(r=>setTimeout(r,1500));
+            const d=await (await fetch("/usage/api/data",{cache:"no-store",headers:{"X-Usage-UI":"1"}})).json();
+            // A reconnect rewrites the same credential file, so re-apply its mode by id.
+            added=(d.accounts||[]).find(a=>a.provider===provider&&!before.has(a.auth_id))
+              ||(reconnectId&&(d.accounts||[]).find(a=>a.auth_id===reconnectId))||null;
+          }
+          if(added){if(added.mode!==mode)await setMode(added.auth_id,mode)}
+          else toast("Conta conectada, mas não consegui aplicar o modo — ajuste no seletor da conta.",true);
+        }
+        setTimeout(()=>load(true),1500);setTimeout(()=>load(false),8000);return}
       if(s.status==="error")throw new Error(s.error||"falhou");
     }
     throw new Error("tempo esgotado");
   }catch(e){try{if(win&&win.location.href==="about:blank")win.close()}catch(_){}toast("Login falhou: "+e.message,true)}
-  finally{btn.disabled=false}
+  finally{btn.disabled=false;if(!$("#toast").textContent.startsWith("Conta"))$("#paste").classList.remove("open")}
 }
-$("#addClaude").onclick=e=>login("claude",e.currentTarget);
-$("#addCodex").onclick=e=>login("codex",e.currentTarget);
+// Connect menus: choose how the new account will be spent.
+document.querySelectorAll("[data-menu]").forEach(btn=>{
+  const provider=btn.dataset.menu,menu=document.createElement("div");
+  menu.className="menu";
+  menu.innerHTML=`<button data-m="normal">Conectar<small>Uso normal, por ordem de reset</small></button>
+    <button data-m="last">Conectar · usar por último<small>Só quando as outras estiverem indisponíveis</small></button>
+    <button data-m="off">Conectar · não usar<small>Só acompanhar o uso</small></button>`;
+  btn.after(menu);
+  btn.onclick=e=>{e.stopPropagation();document.querySelectorAll(".menu.open").forEach(m=>m!==menu&&m.classList.remove("open"));menu.classList.toggle("open")};
+  menu.querySelectorAll("button").forEach(b=>b.onclick=()=>{menu.classList.remove("open");login(provider,btn,b.dataset.m)});
+});
+document.addEventListener("click",()=>document.querySelectorAll(".menu.open").forEach(m=>m.classList.remove("open")));
 $("#refresh").onclick=()=>load(true);
 if(new URLSearchParams(location.search).has("demo")){
   // Preview with fake accounts: /usage?demo=1
@@ -208,13 +295,13 @@ if(new URLSearchParams(location.search).has("demo")){
       {kind:"short",label:"5h",used_percent:34,reset_at:iso(2.2*H),duration_sec:18000},
       {kind:"weekly",label:"Semanal",used_percent:61,reset_at:iso(30*H),duration_sec:604800},
       {kind:"model",label:"Opus",used_percent:18,reset_at:iso(30*H),duration_sec:604800}]},
-    {provider:"claude",email:"trabalho@exemplo.com",plan:"Pro",windows:[
+    {provider:"claude",email:"trabalho@exemplo.com",plan:"Pro",mode:"last",windows:[
       {kind:"short",label:"5h",used_percent:0,reset_at:iso(5*H),duration_sec:18000},
       {kind:"weekly",label:"Semanal",used_percent:22,reset_at:iso(120*H),duration_sec:604800}]},
     {provider:"codex",email:"pessoal@exemplo.com",plan:"Plus",active:true,windows:[
       {kind:"short",label:"5h",used_percent:8,reset_at:iso(4*H),duration_sec:18000},
       {kind:"weekly",label:"Semanal",used_percent:47,reset_at:iso(70*H),duration_sec:604800}]},
-    {provider:"codex",email:"outra@exemplo.com",plan:"Plus",limit_reached:true,windows:[
+    {provider:"codex",email:"outra@exemplo.com",plan:"Plus",mode:"off",limit_reached:true,windows:[
       {kind:"short",label:"5h",used_percent:100,reset_at:iso(1.5*H),duration_sec:18000},
       {kind:"weekly",label:"Semanal",used_percent:88,reset_at:iso(140*H),duration_sec:604800}]}]});
 }else{load(false);setInterval(()=>load(false),60000)}

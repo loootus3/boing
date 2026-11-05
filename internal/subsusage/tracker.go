@@ -46,6 +46,10 @@ type Entry struct {
 	DataAt    time.Time `json:"data_at"` // time of the last successful fetch backing Windows
 	Error     string    `json:"error,omitempty"`
 	Active    bool      `json:"active"` // next credential the soonest-reset selector will spend
+	// Mode is the spending mode: "normal", "last" or "off" (see coreauth.MetadataUsageMode).
+	Mode string `json:"mode"`
+	// NeedsLogin is set when the provider rejected the stored token.
+	NeedsLogin bool `json:"needs_login,omitempty"`
 	// LimitReached is set when the upstream reports the subscription limit as reached.
 	LimitReached bool `json:"limit_reached"`
 }
@@ -234,7 +238,12 @@ func (t *Tracker) Snapshot() []Entry {
 			}
 		}
 		sort.SliceStable(group, func(i, j int) bool { return group[i].ID < group[j].ID })
-		groups[provider] = coreauth.SortBySoonestReset(group, now)
+		ordered := coreauth.SortBySoonestReset(group, now)
+		// Normal accounts are spent before "last" ones; "off" accounts are never spent.
+		sort.SliceStable(ordered, func(i, j int) bool {
+			return modeRank(coreauth.AuthUsageMode(ordered[i])) < modeRank(coreauth.AuthUsageMode(ordered[j]))
+		})
+		groups[provider] = ordered
 	}
 
 	t.mu.RLock()
@@ -256,7 +265,9 @@ func (t *Tracker) Snapshot() []Entry {
 				e.Email = a.Label
 			}
 			e.Disabled = a.Disabled
-			if !activeSet && !a.Disabled && !e.resetInfo().Exhausted {
+			e.Mode = coreauth.AuthUsageMode(a)
+			e.NeedsLogin = strings.Contains(e.Error, "HTTP 401") || strings.Contains(strings.ToLower(a.StatusMessage), "invalid_grant")
+			if !activeSet && !a.Disabled && e.Mode != coreauth.UsageModeOff && !e.NeedsLogin && !e.resetInfo().Exhausted {
 				e.Active = true
 				activeSet = true
 			}
@@ -264,6 +275,16 @@ func (t *Tracker) Snapshot() []Entry {
 		}
 	}
 	return out
+}
+
+func modeRank(mode string) int {
+	switch mode {
+	case coreauth.UsageModeLast:
+		return 1
+	case coreauth.UsageModeOff:
+		return 2
+	}
+	return 0
 }
 
 func (t *Tracker) fetch(ctx context.Context, a *coreauth.Auth) *Entry {

@@ -56,10 +56,12 @@ func (s *Server) setupRoutes() {
 	s.engine.HEAD("/healthz", healthzHandler)
 
 	s.engine.GET("/management.html", s.serveManagementControlPanel)
-	subsusage.Register(s.engine, subsusage.LoginHandlers{
-		Claude: s.mgmt.RequestAnthropicToken,
-		Codex:  s.mgmt.RequestCodexToken,
-		Status: s.mgmt.GetAuthStatus,
+	subsusage.Register(s.engine, subsusage.Handlers{
+		LoginClaude: s.mgmt.RequestAnthropicToken,
+		LoginCodex:  s.mgmt.RequestCodexToken,
+		LoginStatus: s.mgmt.GetAuthStatus,
+		Callback:    s.mgmt.PostOAuthCallback,
+		PatchFields: s.mgmt.PatchAuthFileFields,
 	})
 	if s.handlers != nil {
 		subsusage.Default().Start(s.handlers.AuthManager)

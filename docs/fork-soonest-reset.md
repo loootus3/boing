@@ -35,3 +35,27 @@ require an `X-Usage-UI: 1` header on state-changing calls.
 
 The page styling is adapted from T3 Code (MIT, Copyright (c) 2026 T3 Tools Inc.).
 `/usage?demo=1` renders fake accounts for a quick look.
+
+## Per-account usage mode
+
+Each account has a mode, set from the `/usage` page and stored in its auth file:
+
+| mode     | `usage_mode` | `priority` | effect                                              |
+|----------|--------------|------------|-----------------------------------------------------|
+| Normal   | `normal`     | `0`        | spent by soonest weekly reset                       |
+| Por último | `last`     | `-100`     | only when no normal account is available            |
+| Não usar | `off`        | `-1000`    | never spent by `soonest-reset`; usage still shown   |
+
+With `routing.session-affinity: true`, a session already bound to an account keeps it until the
+affinity TTL expires, even after the account is set to `off`. Other strategies treat `off` only
+as the lowest priority tier.
+
+## LAN access
+
+`/usage` accepts requests from loopback, private (RFC 1918 / ULA) and link-local addresses, and
+only for local Host names (IP literals, `localhost`, the machine hostname, `.local`, `.lan`,
+`.home`, `.internal`, `.home.arpa`). Anyone on the LAN can use the page, including connecting
+accounts. Do not put it behind a reverse proxy or tunnel exposed to the internet.
+
+Logins started from another computer finish by pasting the final `localhost` redirect URL into
+the page, which forwards it to the management OAuth callback.

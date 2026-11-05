@@ -41,6 +41,33 @@ func lookupResetInfo(authID string) (ResetInfo, bool) {
 	return (*fn)(authID)
 }
 
+// MetadataUsageMode is the auth-file field holding a credential's spending mode:
+// "normal" (default), "last" (only when nothing else is available) or "off" (never spent).
+// "last" and "off" are also expressed through the credential priority so that every
+// strategy keeps them behind normal credentials; "off" is additionally filtered here.
+const MetadataUsageMode = "usage_mode"
+
+// Usage modes stored in MetadataUsageMode.
+const (
+	UsageModeNormal = "normal"
+	UsageModeLast   = "last"
+	UsageModeOff    = "off"
+)
+
+// AuthUsageMode returns the credential's usage mode, defaulting to normal.
+func AuthUsageMode(a *Auth) string {
+	if a == nil || a.Metadata == nil {
+		return UsageModeNormal
+	}
+	if v, ok := a.Metadata[MetadataUsageMode].(string); ok {
+		switch v {
+		case UsageModeLast, UsageModeOff:
+			return v
+		}
+	}
+	return UsageModeNormal
+}
+
 // AuthAccessToken returns the bearer access token stored on an OAuth credential.
 func AuthAccessToken(a *Auth) string {
 	return authAccessToken(a)
@@ -60,8 +87,17 @@ func (s *SoonestResetSelector) Pick(ctx context.Context, provider, model string,
 	if err != nil {
 		return nil, err
 	}
-	available = preferCodexWebsocketAuths(ctx, provider, available)
-	ordered := SortBySoonestReset(available, now)
+	usable := available[:0:0]
+	for _, a := range available {
+		if AuthUsageMode(a) != UsageModeOff {
+			usable = append(usable, a)
+		}
+	}
+	if len(usable) == 0 {
+		return nil, &Error{Code: "auth_unavailable", Message: "all available credentials are set to not be used", HTTPStatus: 503}
+	}
+	usable = preferCodexWebsocketAuths(ctx, provider, usable)
+	ordered := SortBySoonestReset(usable, now)
 	return ordered[0], nil
 }
 

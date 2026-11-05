@@ -1,38 +1,83 @@
 package subsusage
 
 import (
+	"bytes"
 	_ "embed"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
+	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
 //go:embed usage.html
 var usagePage []byte
 
-// LoginHandlers are the existing OAuth handlers reused by the /usage page.
-type LoginHandlers struct {
-	Claude gin.HandlerFunc
-	Codex  gin.HandlerFunc
-	Status gin.HandlerFunc
+// Handlers are the existing management handlers reused by the /usage page.
+type Handlers struct {
+	LoginClaude gin.HandlerFunc
+	LoginCodex  gin.HandlerFunc
+	LoginStatus gin.HandlerFunc
+	// Callback accepts {"redirect_url": "..."} to finish a login whose provider redirect
+	// could not reach this server (login started from another computer).
+	Callback gin.HandlerFunc
+	// PatchFields updates auth-file fields: {"name": "<auth id>", "<field>": value, ...}.
+	PatchFields gin.HandlerFunc
 }
 
-// localOnly rejects any request that does not come from the loopback interface or
-// does not target a loopback host name (DNS rebinding protection).
-func localOnly() gin.HandlerFunc {
+// modePriority maps usage modes to credential priorities. Higher priorities are spent
+// first, so "last" and "off" stay behind normal credentials in every routing strategy.
+var modePriority = map[string]int{
+	coreauth.UsageModeNormal: 0,
+	coreauth.UsageModeLast:   -100,
+	coreauth.UsageModeOff:    -1000,
+}
+
+// isLocalIP reports loopback, private (RFC 1918 / ULA) and link-local addresses.
+func isLocalIP(ip net.IP) bool {
+	return ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast())
+}
+
+// hostAllowed blocks DNS rebinding: the Host header must be a local IP literal, localhost,
+// this machine's hostname, or a typical LAN-only name (.local, .lan, .home, .internal).
+func hostAllowed(rawHost string) bool {
+	host := rawHost
+	if h, _, err := net.SplitHostPort(rawHost); err == nil {
+		host = h
+	}
+	host = strings.TrimSuffix(strings.Trim(strings.ToLower(host), "[]"), ".")
+	if host == "" {
+		return false
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return isLocalIP(ip)
+	}
+	if host == "localhost" {
+		return true
+	}
+	if name, err := os.Hostname(); err == nil && strings.EqualFold(host, strings.TrimSpace(name)) {
+		return true
+	}
+	for _, suffix := range []string{".local", ".lan", ".home", ".internal", ".home.arpa"} {
+		if strings.HasSuffix(host, suffix) {
+			return true
+		}
+	}
+	return false
+}
+
+// lanOnly rejects requests that do not come from this machine or the local network,
+// or that target a public host name.
+func lanOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		remote := net.ParseIP(strings.TrimSpace(c.RemoteIP()))
-		host := c.Request.Host
-		if h, _, err := net.SplitHostPort(host); err == nil {
-			host = h
-		}
-		host = strings.Trim(strings.ToLower(host), "[]")
-		hostOK := host == "localhost" || host == "127.0.0.1" || host == "::1"
-		if remote == nil || !remote.IsLoopback() || !hostOK || crossSite(c.Request) {
+		if !isLocalIP(remote) || !hostAllowed(c.Request.Host) || crossSite(c.Request) {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
@@ -56,6 +101,8 @@ func crossSite(r *http.Request) bool {
 	return false
 }
 
+const uiHeader = "X-Usage-UI"
+
 // requireUIHeader demands a custom header, which cross-origin pages cannot send
 // without a CORS preflight that this server never approves.
 func requireUIHeader(next gin.HandlerFunc) gin.HandlerFunc {
@@ -68,8 +115,6 @@ func requireUIHeader(next gin.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-const uiHeader = "X-Usage-UI"
-
 // forceWebUI makes the reused OAuth handlers forward provider callbacks to this server.
 func forceWebUI(next gin.HandlerFunc) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -80,13 +125,28 @@ func forceWebUI(next gin.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
-// Register mounts the local usage dashboard under /usage.
-func Register(engine *gin.Engine, login LoginHandlers) {
+func setBody(c *gin.Context, body []byte) {
+	c.Request.Body = io.NopCloser(bytes.NewReader(body))
+	c.Request.ContentLength = int64(len(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+}
+
+func readBody(c *gin.Context) ([]byte, bool) {
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, 64<<10))
+	if err != nil || !ojson.ValidBytes(body) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"})
+		return nil, false
+	}
+	return body, true
+}
+
+// Register mounts the usage dashboard under /usage.
+func Register(engine *gin.Engine, h Handlers) {
 	if engine == nil {
 		return
 	}
 	t := Default()
-	g := engine.Group("/usage", localOnly())
+	g := engine.Group("/usage", lanOnly())
 	page := func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.Data(http.StatusOK, "text/html; charset=utf-8", usagePage)
@@ -100,13 +160,58 @@ func Register(engine *gin.Engine, login LoginHandlers) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, gin.H{"now": time.Now().UTC(), "accounts": t.Snapshot()})
 	})
-	if login.Claude != nil {
-		g.POST("/api/login/claude", requireUIHeader(forceWebUI(login.Claude)))
+	if h.LoginClaude != nil {
+		g.POST("/api/login/claude", requireUIHeader(forceWebUI(h.LoginClaude)))
 	}
-	if login.Codex != nil {
-		g.POST("/api/login/codex", requireUIHeader(forceWebUI(login.Codex)))
+	if h.LoginCodex != nil {
+		g.POST("/api/login/codex", requireUIHeader(forceWebUI(h.LoginCodex)))
 	}
-	if login.Status != nil {
-		g.GET("/api/login/status", login.Status)
+	if h.LoginStatus != nil {
+		g.GET("/api/login/status", h.LoginStatus)
+	}
+	if h.Callback != nil {
+		g.POST("/api/login/callback", requireUIHeader(func(c *gin.Context) {
+			body, ok := readBody(c)
+			if !ok {
+				return
+			}
+			redirect := strings.TrimSpace(ojson.GetBytes(body, "redirect_url").String())
+			if redirect == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "cole a URL completa"})
+				return
+			}
+			doc := ojson.NewDocString("{}")
+			if errSet := doc.Set("redirect_url", redirect); errSet != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"status": "error", "error": "invalid body"})
+				return
+			}
+			setBody(c, doc.Bytes())
+			h.Callback(c)
+		}))
+	}
+	if h.PatchFields != nil {
+		g.POST("/api/mode", requireUIHeader(func(c *gin.Context) {
+			body, ok := readBody(c)
+			if !ok {
+				return
+			}
+			authID := strings.TrimSpace(ojson.GetBytes(body, "auth_id").String())
+			mode := strings.TrimSpace(ojson.GetBytes(body, "mode").String())
+			priority, okMode := modePriority[mode]
+			if authID == "" || !okMode {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "auth_id and a valid mode are required"})
+				return
+			}
+			doc := ojson.NewDocString("{}")
+			errName := doc.Set("name", authID)
+			errPriority := doc.Set("priority", priority)
+			errMode := doc.Set(coreauth.MetadataUsageMode, mode)
+			if errName != nil || errPriority != nil || errMode != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build patch"})
+				return
+			}
+			setBody(c, doc.Bytes())
+			h.PatchFields(c)
+		}))
 	}
 }

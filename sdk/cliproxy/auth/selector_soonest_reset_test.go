@@ -62,3 +62,16 @@ func ids(auths []*Auth) []string {
 	}
 	return out
 }
+
+func TestSoonestResetSelectorSkipsOff(t *testing.T) {
+	SetResetInfoProvider(nil)
+	off := &Auth{ID: "a", Provider: "claude", Metadata: map[string]any{MetadataUsageMode: UsageModeOff}}
+	on := &Auth{ID: "b", Provider: "claude"}
+	got, err := (&SoonestResetSelector{}).Pick(context.Background(), "claude", "", cliproxyexecutor.Options{}, []*Auth{off, on})
+	if err != nil || got.ID != "b" {
+		t.Fatalf("Pick = %v, %v; want b", got, err)
+	}
+	if _, err := (&SoonestResetSelector{}).Pick(context.Background(), "claude", "", cliproxyexecutor.Options{}, []*Auth{off}); err == nil {
+		t.Fatal("expected an error when only off credentials are available")
+	}
+}
