@@ -21,15 +21,59 @@ const (
 	quotaKeepDuration  = 8 * 24 * time.Hour
 	quotaPointSpacing  = 10 * time.Minute
 	historyFlushPeriod = 2 * time.Minute
+	// historyVersion 2 stores fresh input, cache reads and cache writes separately.
+	historyVersion = 2
+	heatDays       = 28
 )
 
 // hourStat aggregates proxied requests of one credential within one hour.
 type hourStat struct {
 	Requests int64 `json:"req"`
 	Failed   int64 `json:"fail,omitempty"`
-	Input    int64 `json:"in,omitempty"`
-	Output   int64 `json:"out,omitempty"`
-	Cached   int64 `json:"cache,omitempty"`
+	// Input counts fresh input tokens, excluding anything served from or written to the cache.
+	Input  int64 `json:"in,omitempty"`
+	Output int64 `json:"out,omitempty"`
+	// Cached counts cache read tokens.
+	Cached int64 `json:"cache,omitempty"`
+	// CacheWrite counts cache creation tokens.
+	CacheWrite int64 `json:"cw,omitempty"`
+}
+
+// normalizeTokens splits a usage record into fresh input, cache read, cache write and output
+// tokens. Anthropic reports input_tokens without cache, while OpenAI-style input includes the
+// cached subset. The Claude parser sets CachedTokens to the cache creation count when there is
+// no cache read, so for Claude only CacheReadTokens is a read count. Data recorded before v2
+// is approximate for such requests: its cache total may include cache writes.
+func normalizeTokens(provider string, d usage.Detail) (fresh, read, write, output int64) {
+	output = max(d.OutputTokens, 0)
+	if provider == "codex" {
+		read = max(d.CachedTokens, d.CacheReadTokens, 0)
+		return max(0, d.InputTokens-read), read, 0, output
+	}
+	return max(d.InputTokens, 0), max(d.CacheReadTokens, 0), max(d.CacheCreationTokens, 0), output
+}
+
+// migrateHistory upgrades data loaded from an older file and reports whether it changed.
+func migrateHistory(data *historyData) bool {
+	if data.Version >= historyVersion {
+		return false
+	}
+	// Before v2 both CachedTokens and CacheReadTokens were added, counting cache reads twice.
+	// Codex input also included the cached subset.
+	for id, hours := range data.Hours {
+		provider := data.Providers[id]
+		if provider != "claude" && provider != "codex" {
+			continue
+		}
+		for _, stat := range hours {
+			stat.Cached /= 2
+			if provider == "codex" {
+				stat.Input = max(0, stat.Input-stat.Cached)
+			}
+		}
+	}
+	data.Version = historyVersion
+	return true
 }
 
 // quotaPoint is a remaining-percent sample of a credential's windows.
@@ -40,6 +84,8 @@ type quotaPoint struct {
 }
 
 type historyData struct {
+	// Version is the file format version; see historyVersion.
+	Version int `json:"v"`
 	// Hours maps auth ID -> unix hour start -> stats.
 	Hours map[string]map[int64]*hourStat `json:"hours"`
 	// Quota maps auth ID -> samples, oldest first.
@@ -63,6 +109,7 @@ var defaultHistory = &History{data: newHistoryData()}
 
 func newHistoryData() historyData {
 	return historyData{
+		Version:   historyVersion,
 		Hours:     make(map[string]map[int64]*hourStat),
 		Quota:     make(map[string][]quotaPoint),
 		Providers: make(map[string]string),
@@ -108,8 +155,10 @@ func (h *History) load() {
 	if data.Providers == nil {
 		data.Providers = make(map[string]string)
 	}
+	migrated := migrateHistory(&data)
 	h.mu.Lock()
 	h.data = data
+	h.dirty = h.dirty || migrated
 	h.mu.Unlock()
 }
 
@@ -202,9 +251,11 @@ func (h *History) HandleUsage(_ context.Context, record usage.Record) {
 	if record.Failed {
 		stat.Failed++
 	}
-	stat.Input += record.Detail.InputTokens
-	stat.Output += record.Detail.OutputTokens
-	stat.Cached += record.Detail.CachedTokens + record.Detail.CacheReadTokens
+	fresh, read, write, output := normalizeTokens(provider, record.Detail)
+	stat.Input += fresh
+	stat.Output += output
+	stat.Cached += read
+	stat.CacheWrite += write
 	h.data.Providers[authID] = provider
 	if h.lastUsed == nil {
 		h.lastUsed = make(map[string]time.Time)
@@ -264,18 +315,22 @@ func (h *History) recordQuota(e *Entry, now time.Time) {
 type Bucket struct {
 	T         int64            `json:"t"`
 	Requests  map[string]int64 `json:"requests"` // provider -> requests
-	Tokens    map[string]int64 `json:"tokens"`   // provider -> input+output tokens
+	Tokens    map[string]int64 `json:"tokens"`   // provider -> all processed tokens
 	Failed    int64            `json:"failed"`
 	ByAccount map[string]int64 `json:"by_account"` // auth ID -> requests
+	// TokensByAccount maps auth ID -> all processed tokens (fresh input, cache read and write, output).
+	TokensByAccount map[string]int64 `json:"tokens_by_account"`
 }
 
 // AccountTotals summarizes one credential over the selected range.
 type AccountTotals struct {
 	Requests int64 `json:"requests"`
 	Failed   int64 `json:"failed"`
-	Input    int64 `json:"input"`
+	Input    int64 `json:"input"` // fresh input, excluding cache
 	Output   int64 `json:"output"`
-	Cached   int64 `json:"cached"`
+	Cached   int64 `json:"cached"` // cache reads
+	// CacheWrite counts cache creation tokens.
+	CacheWrite int64 `json:"cache_write"`
 }
 
 // HistoryView is the JSON payload for /usage/api/history.
@@ -286,9 +341,17 @@ type HistoryView struct {
 	Accounts  map[string]AccountTotals `json:"accounts"`
 	Providers map[string]string        `json:"providers"`
 	Quota     map[string][]quotaPoint  `json:"quota"`
+	// HeatTokens and HeatRequests are weekday (0 = Sunday) x hour totals in the location of the
+	// View time over the last 28 days (Claude only), independent of the range. HeatDays is how
+	// many of those days have data and HeatWeekdayDays how many of them fall on each weekday.
+	HeatTokens      [7][24]int64 `json:"heat_tokens"`
+	HeatRequests    [7][24]int64 `json:"heat_requests"`
+	HeatDays        int          `json:"heat_days"`
+	HeatWeekdayDays [7]int       `json:"heat_weekday_days"`
 }
 
-// View aggregates history for a range: "24h" (hourly), "7d" or "30d" (daily).
+// View aggregates history for a range: "24h" (hourly), "7d" or "30d" (daily). Day buckets and
+// heat bins use the location of now.
 func (h *History) View(rangeKey string, now time.Time) HistoryView {
 	var span, step time.Duration
 	switch rangeKey {
@@ -326,8 +389,14 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			Requests:  map[string]int64{},
 			Tokens:    map[string]int64{},
 			ByAccount: map[string]int64{},
+
+			TokensByAccount: map[string]int64{},
 		}
 	}
+
+	heatStart := now.Add(-heatDays * 24 * time.Hour)
+	var heatFirst time.Time
+	haveHeat := false
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -339,6 +408,14 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 		totals := view.Accounts[id]
 		for hour, stat := range hours {
 			t := time.Unix(hour, 0).In(loc)
+			if provider == "claude" && !t.Before(heatStart) && !t.After(now) {
+				total := stat.Input + stat.Cached + stat.CacheWrite + stat.Output
+				view.HeatTokens[t.Weekday()][t.Hour()] += total
+				view.HeatRequests[t.Weekday()][t.Hour()] += stat.Requests
+				if !haveHeat || t.Before(heatFirst) {
+					heatFirst, haveHeat = t, true
+				}
+			}
 			if t.Before(start) || !t.Before(end) {
 				continue
 			}
@@ -355,7 +432,9 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			}
 			b := &view.Buckets[idx]
 			b.Requests[provider] += stat.Requests
-			b.Tokens[provider] += stat.Input + stat.Output
+			total := stat.Input + stat.Cached + stat.CacheWrite + stat.Output
+			b.Tokens[provider] += total
+			b.TokensByAccount[id] += total
 			b.Failed += stat.Failed
 			b.ByAccount[id] += stat.Requests
 			totals.Requests += stat.Requests
@@ -363,8 +442,16 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			totals.Input += stat.Input
 			totals.Output += stat.Output
 			totals.Cached += stat.Cached
+			totals.CacheWrite += stat.CacheWrite
 		}
 		view.Accounts[id] = totals
+	}
+	if haveHeat {
+		view.HeatDays = min(heatDays, max(1, int(now.Sub(heatFirst)/(24*time.Hour))+1))
+		y, m, d := now.In(loc).Date()
+		for k := 0; k < view.HeatDays; k++ {
+			view.HeatWeekdayDays[time.Date(y, m, d-k, 12, 0, 0, 0, loc).Weekday()]++
+		}
 	}
 	// Quota samples always cover the full retention so the page can estimate burn rates
 	// independently of the selected chart range.

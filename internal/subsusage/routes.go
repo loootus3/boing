@@ -140,6 +140,19 @@ func readBody(c *gin.Context) ([]byte, bool) {
 	return body, true
 }
 
+// queryLocation resolves an IANA zone name from the tz query parameter. Missing or invalid
+// names fall back to the server's local zone.
+func queryLocation(name string) *time.Location {
+	name = strings.TrimSpace(name)
+	if name == "" || name == "Local" {
+		return time.Local
+	}
+	if loc, err := time.LoadLocation(name); err == nil {
+		return loc
+	}
+	return time.Local
+}
+
 // Register mounts the usage dashboard under /usage.
 func Register(engine *gin.Engine, h Handlers) {
 	if engine == nil {
@@ -162,7 +175,7 @@ func Register(engine *gin.Engine, h Handlers) {
 	})
 	g.GET("/api/history", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
-		c.JSON(http.StatusOK, DefaultHistory().View(c.Query("range"), time.Now()))
+		c.JSON(http.StatusOK, DefaultHistory().View(c.Query("range"), time.Now().In(queryLocation(c.Query("tz")))))
 	})
 	if h.LoginClaude != nil {
 		g.POST("/api/login/claude", requireUIHeader(forceWebUI(h.LoginClaude)))

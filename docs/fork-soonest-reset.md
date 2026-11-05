@@ -38,7 +38,9 @@ The page styling is adapted from T3 Code (MIT, Copyright (c) 2026 T3 Tools Inc.)
 `/usage?demo=1` renders fake accounts for a quick look.
 
 Usage limits are fetched one account at a time (2 s apart): accounts in use (a proxied request
-in the last 15 minutes, or the one the selector spends next) every 60 s, idle ones every 10 minutes,
+in the last 15 minutes, or the one the selector spends next) every 120 s, idle ones every 10 minutes
+(an account that has no windows yet after a transient failure, i.e. a 429 or a network error, is retried every 120 s too;
+401, missing-token and other HTTP errors keep the 10 minute interval),
 and a newly added account immediately. A round stops at the first HTTP 429, leaving the remaining
 accounts untouched until the next tick. The page polls every 15 s while the tab is visible;
 there is no manual refresh button. Anthropic rate-limits the usage endpoint per account: on an
@@ -48,6 +50,19 @@ backoff the last good windows (kept for up to 30 minutes) are shown with a muted
 time of the next attempt. The Claude plan is read from `/api/oauth/profile` at most every 6 hours
 per account. The "Uso" section sums each provider's weekly usage across
 its accounts.
+
+The page, top to bottom:
+
+- Hero: weekly capacity summed over the accounts, the account in use now (5h and weekly
+  rings), and the runway ("Fôlego"): how long the capacity lasts at the recent burn rate,
+  counting weekly resets.
+- Next 7 days: projection of the summed weekly capacity, with the refill at each reset and
+  the stretches with no limit left.
+- Accounts: one card per account with the 5h, weekly and per-model windows, forecast,
+  sparkline and the mode selector.
+- Activity: tokens or requests per hour or day, stacked by account, with totals split into
+  fresh input, cache read, cache write and output.
+- Heatmap: average activity per weekday and hour over the last 4 weeks.
 
 ## Per-account usage mode
 
@@ -80,3 +95,13 @@ Proxied Claude/Codex requests and tokens are counted per credential per hour thr
 samples are taken on every quota poll. Both are kept in `<auth-dir>/usage-history.dat`
 (31 days of hourly stats, 8 days of quota samples) and served at
 `/usage/api/history?range=24h|7d|30d` for the page's chart, totals and per-account sparklines.
+
+Token accounting (history format v2): input is stored as fresh input, cache reads and cache
+writes separately. Claude reports input without cache, so only the cache read count is a read
+and cache creation is counted as a write; Codex input includes the cached subset, which is
+subtracted. Files without `"v":2` are migrated once on load (cache reads were counted twice
+before, and Codex input included the cached part). Older data stays approximate: requests that
+only wrote the cache may still show those tokens as reads.
+
+The heatmap and the day buckets use the browser's time zone (`tz` query parameter of the
+history endpoint, an IANA name; invalid or missing falls back to the server's zone).

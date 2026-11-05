@@ -21,19 +21,47 @@ func TestIsHotAndIsDue(t *testing.T) {
 	cases := []struct {
 		name     string
 		hasEntry bool
+		fast     bool
 		hot      bool
 		since    time.Duration
 		want     bool
 	}{
-		{"new auth", false, false, 0, true},
-		{"hot not yet", true, true, 59 * time.Second, false},
-		{"hot due", true, true, 60 * time.Second, true},
-		{"idle not yet", true, false, 9 * time.Minute, false},
-		{"idle due", true, false, 10 * time.Minute, true},
+		{"new auth", false, false, false, 0, true},
+		{"hot not yet", true, false, true, 119 * time.Second, false},
+		{"hot due", true, false, true, 120 * time.Second, true},
+		{"idle not yet", true, false, false, 9 * time.Minute, false},
+		{"idle due", true, false, false, 10 * time.Minute, true},
+		{"idle fast retry not yet", true, true, false, 119 * time.Second, false},
+		{"idle fast retry due", true, true, false, 120 * time.Second, true},
 	}
 	for _, c := range cases {
-		if got := isDue(c.hasEntry, c.hot, now.Add(-c.since), now); got != c.want {
+		if got := isDue(c.hasEntry, c.fast, c.hot, now.Add(-c.since), now); got != c.want {
 			t.Errorf("%s: due = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestRetriesFast(t *testing.T) {
+	win := []Window{{Kind: "weekly"}}
+	cases := []struct {
+		name string
+		e    *Entry
+		want bool
+	}{
+		{"nil", nil, false},
+		{"has windows", &Entry{Windows: win, Error: "HTTP 429"}, false},
+		{"no error", &Entry{}, true},
+		{"rate limit", &Entry{Error: "HTTP 429"}, true},
+		{"network", &Entry{Error: "Get \"https://x\": dial tcp: i/o timeout"}, true},
+		{"unauthorized", &Entry{Error: "HTTP 401"}, false},
+		{"needs login", &Entry{Error: "boom", NeedsLogin: true}, false},
+		{"no token", &Entry{Error: "sem access token"}, false},
+		{"forbidden", &Entry{Error: "HTTP 403"}, false},
+		{"server error", &Entry{Error: "HTTP 500"}, false},
+	}
+	for _, c := range cases {
+		if got := retriesFast(c.e); got != c.want {
+			t.Errorf("%s: retriesFast = %v, want %v", c.name, got, c.want)
 		}
 	}
 }
@@ -83,9 +111,9 @@ func TestRefreshSequentialHotFirstAndCarry(t *testing.T) {
 		t.Fatalf("calls = %v pauses = %d", f.calls, pauses)
 	}
 
-	// 61s later only the hot accounts are due; the idle one is carried unchanged.
+	// 121s later only the hot accounts are due; the idle one is carried unchanged.
 	f.calls = nil
-	clock = clock.Add(61 * time.Second)
+	clock = clock.Add(121 * time.Second)
 	used["c"] = clock
 	before := tr.entries["b"]
 	tr.refreshAuths(context.Background(), true, auths)

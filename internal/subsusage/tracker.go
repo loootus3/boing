@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	pollInterval    = 60 * time.Second
+	pollInterval    = 120 * time.Second
 	minRefreshDelay = 20 * time.Second
 	// staleAfter bounds how long windows from the last successful fetch are reused. It must
 	// outlast maxBackoff so the last good windows survive a full rate-limit backoff.
@@ -33,7 +33,7 @@ const (
 	// hotWindow is how long after a proxied request an account counts as in use.
 	hotWindow = 15 * time.Minute
 	// hotInterval and idleInterval are the minimum time between fetches of in-use and idle accounts.
-	hotInterval  = 60 * time.Second
+	hotInterval  = 120 * time.Second
 	idleInterval = 10 * time.Minute
 	// fetchGap is the pause between two sequential usage requests in one round.
 	fetchGap = 2 * time.Second
@@ -249,14 +249,31 @@ func isHot(lastUsed time.Time, active bool, now time.Time) bool {
 	return active || (!lastUsed.IsZero() && now.Sub(lastUsed) <= hotWindow)
 }
 
+// retriesFast reports whether a previous entry without windows failed transiently (no error,
+// a 429, or a network error), so the account is worth retrying on the hot interval. Login and
+// other HTTP errors will not fix themselves and keep the idle interval.
+func retriesFast(prev *Entry) bool {
+	if prev == nil || len(prev.Windows) > 0 {
+		return false
+	}
+	switch {
+	case prev.Error == "", prev.Error == "HTTP 429":
+		return true
+	case prev.NeedsLogin, prev.Error == "sem access token", strings.HasPrefix(prev.Error, "HTTP "):
+		return false
+	}
+	return true
+}
+
 // isDue reports whether an account should be fetched now. hasEntry is false for accounts
-// that were never fetched; those are always due.
-func isDue(hasEntry, hot bool, lastFetch, now time.Time) bool {
+// that were never fetched; those are always due. fastRetry (see retriesFast) makes an idle
+// account use the hot interval.
+func isDue(hasEntry, fastRetry, hot bool, lastFetch, now time.Time) bool {
 	if !hasEntry {
 		return true
 	}
 	interval := idleInterval
-	if hot {
+	if hot || fastRetry {
 		interval = hotInterval
 	}
 	return now.Sub(lastFetch) >= interval
@@ -306,7 +323,7 @@ func (t *Tracker) refreshAuths(ctx context.Context, force bool, auths []*coreaut
 			continue
 		}
 		hot := isHot(t.lastUsed(a.ID), active[a.ID], startedAt)
-		if !isDue(hasPrev, hot, t.lastFetch[a.ID], startedAt) {
+		if !isDue(hasPrev, hasPrev && retriesFast(prev), hot, t.lastFetch[a.ID], startedAt) {
 			results[a.ID] = prev
 			continue
 		}
