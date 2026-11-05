@@ -160,6 +160,10 @@ func Register(engine *gin.Engine, h Handlers) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, gin.H{"now": time.Now().UTC(), "accounts": t.Snapshot()})
 	})
+	g.GET("/api/history", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusOK, DefaultHistory().View(c.Query("range"), time.Now()))
+	})
 	if h.LoginClaude != nil {
 		g.POST("/api/login/claude", requireUIHeader(forceWebUI(h.LoginClaude)))
 	}

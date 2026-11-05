@@ -86,8 +86,9 @@ func claudePlan(profile []byte) string {
 	}
 	tier := org.Get("rate_limit_tier").String()
 	switch {
-	case strings.HasSuffix(tier, "claude_max_20x"):
-		return "Max 20x"
+	case strings.Contains(tier, "ultra"), strings.HasSuffix(tier, "claude_max_20x"):
+		// Anthropic renamed the 20x Max tier to Ultra.
+		return "Ultra"
 	case strings.HasSuffix(tier, "claude_max_5x"):
 		return "Max 5x"
 	case ojson.GetBytes(profile, "account.has_claude_max").Bool():

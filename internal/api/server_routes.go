@@ -27,6 +27,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/subsusage"
 	responsesclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/claude/openai/responses"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers/claude"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers/gemini"
@@ -63,6 +64,14 @@ func (s *Server) setupRoutes() {
 		Callback:    s.mgmt.PostOAuthCallback,
 		PatchFields: s.mgmt.PatchAuthFileFields,
 	})
+	// Start history first so the tracker's first quota samples are not overwritten by load.
+	historyDir := ""
+	if cfg := s.getConfig(); cfg != nil {
+		if dir, errDir := util.ResolveAuthDir(cfg.AuthDir); errDir == nil {
+			historyDir = dir
+		}
+	}
+	subsusage.DefaultHistory().Start(historyDir)
 	if s.handlers != nil {
 		subsusage.Default().Start(s.handlers.AuthManager)
 	}

@@ -59,3 +59,11 @@ accounts. Do not put it behind a reverse proxy or tunnel exposed to the internet
 
 Logins started from another computer finish by pasting the final `localhost` redirect URL into
 the page, which forwards it to the management OAuth callback.
+
+## Usage history
+
+Proxied Claude/Codex requests and tokens are counted per credential per hour through the
+`sdk/cliproxy/usage` plugin hook (independent of `usage-statistics-enabled`), and remaining-%
+samples are taken on every quota poll. Both are kept in `<auth-dir>/usage-history.dat`
+(31 days of hourly stats, 8 days of quota samples) and served at
+`/usage/api/history?range=24h|7d|30d` for the page's chart, totals and per-account sparklines.

@@ -184,6 +184,9 @@ func (t *Tracker) Refresh(ctx context.Context, force bool) {
 	}
 	t.entries = results
 	t.lastRefresh = time.Now()
+	for _, e := range results {
+		defaultHistory.recordQuota(e, t.lastRefresh)
+	}
 	t.mu.Unlock()
 }
 
