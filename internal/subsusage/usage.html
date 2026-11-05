@@ -89,24 +89,35 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .card{border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,var(--surf-a),var(--surf-b));box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}
 
 /* hero */
-.hero{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px}
+.hero{display:grid;grid-template-columns:2.3fr 1fr 1fr;gap:16px}
 .tile{padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .tile .k{font-size:12px;font-weight:500;color:var(--muted-foreground);display:flex;align-items:center;gap:8px}
 .tile .k .pill{margin-left:auto}
 .hnum{font-size:44px;line-height:1;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .hnum small{font-size:13px;font-weight:400;letter-spacing:0;color:var(--muted-foreground);margin-left:8px}
-.segbar{display:flex;gap:2px;height:28px}
-.segbar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--c);transform-origin:left}
-.segbar>i.track{background:var(--track);min-width:0}
-.segbar.thin{height:10px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted-foreground)}
 .legend .lg{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .legend .lg i{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
 .legend .lg b{font-weight:600;color:var(--foreground)}
 .legend .lg.dim{opacity:.55}
-.nextline{font-size:13px;color:var(--muted-foreground);display:flex;align-items:baseline;gap:8px}
-.nextline b{color:var(--foreground);font-weight:600}
-.nextline i{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none;align-self:flex-start;margin-top:.5em}
+.caprows{container-type:inline-size;display:flex;flex-direction:column;gap:10px}
+.cr{display:grid;grid-template-columns:minmax(0,1fr) 5.4rem 6rem 7.9rem;align-items:center;column-gap:10px;row-gap:6px;font-size:12px;color:var(--muted-foreground)}
+.cr.dim{opacity:.6}
+.cr-n{grid-area:n;display:flex;align-items:center;gap:8px;min-width:0}
+.cr-e{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--foreground)}
+.cr-n em{flex:none;font-style:normal;font-size:11px;color:var(--muted-foreground)}
+.cr-m{grid-area:m;display:flex;align-items:center;gap:8px;min-width:0}
+.cr-m .meter{flex:1 1 0;min-width:0}
+.cr-m b{flex:none;min-width:2rem;text-align:right;font-weight:600;color:var(--foreground)}
+.cr-m b.low{color:var(--warning-foreground)}.cr-m b.crit{color:var(--error-foreground)}
+.cr-r{grid-area:r;white-space:nowrap}
+.cr-e2{grid-area:e;display:flex;align-items:center;gap:5px;white-space:nowrap;min-width:0;color:var(--muted-foreground)}
+.cr-e2 svg.i{width:13px;height:13px;flex:none}
+.cr-e2.ok{color:var(--success-foreground)}.cr-e2.low{color:var(--warning-foreground)}.cr-e2.crit{color:var(--error-foreground)}
+.cr-e2[data-tip]{cursor:help}
+.cr{grid-template-areas:"n m r e"}
+@container (max-width:480px){.cr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n r" "m e"}.caprows{gap:14px}}
+.capnote .est{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
 .agora-who{display:flex;align-items:center;gap:8px;min-width:0}
 .agora-who .redact{flex:1 1 0}
 .agora-who .badge{flex:none}
@@ -347,7 +358,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes ringin{from{stroke-dasharray:0 var(--circ)}}
 .meter i,.rate .bar i{transform-origin:left}
-body:not(.ready) .segbar>i:not(.track),body:not(.ready) .meter i,body:not(.ready) .rate .bar i{animation:grow .5s cubic-bezier(.2,.7,.2,1) both}
+body:not(.ready) .meter i,body:not(.ready) .rate .bar i{animation:grow .5s cubic-bezier(.2,.7,.2,1) both}
 body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -544,26 +555,23 @@ function burnStats(points,key,sinceT){
   for(let i=1;i<pts.length;i++){const d=pts[i-1][key]-pts[i][key];if(d>0){drop+=d;active+=pts[i].t-pts[i-1].t}}
   return{drop,span:pts.length>1?pts[pts.length-1].t-pts[0].t:0,active};
 }
-// Per-account forecast for the weekly window. Like burnRate, the measured pace needs at least 6h of the
-// account's samples (the last 24h when they cover 6h, else all of them); otherwise it estimates from the
-// current window (% used over the time since it started), and below 6h of window it has no pace yet.
-function accountForecast(a,now){
-  const w=weeklyOf(a);if(!w||!w.reset_at)return null;
-  const q=quotaOf(a.auth_id),MIN=6*3600;
-  const left=100-clampPct(w.used_percent),toReset=(new Date(w.reset_at)-now)/1000;
-  let rate=0,est=false,idle="sem gasto no período medido";
-  const day=burnStats(q,"w",now/1000-DAY),all=day.span>=MIN?day:burnStats(q,"w");
-  if(all.span>=MIN){rate=all.drop/all.span;if(day.span>=MIN)idle="sem gasto nas últimas 24h"}
-  else{
-    const dur=w.duration_sec||7*DAY,elapsed=now/1000-(new Date(w.reset_at)/1000-dur);
-    if(!(elapsed>=MIN))return{cls:"wait",text:"coletando ritmo",icon:ICON_CLOCK};
-    rate=clampPct(w.used_percent)/elapsed;est=true;idle="sem gasto nesta janela";
-  }
+// Per-account forecast for the weekly window, read from the shared pool simulation (poolForecast), so the
+// card, the capacity tile and the 7-day chart always agree. `pf` may be passed to reuse one simulation.
+function accountForecast(a,now,pf){
+  pf=pf||poolForecast(now);
+  const f=pf.info[a.auth_id];if(!f)return null;
+  if(!pf.br.ok)return{cls:"wait",text:"coletando ritmo",icon:ICON_CLOCK};
+  const est=pf.br.source==="week";
   const out=o=>(est&&(o.est="Poucos dados de histórico (menos de 6h): o ritmo foi estimado pelo que já foi gasto desde o início da janela semanal."),o);
-  if(rate<=0)return out({text:idle,cls:"ok",icon:ICON_CHECK});
-  const eta=left/rate;
-  if(eta<toReset)return out({cls:"bad",icon:ICON_ALERT,text:`nesse ritmo acaba em ${fmtLeft(eta*1000)} · ${fmtLeft((toReset-eta)*1000)} antes do reset`});
-  return out({cls:"ok",icon:ICON_CHECK,text:`nesse ritmo sobra ~${Math.round(left-rate*toReset)}% no reset`});
+  if(pf.br.perDay<=0)return out({text:pf.br.source==="week"?"sem gasto nesta janela":"sem gasto no período medido",cls:"ok",icon:ICON_CHECK});
+  if(f.zero!=null){
+    const ms=f.zero*1000-now;
+    // Draining an account before its reset is the router's intended behaviour (the next
+    // account takes over), so this is informational; running out overall is shown in Fôlego.
+    return out({cls:"wait",icon:ICON_CLOCK,text:ms<=60000?`esgotada · reseta em ${fmtLeft(f.at*1000-now)}`
+      :`nesse ritmo esgota em ${fmtLeft(ms)} · depois vai para a próxima`});
+  }
+  return out({cls:"ok",icon:ICON_CHECK,text:`nesse ritmo sobra ~${Math.round(f.before)}% no reset`});
 }
 // Order the router drains accounts in: normal-mode accounts first, "last"-mode ones only when every
 // normal one is empty; within each group the soonest weekly reset first. Used by the runway and the chart.
@@ -574,24 +582,33 @@ const useOrder=(x,y)=>(x.last-y.last)||(x.reset-y.reset);
 // rec.ts = sample times (unix s), rec.tot[k] = summed weekly % left at rec.ts[k] (hourly, plus a vertical
 // step at every reset and the exact zero crossing), rec.events = refills (with .top = total right after
 // the jump), rec.use = [{a,b,i}] hour spans with the index in accs of the account being drained (-1 if none).
-function simulate(accs,perHour,now,rec){
+// With `info`, also fills info[auth_id] = {before, at, zero} for every account whose first reset falls within
+// 8 days: before = % left just before that reset, at = reset time (unix s), zero = when it first hits 0 before
+// the reset (unix s, null if it never does). The loop runs until all of them are known.
+function simulate(accs,perHour,now,rec,info){
   const pool=accs.map((a,i)=>{const w=weeklyOf(a);return{a,i,last:a.mode==="last"?1:0,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY}});
   const cap=60*24,hz=7*24,total=()=>pool.reduce((s,p)=>s+p.left,0),t0=now/1000;
   let t=t0,first=Infinity;
+  const IH=8*24,infoDone=h=>!info||h>=IH||pool.every(p=>p.fr);
+  if(info)for(const p of pool)if(p.left<=1e-9)p.zero=t0;
   const push=(tt,v)=>{rec.ts.push(tt);rec.tot.push(v)},lastT=()=>rec.ts[rec.ts.length-1];
   pool.sort(useOrder);
   if(rec){rec.ts=[];rec.tot=[];rec.events=[];rec.use=[];rec.cap=pool.length*100;rec.hz=hz;push(t,total())}
   for(let h=0;h<cap;h++){
-    if(first<Infinity&&(!rec||h>=hz))break;
+    if(first<Infinity&&(!rec||h>=hz)&&infoDone(h))break;
     t+=3600;let need=perHour;const evs=[];
-    for(const p of pool)while(p.reset<=t){evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left});p.left=100;p.reset+=p.period}
+    for(const p of pool)while(p.reset<=t){
+      if(info&&!p.fr&&h<IH){p.fr=true;info[p.a.auth_id]={before:p.left,at:p.reset,zero:p.zero==null?null:p.zero}}
+      evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left});p.left=100;p.reset+=p.period}
     if(rec&&h<hz&&evs.length){
       evs.sort((x,y)=>x.at-y.at);let cur=rec.tot[rec.tot.length-1];
       for(const e of evs){const ta=Math.min(t-2,Math.max(e.at,lastT()+2));push(ta-1,cur);cur+=e.gain;push(ta,cur);e.top=cur}
     }
     pool.sort(useOrder);
     if(rec&&h<hz){const u=pool.find(p=>p.left>1e-9);rec.use.push({a:t-3600,b:t,i:u?u.i:-1})}
-    for(const p of pool){if(need<=0)break;const take=Math.min(p.left,need);p.left-=take;need-=take}
+    for(const p of pool){if(need<=0)break;const take=Math.min(p.left,need);
+      if(info&&!p.fr&&p.zero==null&&take>0&&take>=p.left-1e-9)p.zero=t-3600+(perHour-need+take)/perHour*3600;
+      p.left-=take;need-=take}
     if(need>1e-9&&first===Infinity){
       first=h+(perHour-need)/perHour;
       if(rec&&h<hz)push(Math.min(t-1,Math.max(lastT()+1,t0+first*3600)),0);
@@ -616,6 +633,12 @@ function burnRate(accs){
 }
 // Accounts whose weekly window feeds the pool: in use, connected, with a reset time.
 const runwayAccs=()=>claudeAccs().filter(a=>a.mode!=="off"&&!a.needs_login&&weeklyOf(a)&&weeklyOf(a).reset_at);
+// The one simulation behind every forecast on the page: burn rate, pool run and per-account info.
+function poolForecast(now,rec){
+  const accs=runwayAccs(),br=burnRate(accs),info={};
+  if(accs.length)simulate(accs,br.ok?br.perDay/24:0,now,rec,info);
+  return{accs,br,info};
+}
 // %/day the pool gets back from the weekly resets.
 const refillPerDay=accs=>accs.reduce((s,a)=>s+100/(((weeklyOf(a).duration_sec)||7*DAY)/DAY),0);
 // Summed weekly remaining of the given accounts over the last 7 days (null without history).
@@ -646,17 +669,38 @@ function renderCapacity(now){
   if(!accs.length){el.innerHTML=`<div class="k">${title}</div><div class="hnum">—</div><div class="sub">Sem dados de capacidade ainda.</div>`;return}
   const rem=a=>100-clampPct(weeklyOf(a).used_percent),sum=accs.reduce((t,a)=>t+rem(a),0),cap=accs.length*100;
   const full=sum/100;
-  const blocks=accs.filter(a=>rem(a)>0).map(a=>{const w=weeklyOf(a),r=w.reset_at?Date.parse(w.reset_at):0;
-    const tip=`${legendName(a.email||a.auth_id)}\n${Math.round(rem(a))}% restante`+(r?` · reseta em ${fmtLeft(r-now)}`:"");
-    return `<i data-tip="${esc(tip)}" style="flex:${rem(a)} 1 0;--c:${ACC[a.auth_id]};${a.mode==="off"?"opacity:.5":""}"></i>`}).join("");
-  const spent=cap-sum;
-  const track=spent>0?`<i class="track" data-tip="${esc(`Já gasto: ${Math.round(spent)}% de ${cap}%`)}" style="flex:${spent} 1 0"></i>`:"";
-  const legend=accs.map(a=>`<span class="lg${a.mode==="off"?" dim":""}"><i style="--c:${ACC[a.auth_id]}"></i>${esc(legendName(a.email||a.auth_id))} <b>${Math.round(rem(a))}%</b></span>`).join("");
-  let next=null;for(const a of accs){const w=weeklyOf(a),t=w.reset_at?Date.parse(w.reset_at):0;if(t>now&&(!next||t<next.t))next={a,w,t}}
-  const nl=next?`<div class="nextline" data-tip="${esc("A projeção gasta primeiro a conta que reseta antes. Quando ela recarregar, já deve estar esgotada, então o gráfico mostra +100% nessa recarga, não só o que falta hoje.")}"><i style="--c:${ACC[next.a.auth_id]}"></i><span>Próxima recarga em <b>${fmtLeft(next.t-now)}</b> (${esc(fmtShort(new Date(next.t)))}): <b>${esc(legendName(next.a.email||next.a.auth_id))}</b> volta a 100% · hoje faltam ${Math.round(clampPct(next.w.used_percent))}%</span></div>`:"";
+  const pf=poolForecast(now),resetOf=a=>{const w=weeklyOf(a);return w&&w.reset_at?Date.parse(w.reset_at):0};
+  const key=a=>a.needs_login?Infinity:resetOf(a)||Infinity;
+  const rows=claudeAccs().sort((x,y)=>{const kx=key(x),ky=key(y);return kx===ky?0:kx<ky?-1:1});
+  const row=a=>{
+    const w=weeklyOf(a),mode=a.mode||"normal",email=a.email||a.auth_id,r=resetOf(a),off=mode==="off";
+    const hint=mode==="last"?"por último":off?"não usar":"";
+    const name=`<div class="cr-n"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span class="cr-e" title="${esc(email)}">${esc(legendName(email))}</span>${hint?`<em>${hint}</em>`:""}</div>`;
+    const reason=a.needs_login?"desconectada":!w?"sem janela semanal":off?"sem projeção":!r?"sem horário de reset":"";
+    if(a.needs_login||!w)return `<div class="cr dim">${name}<span class="cr-e2" style="grid-area:e">${reason}</span></div>`;
+    const left=Math.round(rem(a)),l=lvl(left);
+    const meter=`<div class="cr-m" data-tip="${esc(`${legendName(email)}\n${left}% restante da janela semanal`)}"><div class="meter" style="--c:${gaugeColor(left,ACC[a.auth_id])}"><i style="width:${left}%"></i></div><b class="tabular ${l}">${left}%</b></div>`;
+    const rst=r?`<span class="cr-r tabular" data-tip="${esc("Reseta "+fmtDate(new Date(r)))}">reseta em ${fmtLeft(r-now)}</span>`:`<span class="cr-r">—</span>`;
+    let est;
+    if(reason)est=`<span class="cr-e2">${reason}</span>`;
+    else{
+      const f=pf.info[a.auth_id];
+      if(!pf.br.ok)est=`<span class="cr-e2" data-tip="${esc("Coletando ritmo: a projeção aparece com 6h de uso pelo proxy.")}">—</span>`;
+      else if(!f)est=`<span class="cr-e2" data-tip="${esc("Reset além de 8 dias: sem projeção.")}">—</span>`;
+      else{
+        const e=Math.round(f.before),zms=f.zero==null?0:f.zero*1000-now;
+        const tip=f.zero==null?`Nesse ritmo sobra ~${e}% no reset (${fmtDate(new Date(f.at*1000))})`
+          :zms<=60000?`Esgotada; reseta em ${fmtLeft(f.at*1000-now)}`:`Nesse ritmo esgota em ${fmtLeft(zms)}, ${fmtLeft((f.at-f.zero)*1000)} antes do reset; depois o proxy passa para a próxima conta`;
+        est=`<span class="cr-e2" data-tip="${esc(tip)}">→ ~${e}% no reset</span>`;
+      }
+    }
+    return `<div class="cr${off?" dim":""}">${name}${meter}${rst}${est}</div>`;
+  };
+  const estTag=pf.br.ok&&pf.br.source==="week"?` <span class="est" data-tip="${esc("Estimado pelo uso desta semana até haver 6h de histórico de cota.")}">(estimado)</span>`:"";
+  const note=pf.br.ok?`Restante estimado no reset, no ritmo atual; a conta que reseta antes é usada primeiro${estTag}.`:"Coletando ritmo: as estimativas aparecem com 6h de uso pelo proxy.";
   el.innerHTML=`<div class="k">${title}</div>
     <div class="hnum"><span id="capNum" data-n="${sum}" data-f="pct">${Math.round(sum)}%</span><small>de ${cap}% · ≈${fmt1(full)} ${Math.abs(full-1)<.05?"conta cheia":"contas cheias"}</small></div>
-    <div class="segbar">${blocks}${track}</div><div class="legend">${legend}</div>${nl}`;
+    <div class="caprows">${rows.map(row).join("")}</div><div class="sub capnote">${note}</div>`;
 }
 // Pace of the active account's 5h window from its last ~2h of samples (`s` = remaining %).
 function paceInsight(a,si,now){
@@ -737,8 +781,7 @@ const sameDay=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMont
 function renderTimeline(){
   const el=$("#tl"),now=Date.now(),accs=runwayAccs();
   if(!accs.length){el.dataset.key="";el.innerHTML=`<div class="tl-empty">Nenhuma conta com limite semanal para projetar.</div>`;return}
-  const br=burnRate(accs),perHour=br.ok?br.perDay/24:0,rec={};
-  simulate(accs,perHour,now,rec);
+  const rec={},br=poolForecast(now,rec).br,perHour=br.ok?br.perDay/24:0;
   const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,Object.values(ACC).join(","),accs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
@@ -872,7 +915,7 @@ function modelRow(w,acc,now){
     <span class="p tabular"><b>${i.left}%</b> · ${i.reset?fmtLeft(i.reset-now):"—"}</span></div>`;
 }
 function renderAccounts(){
-  const accs=claudeAccs(),now=Date.now();
+  const accs=claudeAccs(),now=Date.now(),pf=poolForecast(now);
   $("#acctCount").textContent=`${accs.length} conta${accs.length===1?"":"s"} · janela de 5h, semanal e por modelo`;
   const box=$("#accts");
   // Replacing the markup would close an open mode <select>; the next poll renders instead.
@@ -898,7 +941,7 @@ function renderAccounts(){
       else if(loading)h+=`<div class="rings">${noRing("5h","carregando")}${noRing("Semanal","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
-      const f=wk&&mode!=="off"?accountForecast(a,now):null,sp="";
+      const f=wk&&mode!=="off"?accountForecast(a,now,pf):null,sp="";
       if(f)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="est" data-tip="${esc(f.est)}">(estimado)</span>`:""}</span></div>`;
       if(!(a.windows||[]).length&&!a.error)h+=`<div class="note">Consultando uso…</div>`;
       if(limited&&!a.needs_login){
