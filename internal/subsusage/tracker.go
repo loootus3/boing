@@ -29,6 +29,14 @@ const (
 
 	firstBackoff = 2 * time.Minute
 	maxBackoff   = 15 * time.Minute
+
+	// hotWindow is how long after a proxied request an account counts as in use.
+	hotWindow = 15 * time.Minute
+	// hotInterval and idleInterval are the minimum time between fetches of in-use and idle accounts.
+	hotInterval  = 60 * time.Second
+	idleInterval = 10 * time.Minute
+	// fetchGap is the pause between two sequential usage requests in one round.
+	fetchGap = 2 * time.Second
 )
 
 // httpStatusError is returned by get for any non-200 response.
@@ -149,6 +157,14 @@ type Tracker struct {
 	// backoff and plans are keyed by auth ID and guarded by mu.
 	backoff map[string]backoffState
 	plans   map[string]cachedPlan
+	// lastFetch holds the time of the last fetch attempt per auth ID, guarded by mu.
+	lastFetch map[string]time.Time
+
+	// Test seams; nil means the production implementation.
+	fetchFn    func(ctx context.Context, a *coreauth.Auth) (*Entry, error)
+	nowFn      func() time.Time
+	pauseFn    func(ctx context.Context, d time.Duration) error
+	lastUsedFn func(authID string) time.Time
 }
 
 var defaultTracker = &Tracker{
@@ -192,65 +208,153 @@ func (t *Tracker) loop() {
 	}
 }
 
-// Refresh fetches usage for every tracked credential. Without force, refreshes closer
-// together than minRefreshDelay are skipped.
+func (t *Tracker) now() time.Time {
+	if t.nowFn != nil {
+		return t.nowFn()
+	}
+	return time.Now()
+}
+
+func (t *Tracker) doFetch(ctx context.Context, a *coreauth.Auth) (*Entry, error) {
+	if t.fetchFn != nil {
+		return t.fetchFn(ctx, a)
+	}
+	return t.fetch(ctx, a)
+}
+
+func (t *Tracker) pause(ctx context.Context, d time.Duration) error {
+	if t.pauseFn != nil {
+		return t.pauseFn(ctx, d)
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func (t *Tracker) lastUsed(authID string) time.Time {
+	if t.lastUsedFn != nil {
+		return t.lastUsedFn(authID)
+	}
+	return defaultHistory.LastUsed(authID)
+}
+
+// isHot reports whether an account is in use: it served a proxied request recently or it is
+// the account the selector spends next.
+func isHot(lastUsed time.Time, active bool, now time.Time) bool {
+	return active || (!lastUsed.IsZero() && now.Sub(lastUsed) <= hotWindow)
+}
+
+// isDue reports whether an account should be fetched now. hasEntry is false for accounts
+// that were never fetched; those are always due.
+func isDue(hasEntry, hot bool, lastFetch, now time.Time) bool {
+	if !hasEntry {
+		return true
+	}
+	interval := idleInterval
+	if hot {
+		interval = hotInterval
+	}
+	return now.Sub(lastFetch) >= interval
+}
+
+// Refresh fetches usage for the tracked credentials that are due. Accounts in use are polled
+// every hotInterval, idle ones every idleInterval, one request at a time. Without force,
+// refreshes closer together than minRefreshDelay are skipped.
 func (t *Tracker) Refresh(ctx context.Context, force bool) {
-	t.refreshMu.Lock()
-	defer t.refreshMu.Unlock()
 	t.mu.RLock()
 	manager := t.manager
 	t.mu.RUnlock()
 	if manager == nil {
 		return
 	}
+	t.refreshAuths(ctx, force, trackedAuths(manager.List()))
+}
 
-	auths := trackedAuths(manager.List())
-	if !force && time.Since(t.lastRefresh) < minRefreshDelay && !t.hasNewAuths(auths) {
+func (t *Tracker) refreshAuths(ctx context.Context, force bool, auths []*coreauth.Auth) {
+	t.refreshMu.Lock()
+	defer t.refreshMu.Unlock()
+
+	startedAt := t.now()
+	if !force && startedAt.Sub(t.lastRefresh) < minRefreshDelay && !t.hasNewAuths(auths) {
 		return
 	}
-	type skippedAuth struct {
-		auth  *coreauth.Auth
-		until time.Time
+	// Order first: it reads entries through t.lookup, which takes its own read lock.
+	groups := t.orderedGroups(auths, startedAt)
+
+	type pending struct {
+		auth *coreauth.Auth
+		hot  bool
 	}
 	results := make(map[string]*Entry, len(auths))
-	errs := make(map[string]error)
-	skipped := make(map[string]skippedAuth)
-	var wg sync.WaitGroup
-	var resMu sync.Mutex
-	startedAt := time.Now()
+	skipped := make(map[string]time.Time)
+	var due []pending
+
 	t.mu.RLock()
+	active := t.activeIDsLocked(groups)
 	for _, a := range auths {
 		if a.Disabled {
 			continue
 		}
+		prev, hasPrev := t.entries[a.ID]
 		if b, ok := t.backoff[a.ID]; ok && startedAt.Before(b.until) {
-			skipped[a.ID] = skippedAuth{auth: a, until: b.until}
+			skipped[a.ID] = b.until
 			continue
 		}
-		wg.Add(1)
-		go func(a *coreauth.Auth) {
-			defer wg.Done()
-			entry, err := t.fetch(ctx, a)
-			resMu.Lock()
-			results[a.ID] = entry
-			if err != nil {
-				errs[a.ID] = err
-			}
-			resMu.Unlock()
-		}(a)
+		hot := isHot(t.lastUsed(a.ID), active[a.ID], startedAt)
+		if !isDue(hasPrev, hot, t.lastFetch[a.ID], startedAt) {
+			results[a.ID] = prev
+			continue
+		}
+		due = append(due, pending{auth: a, hot: hot})
 	}
 	t.mu.RUnlock()
-	wg.Wait()
+	sort.SliceStable(due, func(i, j int) bool { return due[i].hot && !due[j].hot })
+
+	fetched := make(map[string]*Entry, len(due))
+	errs := make(map[string]error)
+	attempted := make(map[string]time.Time, len(due))
+	var rest []pending
+	for i, p := range due {
+		if i > 0 {
+			if err := t.pause(ctx, fetchGap); err != nil {
+				rest = due[i:]
+				break
+			}
+		}
+		entry, err := t.doFetch(ctx, p.auth)
+		attempted[p.auth.ID] = t.now()
+		fetched[p.auth.ID] = entry
+		if err != nil {
+			errs[p.auth.ID] = err
+			if isRateLimited(err) {
+				// The limit looks per client: stop the round and leave the rest untouched.
+				rest = due[i+1:]
+				break
+			}
+		}
+	}
 
 	t.mu.Lock()
-	now := time.Now()
+	defer t.mu.Unlock()
+	now := t.now()
 	if t.backoff == nil {
 		t.backoff = make(map[string]backoffState)
 	}
-	for id, e := range results {
+	if t.lastFetch == nil {
+		t.lastFetch = make(map[string]time.Time)
+	}
+	for id, at := range attempted {
+		t.lastFetch[id] = at
+	}
+	for id, e := range fetched {
 		// Keep the last good windows when a fetch fails transiently.
 		if e.Error != "" {
-			if prev, ok := t.entries[id]; ok && len(prev.Windows) > 0 && time.Since(prev.DataAt) <= staleAfter {
+			if prev, ok := t.entries[id]; ok && len(prev.Windows) > 0 && now.Sub(prev.DataAt) <= staleAfter {
 				e.Windows = prev.Windows
 				e.DataAt = prev.DataAt
 				e.LimitReached = prev.LimitReached
@@ -268,27 +372,42 @@ func (t *Tracker) Refresh(ctx context.Context, force bool) {
 			t.backoff[id] = backoffState{step: step, until: until}
 			e.RetryAt = &until
 		}
+		results[id] = e
 	}
-	// Credentials still backing off are not fetched: reuse their previous entry.
-	for id, sk := range skipped {
+	// Due accounts the round never reached keep their previous entry.
+	for _, p := range rest {
+		id := p.auth.ID
 		if prev, ok := t.entries[id]; ok {
-			results[id] = carryEntry(prev, sk.until, now)
+			results[id] = prev
 			continue
 		}
-		until := sk.until
-		e := &Entry{AuthID: id, Provider: strings.ToLower(sk.auth.Provider), FetchedAt: now, Error: "HTTP 429", RetryAt: &until}
-		_, e.Email = sk.auth.AccountInfo()
+		e := &Entry{AuthID: id, Provider: strings.ToLower(p.auth.Provider), FetchedAt: now}
+		_, e.Email = p.auth.AccountInfo()
+		results[id] = e
+	}
+	// Credentials still backing off are not fetched: reuse their previous entry.
+	for id, until := range skipped {
+		var sk *coreauth.Auth
+		for _, a := range auths {
+			if a.ID == id {
+				sk = a
+				break
+			}
+		}
+		if prev, ok := t.entries[id]; ok {
+			results[id] = carryEntry(prev, until, now)
+			continue
+		}
+		u := until
+		e := &Entry{AuthID: id, Provider: strings.ToLower(sk.Provider), FetchedAt: now, Error: "HTTP 429", RetryAt: &u}
+		_, e.Email = sk.AccountInfo()
 		results[id] = e
 	}
 	t.entries = results
 	t.lastRefresh = now
-	for id, e := range results {
-		// Carried entries hold no new sample.
-		if _, carried := skipped[id]; !carried {
-			defaultHistory.recordQuota(e, t.lastRefresh)
-		}
+	for _, e := range fetched {
+		defaultHistory.recordQuota(e, now)
 	}
-	t.mu.Unlock()
 }
 
 func (t *Tracker) hasNewAuths(auths []*coreauth.Auth) bool {
@@ -333,22 +452,7 @@ func (t *Tracker) Snapshot() []Entry {
 	// Order first: SortBySoonestReset reads entries through t.lookup, which takes its own
 	// read lock. Holding t.mu here would nest read locks and can deadlock with Refresh.
 	providers := []string{"claude", "codex"}
-	groups := make(map[string][]*coreauth.Auth, len(providers))
-	for _, provider := range providers {
-		var group []*coreauth.Auth
-		for _, a := range auths {
-			if strings.EqualFold(a.Provider, provider) {
-				group = append(group, a)
-			}
-		}
-		sort.SliceStable(group, func(i, j int) bool { return group[i].ID < group[j].ID })
-		ordered := coreauth.SortBySoonestReset(group, now)
-		// Normal accounts are spent before "last" ones; "off" accounts are never spent.
-		sort.SliceStable(ordered, func(i, j int) bool {
-			return modeRank(coreauth.AuthUsageMode(ordered[i])) < modeRank(coreauth.AuthUsageMode(ordered[j]))
-		})
-		groups[provider] = ordered
-	}
+	groups := t.orderedGroups(auths, now)
 
 	t.mu.RLock()
 	defer t.mu.RUnlock()
@@ -379,6 +483,54 @@ func (t *Tracker) Snapshot() []Entry {
 		}
 	}
 	return out
+}
+
+// orderedGroups returns the auths per provider in the order the selector would spend them.
+// It must not be called with t.mu held.
+func (t *Tracker) orderedGroups(auths []*coreauth.Auth, now time.Time) map[string][]*coreauth.Auth {
+	providers := []string{"claude", "codex"}
+	groups := make(map[string][]*coreauth.Auth, len(providers))
+	for _, provider := range providers {
+		var group []*coreauth.Auth
+		for _, a := range auths {
+			if strings.EqualFold(a.Provider, provider) {
+				group = append(group, a)
+			}
+		}
+		sort.SliceStable(group, func(i, j int) bool { return group[i].ID < group[j].ID })
+		ordered := coreauth.SortBySoonestReset(group, now)
+		// Normal accounts are spent before "last" ones; "off" accounts are never spent.
+		sort.SliceStable(ordered, func(i, j int) bool {
+			return modeRank(coreauth.AuthUsageMode(ordered[i])) < modeRank(coreauth.AuthUsageMode(ordered[j]))
+		})
+		groups[provider] = ordered
+	}
+	return groups
+}
+
+// canBeActive reports whether the account may be marked as the next one to be spent.
+// NeedsLogin is derived here so callers can pass an entry that does not have it set yet.
+func canBeActive(a *coreauth.Auth, e *Entry) bool {
+	needsLogin := strings.Contains(e.Error, "HTTP 401") || strings.Contains(strings.ToLower(a.StatusMessage), "invalid_grant")
+	return !a.Disabled && coreauth.AuthUsageMode(a) != coreauth.UsageModeOff && !needsLogin && !e.resetInfo().Exhausted
+}
+
+// activeIDsLocked returns the first spendable account of each provider. t.mu must be held.
+func (t *Tracker) activeIDsLocked(groups map[string][]*coreauth.Auth) map[string]bool {
+	active := make(map[string]bool, len(groups))
+	for _, ordered := range groups {
+		for _, a := range ordered {
+			e := t.entries[a.ID]
+			if e == nil {
+				e = &Entry{}
+			}
+			if canBeActive(a, e) {
+				active[a.ID] = true
+				break
+			}
+		}
+	}
+	return active
 }
 
 func modeRank(mode string) int {

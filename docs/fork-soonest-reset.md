@@ -10,7 +10,7 @@ quota that is about to expire is used before quota that would carry on for longe
 
 - Credentials with any window at 100% (or `limit_reached`) are tried last.
 - Credentials without usage data yet sit between the two groups.
-- Usage data comes from `internal/subsusage`, which polls every 60 seconds:
+- Usage data comes from `internal/subsusage`, which polls adaptively (see `/usage` below):
   - Claude: `GET https://api.anthropic.com/api/oauth/usage` (`five_hour`, `seven_day`)
   - Codex: `GET https://chatgpt.com/backend-api/wham/usage` (`rate_limit.primary_window`, `secondary_window`)
 
@@ -37,7 +37,10 @@ require an `X-Usage-UI: 1` header on state-changing calls.
 The page styling is adapted from T3 Code (MIT, Copyright (c) 2026 T3 Tools Inc.).
 `/usage?demo=1` renders fake accounts for a quick look.
 
-Usage limits are fetched every 60 s and the page polls every 15 s while the tab is visible;
+Usage limits are fetched one account at a time (2 s apart): accounts in use (a proxied request
+in the last 15 minutes, or the one the selector spends next) every 60 s, idle ones every 10 minutes,
+and a newly added account immediately. A round stops at the first HTTP 429, leaving the remaining
+accounts untouched until the next tick. The page polls every 15 s while the tab is visible;
 there is no manual refresh button. Anthropic rate-limits the usage endpoint per account: on an
 HTTP 429 the tracker stops querying that account for 2 minutes, doubling on each further 429
 (4, 8) up to 15 minutes, and clears the backoff on the first successful fetch. During the

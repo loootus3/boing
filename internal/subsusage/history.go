@@ -55,6 +55,8 @@ type History struct {
 	data  historyData
 	dirty bool
 	once  sync.Once
+	// lastUsed maps auth ID -> time of the last proxied request. It is not persisted.
+	lastUsed map[string]time.Time
 }
 
 var defaultHistory = &History{data: newHistoryData()}
@@ -204,7 +206,21 @@ func (h *History) HandleUsage(_ context.Context, record usage.Record) {
 	stat.Output += record.Detail.OutputTokens
 	stat.Cached += record.Detail.CachedTokens + record.Detail.CacheReadTokens
 	h.data.Providers[authID] = provider
+	if h.lastUsed == nil {
+		h.lastUsed = make(map[string]time.Time)
+	}
+	if at.After(h.lastUsed[authID]) {
+		h.lastUsed[authID] = at
+	}
 	h.dirty = true
+}
+
+// LastUsed returns the time of the last proxied request of a credential since the process
+// started, or the zero time if there was none.
+func (h *History) LastUsed(authID string) time.Time {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.lastUsed[authID]
 }
 
 // recordQuota stores a remaining-percent sample for a freshly fetched entry.
