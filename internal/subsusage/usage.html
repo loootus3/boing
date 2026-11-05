@@ -177,6 +177,31 @@ section.prov{display:flex;flex-direction:column;gap:10px}
 [data-tip]:hover::after{content:attr(data-tip);position:absolute;right:0;bottom:calc(100% + 6px);z-index:10;width:max-content;max-width:18rem;
   white-space:pre-line;text-align:left;padding:8px 10px;border-radius:10px;border:1px solid var(--border);background:var(--popover);
   color:var(--foreground);font-size:12px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+/* projections */
+.proj{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.proj{grid-template-columns:1fr}}
+.pcard{border:1px solid color-mix(in srgb,var(--border) 60%,transparent);border-radius:12px;padding:16px;
+  background:color-mix(in srgb,var(--card) 40%,transparent);display:flex;flex-direction:column;gap:14px}
+.pcard h3{margin:0;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px}
+.pcard h3 .pill{margin-left:auto}
+.pgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pstat .k{font-size:11px;color:var(--muted-foreground)}
+.pstat .v{font-size:22px;font-weight:600;line-height:1.2;letter-spacing:-.01em}
+.pstat .v small{font-size:12px;font-weight:400;color:var(--muted-foreground);margin-left:2px}
+.pstat .s{font-size:11px;color:var(--muted-foreground)}
+.pnote{font-size:12px;color:var(--muted-foreground);line-height:1.5}
+.pill{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:500}
+.pill.ok{background:color-mix(in srgb,var(--success) 12%,transparent);color:var(--success-foreground)}
+.pill.warn{background:color-mix(in srgb,var(--warning) 14%,transparent);color:var(--warning-foreground)}
+.pill.bad{background:color-mix(in srgb,var(--error) 12%,transparent);color:var(--error-foreground)}
+.pill.idle{background:var(--muted);color:var(--muted-foreground)}
+.timeline{position:relative;height:28px;border-radius:8px;background:var(--muted);overflow:hidden}
+.timeline i{position:absolute;top:0;bottom:0;border-radius:0}
+.timeline b{position:absolute;top:3px;bottom:3px;width:2px;border-radius:2px;background:var(--foreground);opacity:.55}
+.tl-labels{display:flex;justify-content:space-between;font-size:10px;color:var(--muted-foreground);text-transform:uppercase;margin-top:-8px}
+.forecast{font-size:12px;color:var(--muted-foreground);padding-left:calc(11rem + 16px);margin:-2px 0 2px}
+.forecast.bad{color:var(--error-foreground)}.forecast.ok{color:var(--success-foreground)}
+@media (max-width:640px){.forecast{padding-left:0}.pgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){
   .topbar{padding-left:12px}
   .limit{grid-template-columns:minmax(0,7.5rem) minmax(3rem,1fr) auto;column-gap:10px}
@@ -232,6 +257,11 @@ section.prov{display:flex;flex-direction:column;gap:10px}
     <h2 class="t">Uso por conta</h2>
     <div class="sbar" id="sbar"></div>
     <div class="legend" id="legend"></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <h2 class="t">Projeção</h2>
+    <div class="proj" id="proj"></div>
   </section>
 
   <div class="limits" id="list"></div>
@@ -349,6 +379,89 @@ function renderOverview(){
   }
 }
 
+/* projections from quota samples */
+const DAY=86400;
+function weeklyOf(a){return(a.windows||[]).find(w=>w.kind==="weekly"||w.kind==="monthly")}
+function shortOf(a){return(a.windows||[]).find(w=>w.kind==="short")}
+// Sum of remaining-% drops (resets ignored) and the time span they cover.
+function burnStats(points,key,sinceT){
+  const pts=points.filter(p=>p[key]!=null&&(!sinceT||p.t>=sinceT));
+  let drop=0,active=0;
+  for(let i=1;i<pts.length;i++){const d=pts[i-1][key]-pts[i][key];if(d>0){drop+=d;active+=pts[i].t-pts[i-1].t}}
+  return{drop,span:pts.length>1?pts[pts.length-1].t-pts[0].t:0,active};
+}
+function quotaOf(id){return(((state.hist&&state.hist.quota)||{})[id])||[]}
+// Per-account forecast for the weekly window, using its own last-24h pace.
+function accountForecast(a,now){
+  const w=weeklyOf(a);if(!w||!w.reset_at)return null;
+  const st=burnStats(quotaOf(a.auth_id),"w",now/1000-DAY);
+  if(st.span<2*3600)return{text:"coletando dados de ritmo…"};
+  const rate=st.drop/st.span;// %/s wall clock
+  const left=100-w.used_percent,toReset=(new Date(w.reset_at)-now)/1000;
+  if(rate<=0)return{text:"sem gasto nas últimas 24h",cls:"ok"};
+  const eta=left/rate;
+  if(eta<toReset)return{cls:"bad",text:`nesse ritmo acaba em ${fmtLeft(eta*1000)} · ${fmtLeft((toReset-eta)*1000)} antes do reset`};
+  return{cls:"ok",text:`nesse ritmo sobra ~${Math.round(left-rate*toReset)}% no reset`};
+}
+// Simulates the provider's account pool hour by hour: daily burn drawn from the account that
+// resets first, accounts refill at reset. Returns hours until nothing is left (capped).
+function simulate(accs,perHour,now){
+  const pool=accs.map(a=>{const w=weeklyOf(a);return{left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY}});
+  const cap=60*24;let t=now/1000;
+  for(let h=0;h<cap;h++){
+    t+=3600;let need=perHour;
+    for(const p of pool)while(p.reset<=t){p.left=100;p.reset+=p.period}
+    pool.sort((x,y)=>x.reset-y.reset);
+    for(const p of pool){if(need<=0)break;const take=Math.min(p.left,need);p.left-=take;need-=take}
+    if(need>1e-9)return h;
+  }
+  return Infinity;
+}
+function renderProjections(){
+  const now=Date.now(),cards=[];
+  for(const p of PROVIDERS){
+    const accs=(state.data.accounts||[]).filter(a=>a.provider===p.key&&a.mode!=="off"&&!a.needs_login&&weeklyOf(a)&&weeklyOf(a).reset_at);
+    if(!accs.length){cards.push(`<div class="pcard"><h3>${LOGO[p.key]}${p.name}<span class="pill idle">sem contas ativas</span></h3></div>`);continue}
+    let drop=0,span=0,active=0;
+    for(const a of accs){const st=burnStats(quotaOf(a.auth_id),"w");drop+=st.drop;span=Math.max(span,st.span);active+=st.active}
+    const left=accs.reduce((x,a)=>x+Math.max(0,100-weeklyOf(a).used_percent),0);
+    const capWeek=accs.length*100;
+    const nextReset=Math.min(...accs.map(a=>new Date(weeklyOf(a).reset_at)));
+    let head="",body="",note="";
+    if(span<6*3600){
+      head=`<span class="pill idle">coletando dados</span>`;
+      body=`<div class="pgrid">
+        <div class="pstat"><div class="k">Restante agora</div><div class="v tabular">${Math.round(left)}<small>%</small></div><div class="s">de ${capWeek}% semanais</div></div>
+        <div class="pstat"><div class="k">Próximo reset</div><div class="v tabular">${fmtLeft(nextReset-now)}</div><div class="s">${fmtDate(new Date(nextReset))}</div></div>
+        <div class="pstat"><div class="k">Histórico</div><div class="v tabular">${Math.round(span/3600)}<small>h</small></div><div class="s">precisa de 6h</div></div></div>`;
+      note="As médias aparecem depois de algumas horas de uso pelo proxy.";
+    }else{
+      const perDay=drop/span*DAY,perHour=perDay/24;
+      const hours=perDay>0?simulate(accs,perHour,now):Infinity;
+      const empty=perDay>0?left/perHour*3600*1000:Infinity;
+      const weekUse=perDay*7/capWeek;
+      const sustainable=hours===Infinity;
+      head=sustainable?`<span class="pill ok">ritmo sustentável</span>`:hours<48?`<span class="pill bad">acaba em ${fmtLeft(hours*3600e3)}</span>`:`<span class="pill warn">${Math.floor(hours/24)} dias de folga</span>`;
+      const daysTxt=sustainable?"∞":String(Math.floor(hours/24));
+      body=`<div class="pgrid">
+        <div class="pstat"><div class="k">Gasto médio por dia</div><div class="v tabular">${Math.round(perDay)}<small>%</small></div><div class="s">${fmtPct(Math.min(9.99,weekUse))} da capacidade semanal</div></div>
+        <div class="pstat"><div class="k">Acaba sem resets em</div><div class="v tabular">${empty===Infinity?"—":fmtLeft(empty)}</div><div class="s">${Math.round(left)}% restantes somados</div></div>
+        <div class="pstat"><div class="k">Dias seguidos de trabalho</div><div class="v tabular">${daysTxt}${sustainable?"":`<small>dias</small>`}</div><div class="s">${sustainable?"os resets cobrem seu ritmo":"contando os resets"}</div></div></div>`;
+      // timeline of the next 14 days: green while there is quota, red after it runs out
+      const H=14*24,end=Math.min(H,hours);
+      body+=`<div class="timeline"><i style="left:0;width:${end/H*100}%;background:color-mix(in srgb,var(--success) 30%,transparent)"></i>
+        ${end<H?`<i style="left:${end/H*100}%;right:0;background:color-mix(in srgb,var(--error) 25%,transparent)"></i>`:""}
+        ${accs.map(a=>{let r=new Date(weeklyOf(a).reset_at)/1000;const out=[];while((r-now/1000)/3600<H){out.push(`<b style="left:${(r-now/1000)/3600/H*100}%" title="reset"></b>`);r+=weeklyOf(a).duration_sec||7*DAY}return out.join("")}).join("")}</div>
+        <div class="tl-labels"><span>hoje</span><span>7 dias</span><span>14 dias</span></div>`;
+      note=`Média de ${fmtLeft(span*1000)} de histórico, ${Math.round(perDay)}% de uma assinatura por dia em ${accs.length} conta${accs.length>1?"s":""}. `+
+        (sustainable?"Nesse ritmo os resets semanais repõem o que você gasta.":`Nesse ritmo você trabalha ${fmtLeft(hours*3600e3)} sem parar antes de ficar sem limite.`)+
+        " Os traços marcam os resets.";
+    }
+    cards.push(`<div class="pcard"><h3>${LOGO[p.key]}${p.name}${head}</h3>${body}<div class="pnote">${note}</div></div>`);
+  }
+  $("#proj").innerHTML=cards.join("");
+}
+
 function sparkline(authId){
   const vals=(((state.hist&&state.hist.quota)||{})[authId]||[]).filter(p=>p.w!=null);
   if(vals.length<2)return"";
@@ -400,7 +513,10 @@ function renderLimits(){
         <option value="normal"${mode==="normal"?" selected":""}>Normal</option>
         <option value="last"${mode==="last"?" selected":""}>Por último</option>
         <option value="off"${mode==="off"?" selected":""}>Não usar</option></select></div>`;
-      for(const w of (a.windows||[]))html+=limitRow(w,p.color,now);
+      for(const w of (a.windows||[])){
+        html+=limitRow(w,p.color,now);
+        if((w.kind==="weekly"||w.kind==="monthly")&&mode!=="off"){const f=accountForecast(a,now);if(f)html+=`<div class="forecast ${f.cls||""}">${esc(f.text)}</div>`}
+      }
       if(!(a.windows||[]).length&&!a.error)html+=`<div class="note">Consultando uso…</div>`;
       if(a.error&&!a.needs_login)html+=`<div class="note err">Erro ao consultar: ${esc(a.error)}</div>`;
       html+=`</div>`;
@@ -413,7 +529,7 @@ function renderLimits(){
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-reveal]");if(!b)return;
   const v=b.dataset.reveal;revealed.has(v)?revealed.delete(v):revealed.add(v);renderAll()});
-function renderAll(){renderOverview();renderLimits()}
+function renderAll(){renderOverview();renderProjections();renderLimits()}
 
 const DEMO=new URLSearchParams(location.search).has("demo");
 async function load(refresh){

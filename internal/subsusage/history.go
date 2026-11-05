@@ -350,10 +350,9 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 		}
 		view.Accounts[id] = totals
 	}
-	minQuota := now.Add(-span).Unix()
-	if span > quotaKeepDuration {
-		minQuota = now.Add(-quotaKeepDuration).Unix()
-	}
+	// Quota samples always cover the full retention so the page can estimate burn rates
+	// independently of the selected chart range.
+	minQuota := now.Add(-quotaKeepDuration).Unix()
 	for id, points := range h.data.Quota {
 		i := sort.Search(len(points), func(i int) bool { return points[i].T >= minQuota })
 		if i < len(points) {
