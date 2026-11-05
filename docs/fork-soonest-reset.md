@@ -19,6 +19,10 @@ routing:
   strategy: "soonest-reset"
 ```
 
+Requests mirror the official management panel (Cli-Proxy-API-Management-Center): same URLs,
+`anthropic-beta: oauth-2025-04-20` for Claude, `Chatgpt-Account-Id` (from the auth file or the
+`id_token` claims) for Codex, and the plan from `/api/oauth/profile` for Claude.
+
 ## `/usage` page
 
 `http://127.0.0.1:8317/usage` shows only Claude (first) and Codex accounts with the used
@@ -28,3 +32,6 @@ percentage and reset time of each window, marks the account that will be spent n
 The page and its `/usage/api/*` endpoints need no management key, but they only answer
 requests from the loopback interface with a loopback `Host`, reject cross-site requests, and
 require an `X-Usage-UI: 1` header on state-changing calls.
+
+The page styling is adapted from T3 Code (MIT, Copyright (c) 2026 T3 Tools Inc.).
+`/usage?demo=1` renders fake accounts for a quick look.

@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/MoeForge/moego/ojson"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
 )
@@ -23,17 +22,16 @@ const (
 	// staleAfter bounds how long windows from the last successful fetch are reused.
 	staleAfter     = 15 * time.Minute
 	requestTimeout = 20 * time.Second
-
-	claudeUsageURL = "https://api.anthropic.com/api/oauth/usage"
-	codexUsageURL  = "https://chatgpt.com/backend-api/wham/usage"
 )
 
 // Window is one usage window of a subscription.
 type Window struct {
-	Kind        string     `json:"kind"` // "short" (e.g. 5h) or "weekly"
+	Kind        string     `json:"kind"` // "short" (5h), "weekly", "monthly" or "model" (per-model weekly)
 	Label       string     `json:"label"`
 	UsedPercent float64    `json:"used_percent"`
 	ResetAt     *time.Time `json:"reset_at,omitempty"`
+	// DurationSec is the window length, used by the page to draw the even-pace marker.
+	DurationSec int64 `json:"duration_sec,omitempty"`
 }
 
 // Entry is the usage snapshot of one credential.
@@ -52,10 +50,13 @@ type Entry struct {
 	LimitReached bool `json:"limit_reached"`
 }
 
+// weekly returns the main long window: weekly, or monthly for plans without one.
 func (e *Entry) weekly() *Window {
-	for i := range e.Windows {
-		if e.Windows[i].Kind == "weekly" {
-			return &e.Windows[i]
+	for _, kind := range []string{"weekly", "monthly"} {
+		for i := range e.Windows {
+			if e.Windows[i].Kind == kind {
+				return &e.Windows[i]
+			}
 		}
 	}
 	return nil
@@ -66,7 +67,8 @@ func (e *Entry) resetInfo() coreauth.ResetInfo {
 	now := time.Now()
 	for _, w := range e.Windows {
 		// A window whose reset time has passed is no longer exhausted.
-		if w.UsedPercent >= 100 && (w.ResetAt == nil || w.ResetAt.After(now)) {
+		// Per-model windows (e.g. Opus only) do not block the whole account.
+		if w.Kind != "model" && w.UsedPercent >= 100 && (w.ResetAt == nil || w.ResetAt.After(now)) {
 			info.Exhausted = true
 		}
 	}
@@ -277,7 +279,7 @@ func (t *Tracker) fetch(ctx context.Context, a *coreauth.Auth) *Entry {
 	case "claude":
 		err = t.fetchClaude(ctx, token, entry)
 	case "codex":
-		err = t.fetchCodex(ctx, token, metaString(a, "account_id"), entry)
+		err = t.fetchCodex(ctx, token, codexAccountID(a), entry)
 	}
 	if err == nil {
 		entry.DataAt = entry.FetchedAt
@@ -325,79 +327,4 @@ func (t *Tracker) get(ctx context.Context, url string, headers map[string]string
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 	return body, nil
-}
-
-func (t *Tracker) fetchClaude(ctx context.Context, token string, entry *Entry) error {
-	body, err := t.get(ctx, claudeUsageURL, map[string]string{
-		"Authorization":  "Bearer " + token,
-		"anthropic-beta": "oauth-2025-04-20",
-		"Accept":         "application/json",
-		"User-Agent":     "claude-cli/2.0.0 (external, cli)",
-	})
-	if err != nil {
-		return err
-	}
-	for _, spec := range []struct{ key, kind, label string }{
-		{"five_hour", "short", "5h"},
-		{"seven_day", "weekly", "Semanal"},
-	} {
-		node := ojson.GetBytes(body, spec.key)
-		if !node.Exists() || !node.IsObject() {
-			continue
-		}
-		w := Window{Kind: spec.kind, Label: spec.label, UsedPercent: node.Get("utilization").Float()}
-		if raw := strings.TrimSpace(node.Get("resets_at").String()); raw != "" {
-			if ts, errParse := time.Parse(time.RFC3339Nano, raw); errParse == nil {
-				ts = ts.UTC()
-				w.ResetAt = &ts
-			}
-		}
-		entry.Windows = append(entry.Windows, w)
-	}
-	if len(entry.Windows) == 0 {
-		return fmt.Errorf("resposta sem janelas de uso")
-	}
-	return nil
-}
-
-func (t *Tracker) fetchCodex(ctx context.Context, token, accountID string, entry *Entry) error {
-	headers := map[string]string{
-		"Authorization": "Bearer " + token,
-		"Accept":        "application/json",
-		"User-Agent":    "codex_cli_rs/0.50.0",
-	}
-	if accountID != "" {
-		headers["ChatGPT-Account-Id"] = accountID
-	}
-	body, err := t.get(ctx, codexUsageURL, headers)
-	if err != nil {
-		return err
-	}
-	entry.Plan = ojson.GetBytes(body, "plan_type").String()
-	limitReached := ojson.GetBytes(body, "rate_limit.limit_reached").Bool()
-	for _, key := range []string{"primary_window", "secondary_window"} {
-		node := ojson.GetBytes(body, "rate_limit."+key)
-		if !node.Exists() || !node.IsObject() {
-			continue
-		}
-		w := Window{UsedPercent: node.Get("used_percent").Float()}
-		if secs := node.Get("limit_window_seconds").Int(); secs > 0 && secs <= 24*3600 {
-			w.Kind, w.Label = "short", fmt.Sprintf("%dh", secs/3600)
-		} else {
-			w.Kind, w.Label = "weekly", "Semanal"
-		}
-		if at := node.Get("reset_at").Int(); at > 0 {
-			ts := time.Unix(at, 0).UTC()
-			w.ResetAt = &ts
-		} else if after := node.Get("reset_after_seconds").Int(); after > 0 {
-			ts := time.Now().Add(time.Duration(after) * time.Second).UTC()
-			w.ResetAt = &ts
-		}
-		entry.Windows = append(entry.Windows, w)
-	}
-	entry.LimitReached = limitReached
-	if len(entry.Windows) == 0 {
-		return fmt.Errorf("resposta sem janelas de uso")
-	}
-	return nil
 }
