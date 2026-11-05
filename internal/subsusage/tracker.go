@@ -4,6 +4,7 @@ package subsusage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,10 +20,62 @@ import (
 const (
 	pollInterval    = 60 * time.Second
 	minRefreshDelay = 20 * time.Second
-	// staleAfter bounds how long windows from the last successful fetch are reused.
-	staleAfter     = 15 * time.Minute
+	// staleAfter bounds how long windows from the last successful fetch are reused. It must
+	// outlast maxBackoff so the last good windows survive a full rate-limit backoff.
+	staleAfter     = 30 * time.Minute
 	requestTimeout = 20 * time.Second
+	// planTTL is how long a Claude plan read from the profile endpoint is reused.
+	planTTL = 6 * time.Hour
+
+	firstBackoff = 2 * time.Minute
+	maxBackoff   = 15 * time.Minute
 )
+
+// httpStatusError is returned by get for any non-200 response.
+type httpStatusError struct{ Code int }
+
+func (e *httpStatusError) Error() string { return fmt.Sprintf("HTTP %d", e.Code) }
+
+func isRateLimited(err error) bool {
+	var statusErr *httpStatusError
+	return errors.As(err, &statusErr) && statusErr.Code == http.StatusTooManyRequests
+}
+
+// nextBackoff returns the wait after a rate-limit response: 2m first, then doubling up to 15m.
+func nextBackoff(prev time.Duration) time.Duration {
+	if prev <= 0 {
+		return firstBackoff
+	}
+	next := prev * 2
+	if next > maxBackoff {
+		next = maxBackoff
+	}
+	return next
+}
+
+// backoffState tracks the rate-limit backoff of one credential.
+type backoffState struct {
+	step  time.Duration
+	until time.Time
+}
+
+// cachedPlan is a plan name together with the time it was read.
+type cachedPlan struct {
+	plan string
+	at   time.Time
+}
+
+// carryEntry copies the previous entry for a credential that is skipped while backing off.
+// Windows older than staleAfter are dropped like in the failure path.
+func carryEntry(prev *Entry, until, now time.Time) *Entry {
+	e := *prev
+	e.Windows = append([]Window(nil), prev.Windows...)
+	if now.Sub(prev.DataAt) > staleAfter {
+		e.Windows = nil
+	}
+	e.RetryAt = &until
+	return &e
+}
 
 // Window is one usage window of a subscription.
 type Window struct {
@@ -52,6 +105,8 @@ type Entry struct {
 	NeedsLogin bool `json:"needs_login,omitempty"`
 	// LimitReached is set when the upstream reports the subscription limit as reached.
 	LimitReached bool `json:"limit_reached"`
+	// RetryAt is set while the credential is backing off after an upstream rate limit.
+	RetryAt *time.Time `json:"retry_at,omitempty"`
 }
 
 // weekly returns the main long window: weekly, or monthly for plans without one.
@@ -91,6 +146,9 @@ type Tracker struct {
 	refreshMu   sync.Mutex
 	client      *http.Client
 	startOnce   sync.Once
+	// backoff and plans are keyed by auth ID and guarded by mu.
+	backoff map[string]backoffState
+	plans   map[string]cachedPlan
 }
 
 var defaultTracker = &Tracker{
@@ -150,25 +208,45 @@ func (t *Tracker) Refresh(ctx context.Context, force bool) {
 	if !force && time.Since(t.lastRefresh) < minRefreshDelay && !t.hasNewAuths(auths) {
 		return
 	}
+	type skippedAuth struct {
+		auth  *coreauth.Auth
+		until time.Time
+	}
 	results := make(map[string]*Entry, len(auths))
+	errs := make(map[string]error)
+	skipped := make(map[string]skippedAuth)
 	var wg sync.WaitGroup
 	var resMu sync.Mutex
+	startedAt := time.Now()
+	t.mu.RLock()
 	for _, a := range auths {
 		if a.Disabled {
+			continue
+		}
+		if b, ok := t.backoff[a.ID]; ok && startedAt.Before(b.until) {
+			skipped[a.ID] = skippedAuth{auth: a, until: b.until}
 			continue
 		}
 		wg.Add(1)
 		go func(a *coreauth.Auth) {
 			defer wg.Done()
-			entry := t.fetch(ctx, a)
+			entry, err := t.fetch(ctx, a)
 			resMu.Lock()
 			results[a.ID] = entry
+			if err != nil {
+				errs[a.ID] = err
+			}
 			resMu.Unlock()
 		}(a)
 	}
+	t.mu.RUnlock()
 	wg.Wait()
 
 	t.mu.Lock()
+	now := time.Now()
+	if t.backoff == nil {
+		t.backoff = make(map[string]backoffState)
+	}
 	for id, e := range results {
 		// Keep the last good windows when a fetch fails transiently.
 		if e.Error != "" {
@@ -181,11 +259,34 @@ func (t *Tracker) Refresh(ctx context.Context, force bool) {
 				}
 			}
 		}
+		switch err := errs[id]; {
+		case err == nil:
+			delete(t.backoff, id)
+		case isRateLimited(err):
+			step := nextBackoff(t.backoff[id].step)
+			until := now.Add(step)
+			t.backoff[id] = backoffState{step: step, until: until}
+			e.RetryAt = &until
+		}
+	}
+	// Credentials still backing off are not fetched: reuse their previous entry.
+	for id, sk := range skipped {
+		if prev, ok := t.entries[id]; ok {
+			results[id] = carryEntry(prev, sk.until, now)
+			continue
+		}
+		until := sk.until
+		e := &Entry{AuthID: id, Provider: strings.ToLower(sk.auth.Provider), FetchedAt: now, Error: "HTTP 429", RetryAt: &until}
+		_, e.Email = sk.auth.AccountInfo()
+		results[id] = e
 	}
 	t.entries = results
-	t.lastRefresh = time.Now()
-	for _, e := range results {
-		defaultHistory.recordQuota(e, t.lastRefresh)
+	t.lastRefresh = now
+	for id, e := range results {
+		// Carried entries hold no new sample.
+		if _, carried := skipped[id]; !carried {
+			defaultHistory.recordQuota(e, t.lastRefresh)
+		}
 	}
 	t.mu.Unlock()
 }
@@ -290,18 +391,18 @@ func modeRank(mode string) int {
 	return 0
 }
 
-func (t *Tracker) fetch(ctx context.Context, a *coreauth.Auth) *Entry {
+func (t *Tracker) fetch(ctx context.Context, a *coreauth.Auth) (*Entry, error) {
 	entry := &Entry{AuthID: a.ID, Provider: strings.ToLower(a.Provider), FetchedAt: time.Now()}
 	_, entry.Email = a.AccountInfo()
 	token := coreauth.AuthAccessToken(a)
 	if token == "" {
 		entry.Error = "sem access token"
-		return entry
+		return entry, errors.New(entry.Error)
 	}
 	var err error
 	switch entry.Provider {
 	case "claude":
-		err = t.fetchClaude(ctx, token, entry)
+		err = t.fetchClaude(ctx, a.ID, token, entry)
 	case "codex":
 		err = t.fetchCodex(ctx, token, codexAccountID(a), entry)
 	}
@@ -311,7 +412,24 @@ func (t *Tracker) fetch(ctx context.Context, a *coreauth.Auth) *Entry {
 		entry.Error = err.Error()
 		log.WithField("provider", entry.Provider).Debugf("subsusage: fetch failed: %v", err)
 	}
-	return entry
+	return entry, err
+}
+
+// cachedPlanOf returns the cached plan of an auth and when it was read.
+func (t *Tracker) cachedPlanOf(authID string) (cachedPlan, bool) {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	c, ok := t.plans[authID]
+	return c, ok
+}
+
+func (t *Tracker) storePlan(authID, plan string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.plans == nil {
+		t.plans = make(map[string]cachedPlan)
+	}
+	t.plans[authID] = cachedPlan{plan: plan, at: time.Now()}
 }
 
 func metaString(a *coreauth.Auth, key string) string {
@@ -348,7 +466,7 @@ func (t *Tracker) get(ctx context.Context, url string, headers map[string]string
 		return nil, fmt.Errorf("read body: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		return nil, &httpStatusError{Code: resp.StatusCode}
 	}
 	return body, nil
 }

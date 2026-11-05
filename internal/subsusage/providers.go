@@ -37,7 +37,7 @@ const (
 	weekSeconds     = 7 * 24 * 3600
 )
 
-func (t *Tracker) fetchClaude(ctx context.Context, token string, entry *Entry) error {
+func (t *Tracker) fetchClaude(ctx context.Context, authID, token string, entry *Entry) error {
 	headers := map[string]string{
 		"Authorization":  "Bearer " + token,
 		"Content-Type":   "application/json",
@@ -52,10 +52,17 @@ func (t *Tracker) fetchClaude(ctx context.Context, token string, entry *Entry) e
 	if errParse := parseClaudeUsage(body, entry); errParse != nil {
 		return errParse
 	}
-	// The plan comes from the profile endpoint; failures there are not fatal.
+	// The plan comes from the profile endpoint, which is only called when the cached plan is
+	// missing or older than planTTL. Failures there are not fatal and keep the previous plan.
+	cached, ok := t.cachedPlanOf(authID)
+	entry.Plan = cached.plan
+	if ok && cached.plan != "" && time.Since(cached.at) < planTTL {
+		return nil
+	}
 	delete(headers, "Accept")
 	if profile, errProfile := t.get(ctx, claudeProfileURL, headers); errProfile == nil {
 		entry.Plan = claudePlan(profile)
+		t.storePlan(authID, entry.Plan)
 	}
 	return nil
 }

@@ -25,9 +25,10 @@ Requests mirror the official management panel (Cli-Proxy-API-Management-Center):
 
 ## `/usage` page
 
-`http://127.0.0.1:8317/usage` shows only Claude (first) and Codex accounts with the used
-percentage and reset time of each window, marks the account that will be spent next, and has
-`+ Claude` / `+ Codex` buttons that run the OAuth login in the browser.
+`http://127.0.0.1:8317/usage` shows only Claude accounts with the used percentage and reset
+time of each window, and has a `+ Claude` button that runs the OAuth login in the browser.
+Codex is hidden on the page for now (the tracker still polls Codex credentials and the
+soonest-reset selector still uses them).
 
 The page and its `/usage/api/*` endpoints need no management key, but they only answer
 requests from the loopback interface with a loopback `Host`, reject cross-site requests, and
@@ -37,7 +38,12 @@ The page styling is adapted from T3 Code (MIT, Copyright (c) 2026 T3 Tools Inc.)
 `/usage?demo=1` renders fake accounts for a quick look.
 
 Usage limits are fetched every 60 s and the page polls every 15 s while the tab is visible;
-there is no manual refresh button. The "Uso" section sums each provider's weekly usage across
+there is no manual refresh button. Anthropic rate-limits the usage endpoint per account: on an
+HTTP 429 the tracker stops querying that account for 2 minutes, doubling on each further 429
+(4, 8) up to 15 minutes, and clears the backoff on the first successful fetch. During the
+backoff the last good windows (kept for up to 30 minutes) are shown with a muted note and the
+time of the next attempt. The Claude plan is read from `/api/oauth/profile` at most every 6 hours
+per account. The "Uso" section sums each provider's weekly usage across
 its accounts.
 
 ## Per-account usage mode
