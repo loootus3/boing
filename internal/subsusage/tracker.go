@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	pollInterval    = 3 * time.Minute
+	pollInterval    = 60 * time.Second
 	minRefreshDelay = 20 * time.Second
 	// staleAfter bounds how long windows from the last successful fetch are reused.
 	staleAfter     = 15 * time.Minute

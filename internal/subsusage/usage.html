@@ -54,8 +54,6 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .btn.ghost{border-color:transparent;background:none;box-shadow:none}
 .btn.ghost:hover{background:var(--accent)}
 .btn.sm{height:24px;padding:0 8px;font-size:12px;border-radius:6px}
-.btn.spin svg{animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
 .menu-wrap{position:relative}
 .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:16rem;padding:4px;border:1px solid var(--border);border-radius:10px;
   background:var(--popover);box-shadow:0 8px 24px rgba(0,0,0,.14);display:none}
@@ -113,16 +111,22 @@ h2.t{font-size:14px;font-weight:500;margin:0}
 @media (max-width:760px){.totals{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .stat .k{font-size:12px;color:var(--muted-foreground)}
 .stat .v{font-size:16px;font-weight:500}
-.share{display:flex;flex-direction:column;gap:10px}
-.sbar{display:flex;height:8px;gap:2px}
-.sbar i{min-width:4px;border-radius:2px}
-.sbar i:first-child{border-radius:999px 2px 2px 999px}.sbar i:last-child{border-radius:2px 999px 999px 2px}
-.sbar i:only-child{border-radius:999px}
-.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px}
-.legend span{display:flex;align-items:center;gap:6px;color:var(--muted-foreground)}
-.legend b{font-weight:400;color:var(--foreground)}
-.legend i{width:8px;height:8px;border-radius:2px}
-.legend .logo{width:12px;height:12px}
+.ubar{display:flex;gap:3px;height:8px}
+.ubar>i{flex:1;position:relative;display:block;height:8px;border-radius:999px;background:var(--muted)}
+.ubar>i>b{position:absolute;left:0;top:0;bottom:0;border-radius:999px}
+.ubar>i:first-child:hover::after{left:0;right:auto}
+.ufoot{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:1px solid color-mix(in srgb,var(--border) 60%,transparent);padding-top:10px;font-size:12px}
+.ufoot small,.umuted{color:var(--muted-foreground)}
+.ulist{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.urow{display:flex;align-items:center;gap:8px;min-width:0;padding:3px 6px;margin:0 -6px;border-radius:8px}
+.urow.active{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--info) 55%,transparent);background:color-mix(in srgb,var(--info) 6%,transparent)}
+.ubar>i.active{outline:1.5px solid var(--info);outline-offset:1px}
+.urow .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.uwho{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow:hidden}
+.uwho .avatar{flex:none}
+.uwho .redact{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.unum{display:flex;gap:10px;flex:none;white-space:nowrap}
+@media (max-width:640px){.urow{flex-wrap:wrap}.uwho{flex:1 1 100%}.unum{margin-left:16px}}
 
 /* limits */
 .limits{display:flex;flex-direction:column;gap:28px}
@@ -135,6 +139,8 @@ section.prov{display:flex;flex-direction:column;gap:10px}
   background:color-mix(in srgb,var(--card) 40%,transparent);box-shadow:0 1px 2px rgba(0,0,0,.03)}
 .group>.acct+.acct{border-top:1px solid color-mix(in srgb,var(--border) 50%,transparent)}
 .acct{padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.group>.acct.active,.group>.acct.active+.acct{border-top-color:transparent}
+.acct.active{position:relative;border-radius:11px;box-shadow:inset 0 0 0 1.5px var(--info);background:color-mix(in srgb,var(--info) 6%,transparent)}
 .acct.off{opacity:.62}
 .acct-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .who{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
@@ -146,9 +152,7 @@ section.prov{display:flex;flex-direction:column;gap:10px}
 .badge{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 6px;border-radius:4px;font-size:12px;font-weight:500;
   border:1px solid transparent;white-space:nowrap}
 .badge.outline{border-color:var(--input);color:var(--muted-foreground)}
-.badge.info{background:color-mix(in srgb,var(--info) 10%,transparent);color:var(--info-foreground)}
 .badge.err{background:color-mix(in srgb,var(--error) 10%,transparent);color:var(--error-foreground)}
-.badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 .sel{height:24px;padding:0 22px 0 8px;border:1px solid var(--input);border-radius:6px;background-color:var(--popover);color:var(--muted-foreground);
   font:500 12px/1 inherit;cursor:pointer;appearance:none;-webkit-appearance:none;
   background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
@@ -221,7 +225,6 @@ section.prov{display:flex;flex-direction:column;gap:10px}
   </div>
   <div class="menu-wrap"><button class="btn" data-menu="claude"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Claude</button></div>
   <div class="menu-wrap"><button class="btn" data-menu="codex"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Codex</button></div>
-  <button class="btn icon ghost" id="refresh" title="Atualizar"><svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
 </header>
 <main>
   <div class="toast" id="toast"></div>
@@ -253,15 +256,14 @@ section.prov{display:flex;flex-direction:column;gap:10px}
     <div class="totals" id="totals"></div>
   </section>
 
-  <section class="share" id="shareSec" style="display:none">
-    <h2 class="t">Uso por conta</h2>
-    <div class="sbar" id="sbar"></div>
-    <div class="legend" id="legend"></div>
-  </section>
-
   <section style="display:flex;flex-direction:column;gap:12px">
     <h2 class="t">Projeção</h2>
     <div class="proj" id="proj"></div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <h2 class="t">Uso</h2>
+    <div class="proj" id="usage"></div>
   </section>
 
   <div class="limits" id="list"></div>
@@ -276,7 +278,6 @@ const ICON_UP='<svg class="i" viewBox="0 0 24 24"><path d="M22 7l-8.5 8.5-5-5L2 
 const ICON_DOWN='<svg class="i" viewBox="0 0 24 24"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></svg>';
 const ICON_GAUGE='<svg class="i" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>';
 const PLUS='<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
-const ACCOUNT_COLORS=["#d97757","#5b9bbd","#8c7bd1","#4d9f8a","#c9a227","#d46a9f","#7a8b99"];
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
@@ -366,23 +367,47 @@ function renderOverview(){
   $("#totals").innerHTML=[["Tokens processados",fmtTokens(inp+out)],["Input",fmtTokens(inp)],["Input em cache",fmtTokens(cache)],
     ["Output",fmtTokens(out)],["Requisições",fmtCount(req)+(fail?` · ${fmtCount(fail)} falhas`:"")]]
     .map(([k,v])=>`<div class="stat"><div class="k">${k}</div><div class="v tabular">${v}</div></div>`).join("");
-
-  const byId=new Map((state.data.accounts||[]).map(a=>[a.auth_id,a.email||a.auth_id]));
-  const accs=Object.entries(h.accounts||{}).map(([id,a])=>({id,provider:(h.providers||{})[id],v:state.metric==="tokens"?a.input+a.output:a.requests,
-    email:byId.get(id)||id.replace(/\.json$/,"")})).filter(a=>a.v>0).sort((a,b)=>b.v-a.v);
-  const sum=accs.reduce((a,b)=>a+b.v,0);
-  $("#shareSec").style.display=sum?"flex":"none";
-  if(sum){
-    $("#sbar").innerHTML=accs.map((a,i)=>`<i style="flex:${a.v};background:${ACCOUNT_COLORS[i%ACCOUNT_COLORS.length]}"></i>`).join("");
-    $("#legend").innerHTML=accs.map((a,i)=>`<span><i style="background:${ACCOUNT_COLORS[i%ACCOUNT_COLORS.length]}"></i>${LOGO[a.provider]||""}
-      ${esc(legendName(a.email))} <b class="tabular">${fmtPct(a.v/sum)}</b></span>`).join("");
-  }
 }
 
 /* projections from quota samples */
 const DAY=86400;
 function weeklyOf(a){return(a.windows||[]).find(w=>w.kind==="weekly"||w.kind==="monthly")}
 function shortOf(a){return(a.windows||[]).find(w=>w.kind==="short")}
+
+const clampPct=v=>Math.max(0,Math.min(100,Number(v)||0));
+function leftColor(a,left){return left<=15||a.limit_reached?"var(--error)":left<=30?"var(--warning)":"var(--success)"}
+function renderUsage(){
+  const accounts=state.data.accounts||[],h=state.hist,now=Date.now();
+  const val=id=>{const x=h&&h.accounts&&h.accounts[id];return x?(state.metric==="tokens"?(x.input||0)+(x.output||0):(x.requests||0)):0};
+  $("#usage").innerHTML=PROVIDERS.map(p=>{
+    const accs=accounts.filter(a=>a.provider===p.key),n=accs.length;
+    const head=`<h3>${LOGO[p.key]||""}${esc(p.name)}<span class="umuted" style="margin-left:auto;font-weight:400;font-size:12px">${n} ${n===1?"conta":"contas"}</span></h3>`;
+    if(!n)return `<div class="pcard">${head}<div class="pnote">Nenhuma conta conectada.</div></div>`;
+    const ws=accs.map(weeklyOf),leftOf=(a,w)=>w&&!a.needs_login?100-clampPct(w.used_percent):0;
+    const sum=accs.reduce((t,a,i)=>t+leftOf(a,ws[i]),0);
+    const longs=ws.filter(Boolean),monthly=longs.length>0&&longs.every(w=>w.kind==="monthly");
+    let soon=0;for(const w of longs){const t=Date.parse(w.reset_at);if(t>now&&(!soon||t<soon))soon=t}
+    const segs=accs.map((a,i)=>{
+      const w=ws[i],rem=leftOf(a,w),reset=w&&Date.parse(w.reset_at)?fmtLeft(Date.parse(w.reset_at)-now):"—";
+      const op=a.needs_login?.4:a.mode==="off"?.5:1,fill=a.needs_login?"":`<b style="width:${rem}%;background:${leftColor(a,rem)}"></b>`;
+      const tip=`${legendName(a.email||a.auth_id)}\n`+(a.needs_login?"precisa de login":`${Math.round(rem)}% restante · reseta em ${reset}`);
+      return `<i${a.active?` class="active"`:""} data-tip="${esc(tip)}" style="opacity:${op}">${fill}</i>`}).join("");
+    const shorts=accs.map(shortOf).filter(Boolean),M=shorts.length;
+    const foot=M?`<div class="ufoot"><span class="umuted">Janela 5h</span><span class="tabular"><b style="font-weight:600">${Math.round(shorts.reduce((t,w)=>t+100-clampPct(w.used_percent),0))}%</b> <small>restante de ${M*100}%</small></span></div>`:"";
+    const ptotal=accs.reduce((t,a)=>t+val(a.auth_id),0)||(h&&h.accounts?Object.keys(h.accounts).reduce((t,id)=>t+((h.providers||{})[id]===p.key?val(id):0),0):0);
+    const rows=accs.map((a,i)=>{
+      const w=ws[i],rem=leftOf(a,w),v=val(a.auth_id),email=a.email||a.auth_id;
+      const dot=a.needs_login?"var(--muted)":leftColor(a,rem);
+      return `<div class="urow${a.active?" active":""}"${a.active?` title="Conta em uso agora"`:""}><span class="dot" style="background:${dot}"></span><span class="uwho">${who(email)}</span>
+        <span class="unum tabular"><span>${w&&!a.needs_login?Math.round(rem)+"%":"—"}</span><span>${v>0?`${fmtMetric(v)} <span class="umuted">${fmtPct(ptotal?v/ptotal:0)}</span>`:"—"}</span></span></div>`}).join("");
+    return `<div class="pcard">${head}
+      <div><div class="umuted" style="font-size:11px">${monthly?"Mensal":"Semanal"}</div>
+        <div class="pstat"><div class="v tabular">${Math.round(sum)}%<small>restante de ${n*100}%</small></div></div></div>
+      <div class="ubar">${segs}</div>
+      ${soon?`<div class="umuted" style="font-size:12px;margin-top:-6px">próximo reset em ${fmtLeft(soon-now)} · ${esc(fmtDate(new Date(soon)))}</div>`:""}
+      ${foot}
+      <div class="ulist"><div class="umuted" style="font-size:11px">Consumo no período</div>${rows}</div></div>`}).join("");
+}
 // Sum of remaining-% drops (resets ignored) and the time span they cover.
 function burnStats(points,key,sinceT){
   const pts=points.filter(p=>p[key]!=null&&(!sinceT||p.t>=sinceT));
@@ -503,11 +528,10 @@ function renderLimits(){
     for(const a of accs){
       const mode=a.mode||"normal",email=a.email||a.auth_id;
       const exhausted=a.limit_reached||(a.windows||[]).some(w=>w.kind!=="model"&&w.used_percent>=100);
-      html+=`<div class="acct${mode==="off"?" off":""}"><div class="acct-head"><span class="who">${who(email)}</span>${sparkline(a.auth_id)}`;
+      html+=`<div class="acct${mode==="off"?" off":""}${a.active?" active":""}"${a.active?` title="Conta em uso agora"`:""}><div class="acct-head"><span class="who">${who(email)}</span>${sparkline(a.auth_id)}`;
       if(a.plan)html+=`<span class="badge outline">${esc(a.plan)}</span>`;
       if(a.needs_login)html+=`<span class="badge err">desconectada</span><button class="btn sm" data-login="${p.key}" data-auth="${esc(a.auth_id)}" data-keep="${esc(mode)}">Reconectar</button>`;
       else if(a.disabled)html+=`<span class="badge outline">desativada</span>`;
-      else if(a.active)html+=`<span class="badge info"><span class="dot"></span>em uso</span>`;
       else if(exhausted)html+=`<span class="badge err">no limite</span>`;
       html+=`<select class="sel" data-mode="${esc(a.auth_id)}" title="Modo de uso">
         <option value="normal"${mode==="normal"?" selected":""}>Normal</option>
@@ -529,12 +553,11 @@ function renderLimits(){
 }
 document.addEventListener("click",e=>{const b=e.target.closest("[data-reveal]");if(!b)return;
   const v=b.dataset.reveal;revealed.has(v)?revealed.delete(v):revealed.add(v);renderAll()});
-function renderAll(){renderOverview();renderProjections();renderLimits()}
+function renderAll(){renderOverview();renderUsage();renderProjections();renderLimits()}
 
 const DEMO=new URLSearchParams(location.search).has("demo");
 async function load(refresh){
   if(DEMO){demo();return}
-  const btn=$("#refresh");if(refresh)btn.classList.add("spin");
   try{
     const [r1,r2]=await Promise.all([
       fetch("/usage/api/data"+(refresh?"?refresh=1":""),{cache:"no-store",headers:{"X-Usage-UI":"1"}}),
@@ -542,11 +565,10 @@ async function load(refresh){
     if(!r1.ok)throw new Error("HTTP "+r1.status);
     state.data=await r1.json();if(r2.ok)state.hist=await r2.json();renderAll();
   }catch(e){toast("Falha ao carregar: "+e.message,true)}
-  finally{btn.classList.remove("spin")}
 }
 function setupSeg(id,key){const el=$("#"+id);const sync=()=>el.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===state[key]));
   el.querySelectorAll("button").forEach(b=>b.onclick=()=>{state[key]=b.dataset.v;store.set("usage."+key,b.dataset.v);sync();
-    key==="period"?load(false):renderOverview()});sync()}
+    key==="period"?load(false):(renderOverview(),renderUsage())});sync()}
 setupSeg("period","period");setupSeg("metric","metric");
 
 async function setMode(authId,mode){
@@ -622,7 +644,6 @@ document.querySelectorAll("[data-menu]").forEach(btn=>{
   menu.querySelectorAll("button").forEach(b=>b.onclick=()=>{menu.classList.remove("open");login(provider,btn,b.dataset.m)});
 });
 document.addEventListener("click",()=>document.querySelectorAll(".menu.open").forEach(m=>m.classList.remove("open")));
-$("#refresh").onclick=()=>load(true);
 
 function demo(){
   // Preview with fake data: /usage?demo=1
@@ -651,7 +672,8 @@ function demo(){
       o1:{requests:300,failed:1,input:8e6,output:1.1e6,cached:5e6}}};
   renderAll();
 }
-load(false);setInterval(()=>load(false),60000);
+load(false);setInterval(()=>{if(!document.hidden)load(false)},15000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)load(false)});
 </script>
 </body>
 </html>

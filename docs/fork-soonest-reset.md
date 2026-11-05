@@ -10,7 +10,7 @@ quota that is about to expire is used before quota that would carry on for longe
 
 - Credentials with any window at 100% (or `limit_reached`) are tried last.
 - Credentials without usage data yet sit between the two groups.
-- Usage data comes from `internal/subsusage`, which polls every 3 minutes:
+- Usage data comes from `internal/subsusage`, which polls every 60 seconds:
   - Claude: `GET https://api.anthropic.com/api/oauth/usage` (`five_hour`, `seven_day`)
   - Codex: `GET https://chatgpt.com/backend-api/wham/usage` (`rate_limit.primary_window`, `secondary_window`)
 
@@ -35,6 +35,10 @@ require an `X-Usage-UI: 1` header on state-changing calls.
 
 The page styling is adapted from T3 Code (MIT, Copyright (c) 2026 T3 Tools Inc.).
 `/usage?demo=1` renders fake accounts for a quick look.
+
+Usage limits are fetched every 60 s and the page polls every 15 s while the tab is visible;
+there is no manual refresh button. The "Uso" section sums each provider's weekly usage across
+its accounts.
 
 ## Per-account usage mode
 
