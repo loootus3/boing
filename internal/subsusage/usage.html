@@ -146,10 +146,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .badge.outline{border-color:var(--input);color:var(--muted-foreground)}
 .badge.err{background:color-mix(in srgb,var(--error) 10%,transparent);color:var(--error-foreground)}
 .avatar{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:600;flex:none}
-.redact{min-width:0;border:0;padding:0;background:none;cursor:pointer;border-radius:4px;font:12px/1.5 var(--font-mono);color:var(--muted-foreground);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:filter .15s,color .15s;text-align:left}
-.redact:hover{color:var(--foreground)}
-.redact.hidden{filter:blur(4px);user-select:none}
+.redact{min-width:0;font-size:13px;line-height:1.5;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 .sel{height:24px;padding:0 22px 0 8px;border:1px solid var(--input);border-radius:6px;background-color:var(--popover);color:var(--muted-foreground);
   font:500 12px/1 inherit;cursor:pointer;appearance:none;-webkit-appearance:none;
   background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
@@ -168,12 +165,16 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .acct{padding:18px 20px;display:flex;flex-direction:column;gap:16px;transition:border-color .15s}
 .acct:hover{border-color:color-mix(in srgb,var(--foreground) 24%,var(--border))}
 .acct.off{opacity:.62}
-.acct-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.acct-head>:not(.who){flex:none}
-.who{display:flex;align-items:center;gap:8px;flex:1 1 0;min-width:5.5rem}
-.who .redact{flex:1 1 0}
+.acct-head{display:flex;flex-direction:column;gap:8px;min-width:0}
+.who{display:flex;align-items:center;gap:8px;min-width:0}
+.who .redact{flex:1 1 auto}
+.acct-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
+.acct-sub .sel{margin-left:auto}
 .adot{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
 .rings{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.rings.solo{grid-template-columns:1fr}
+.ring.empty text{fill:var(--muted-foreground);font-weight:500}
+.rb.none .rl{color:var(--muted-foreground)}
 .rb{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
 .rb .rl{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
 .rb .rs{font-size:12px;color:var(--muted-foreground);display:flex;align-items:center;gap:5px;text-align:center}
@@ -188,13 +189,16 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .mdl .p{text-align:right;white-space:nowrap}
 .mdl .p b{color:var(--foreground);font-weight:500}
 .mdl.low .p b{color:var(--warning-foreground)}.mdl.crit .p b{color:var(--error-foreground)}
-.frow{display:flex;align-items:center;gap:12px;justify-content:space-between}
-.forecast{font-size:12px;color:var(--muted-foreground);flex:1;min-width:0}
+.forecast{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--muted-foreground)}
+.forecast svg.i{width:14px;height:14px;flex:none;margin-top:1px}
+.forecast .est{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
 .forecast.bad{color:var(--error-foreground)}.forecast.ok{color:var(--success-foreground)}
 .spark{width:96px;height:24px;flex:none;display:block}
 .note{font-size:12px;color:var(--muted-foreground)}
 .note.err{color:var(--error-foreground)}
-.afoot{border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:12px;font-size:12px;color:var(--muted-foreground)}
+.afoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:12px;font-size:12px;color:var(--muted-foreground)}
+.spk{display:inline-flex;align-items:center;gap:6px;flex:none;margin-left:auto}
+.spk em{font-style:normal;font-size:10.5px}
 .afoot b{color:var(--foreground);font-weight:500}
 .empty{padding:22px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .empty p{margin:0;font-size:13px;color:var(--muted-foreground)}
@@ -443,18 +447,13 @@ function fmtLeft(ms){if(ms<=0)return"agora";const m=Math.max(1,Math.round(ms/600
 function fmtAgo(ms){const s=Math.max(0,Math.round(ms/1000));if(s<60)return s+" s";const m=Math.floor(s/60);return m<60?m+" min":fmtLeft(ms)}
 function toast(msg,err){const t=$("#toast");t.textContent=msg||"";t.className="toast"+(err?" err":"")}
 
-/* email redaction (after T3 Code RedactedSensitiveText) */
-const RED_ALPHA="abcdefghjkmnpqrstuvwxyz23456789";
-function redacted(v){let s=0x811c9dc5;for(let i=0;i<v.length;i++){s^=v.charCodeAt(i);s=Math.imul(s,0x01000193)}
-  const next=()=>{s=Math.imul(s^(s>>>13),0x85ebca6b);s=Math.imul(s^(s>>>16),0xc2b2ae35);return RED_ALPHA[Math.abs(s)%RED_ALPHA.length]||"x"};
-  return Array.from(v,c=>"@.-_".includes(c)?c:next()).join("")}
-const revealed=new Set();
+/* account identity: avatar + e-mail (shown in full) */
 function hue(v){let h=0;for(const c of v)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%360}
 function initials(v){const[l,d]=String(v).split("@");return(((l||"")[0]||"")+((d||"")[0]||"")).toUpperCase()||"?"}
-function who(email){const h=hue(email),open=revealed.has(email);
+function who(email){const h=hue(email);
   return `<span class="avatar" style="background:oklch(.85 .08 ${h});color:oklch(.35 .1 ${h})">${esc(initials(email))}</span>
-    <button class="redact${open?"":" hidden"}" data-reveal="${esc(email)}" title="${open?"Clique para esconder o e-mail":"Clique para mostrar o e-mail"}">${esc(open?email:redacted(email))}</button>`}
-const legendName=email=>revealed.has(email)?email:redacted(email);
+    <span class="redact" title="${esc(email)}">${esc(email)}</span>`}
+const legendName=email=>email;
 
 /* global tooltip for every [data-tip] mark */
 const gtip=document.createElement("div");gtip.className="gtip";document.body.appendChild(gtip);
@@ -507,8 +506,8 @@ function ring(left,o){
     p=(rr)=>`${(c+rr*Math.sin(th)).toFixed(2)}`,q=(rr)=>`${(c-rr*Math.cos(th)).toFixed(2)}`;
     tick=`<line class="tick" x1="${p(r1)}" y1="${q(r1)}" x2="${p(r2)}" y2="${q(r2)}" stroke-width="2"/>`}
   const txt=has?`${Math.round(l)}%`:"—";
-  return `<span class="ring"${o.tip?` data-tip="${esc(o.tip)}"`:""}><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle class="trk" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${sw}"${has?"":' stroke-dasharray="2 5"'}/>${arc}${tick}
+  return `<span class="ring${has?"":" empty"}"${o.tip?` data-tip="${esc(o.tip)}"`:""}><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+    <circle class="trk" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${sw}"/>${arc}${tick}
     <text x="${c}" y="${c}" text-anchor="middle" dominant-baseline="central" font-size="${(size*.25).toFixed(1)}"${has?` data-n="${l}" data-f="pct"`:""}>${txt}</text></svg></span>`;
 }
 // Remaining %, even-pace position, hover text and pace icon of one window.
@@ -543,17 +542,26 @@ function burnStats(points,key,sinceT){
   for(let i=1;i<pts.length;i++){const d=pts[i-1][key]-pts[i][key];if(d>0){drop+=d;active+=pts[i].t-pts[i-1].t}}
   return{drop,span:pts.length>1?pts[pts.length-1].t-pts[0].t:0,active};
 }
-// Per-account forecast for the weekly window, using its own last-24h pace.
+// Per-account forecast for the weekly window. Like burnRate, the measured pace needs at least 6h of the
+// account's samples (the last 24h when they cover 6h, else all of them); otherwise it estimates from the
+// current window (% used over the time since it started), and below 6h of window it has no pace yet.
 function accountForecast(a,now){
   const w=weeklyOf(a);if(!w||!w.reset_at)return null;
-  const st=burnStats(quotaOf(a.auth_id),"w",now/1000-DAY);
-  if(st.span<2*3600)return{text:"coletando dados de ritmo…"};
-  const rate=st.drop/st.span;// %/s wall clock
-  const left=100-w.used_percent,toReset=(new Date(w.reset_at)-now)/1000;
-  if(rate<=0)return{text:"sem gasto nas últimas 24h",cls:"ok"};
+  const q=quotaOf(a.auth_id),MIN=6*3600;
+  const left=100-clampPct(w.used_percent),toReset=(new Date(w.reset_at)-now)/1000;
+  let rate=0,est=false,idle="sem gasto no período medido";
+  const day=burnStats(q,"w",now/1000-DAY),all=day.span>=MIN?day:burnStats(q,"w");
+  if(all.span>=MIN){rate=all.drop/all.span;if(day.span>=MIN)idle="sem gasto nas últimas 24h"}
+  else{
+    const dur=w.duration_sec||7*DAY,elapsed=now/1000-(new Date(w.reset_at)/1000-dur);
+    if(!(elapsed>=MIN))return{cls:"wait",text:"coletando ritmo",icon:ICON_CLOCK};
+    rate=clampPct(w.used_percent)/elapsed;est=true;idle="sem gasto nesta janela";
+  }
+  const out=o=>(est&&(o.est="Poucos dados de histórico (menos de 6h): o ritmo foi estimado pelo que já foi gasto desde o início da janela semanal."),o);
+  if(rate<=0)return out({text:idle,cls:"ok",icon:ICON_CHECK});
   const eta=left/rate;
-  if(eta<toReset)return{cls:"bad",text:`nesse ritmo acaba em ${fmtLeft(eta*1000)} · ${fmtLeft((toReset-eta)*1000)} antes do reset`};
-  return{cls:"ok",text:`nesse ritmo sobra ~${Math.round(left-rate*toReset)}% no reset`};
+  if(eta<toReset)return out({cls:"bad",icon:ICON_ALERT,text:`nesse ritmo acaba em ${fmtLeft(eta*1000)} · ${fmtLeft((toReset-eta)*1000)} antes do reset`});
+  return out({cls:"ok",icon:ICON_CHECK,text:`nesse ritmo sobra ~${Math.round(left-rate*toReset)}% no reset`});
 }
 // Simulates the provider's account pool hour by hour: daily burn drawn from the account that
 // resets first, accounts refill at reset. Returns hours until nothing is left (Infinity within the
@@ -586,10 +594,18 @@ function simulate(accs,perHour,now,rec){
   return first;
 }
 // Average %/day drained from the accounts' weekly windows (summed) and the history span it covers.
+// With less than 6h of samples it falls back to the current windows: the weekly % already
+// used by all accounts divided by the longest time elapsed since a window started.
 function burnRate(accs){
   let drop=0,span=0;
   for(const a of accs){const st=burnStats(quotaOf(a.auth_id),"w");drop+=st.drop;span=Math.max(span,st.span)}
-  return{perDay:span>0?drop/span*DAY:0,span,ok:span>=6*3600};
+  if(span>=6*3600)return{perDay:drop/span*DAY,span,ok:true,source:"hist"};
+  const now=Date.now()/1000;let used=0,elapsed=0;
+  for(const a of accs){const w=weeklyOf(a),r=w&&Date.parse(w.reset_at)/1000;if(!r)continue;
+    const dur=w.duration_sec||7*DAY,el=Math.max(0,Math.min(dur,now-(r-dur)));
+    used+=clampPct(w.used_percent);elapsed=Math.max(elapsed,el)}
+  if(elapsed>=6*3600)return{perDay:used/elapsed*DAY,span,ok:true,source:"week"};
+  return{perDay:0,span,ok:false,source:""};
 }
 // Accounts whose weekly window feeds the pool: in use, connected, with a reset time.
 const runwayAccs=()=>claudeAccs().filter(a=>a.mode!=="off"&&!a.needs_login&&weeklyOf(a)&&weeklyOf(a).reset_at);
@@ -608,11 +624,11 @@ function capacitySeries(accs){
 }
 function sparkline(authId){
   const vals=(((state.quota7)||{})[authId]||[]).filter(p=>p.w!=null);
-  if(vals.length<2)return"";
+  if(vals.length<2||vals[vals.length-1].t-vals[0].t<6*3600)return"";
   const t0=vals[0].t,t1=vals[vals.length-1].t,X=t=>(t-t0)/Math.max(1,t1-t0)*94+1,Y=v=>22-v/100*20;
   const d=vals.map((p,i)=>`${i?"L":"M"}${X(p.t).toFixed(1)},${Y(p.w).toFixed(1)}`).join(" ");
   const lastV=vals[vals.length-1].w,c=lastV<=15?"var(--st-crit)":lastV<=30?"var(--st-warn)":"var(--muted-foreground)";
-  return `<span data-tip="Restante semanal nos últimos dias"><svg class="spark" viewBox="0 0 96 24"><path d="${d}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></span>`;
+  return `<span class="spk" data-tip="Restante semanal nos últimos dias"><svg class="spark" viewBox="0 0 96 24"><path d="${d}" fill="none" stroke="${c}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg><em>7 dias</em></span>`;
 }
 
 /* ---- hero ---- */
@@ -682,7 +698,7 @@ function renderRunway(now){
     return `<div data-tip="${esc(tip)}"><svg class="runway-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${line} L${W},${H} L0,${H} Z" fill="var(--muted-foreground)" fill-opacity=".12"/>
       <path d="${line}" fill="none" stroke="var(--muted-foreground)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></div>
       <div class="sub" style="display:flex;justify-content:space-between;margin-top:-6px"><span>${days===1?"24 h":days+" dias"} atrás</span><span>agora</span></div>`})():"";
-  if(span<6*3600){
+  if(!br.ok){
     el.innerHTML=`<div class="k">Fôlego<span class="pill idle">${ICON_CLOCK}Coletando dados…</span></div><div class="hnum">—</div>
       <div class="sub">Histórico de ${Math.round(span/3600)}h; as projeções aparecem com 6h de uso pelo proxy.</div>${spark}`;
     return;
@@ -699,7 +715,9 @@ function renderRunway(now){
   const rate=(name,v,c,tip)=>`<div class="rate" data-tip="${esc(tip)}"><span>${name}</span><div class="bar"><i style="width:${(v/mx*100).toFixed(1)}%;--c:${c}"></i></div><b class="tabular">${Math.round(v)}%/dia</b></div>`;
   el.innerHTML=`<div class="k">Fôlego${pill}</div><div class="hnum">${num}</div>
     <div class="sub" style="margin-top:-8px">${note}</div>
-    <div class="rates">${rate("Gasto",perDay,"var(--claude)","Gasto médio: quanto da capacidade semanal somada você consome por dia, no ritmo recente.")
+    <div class="rates">${rate("Gasto",perDay,"var(--claude)",br.source==="week"
+        ?"Gasto médio estimado pelo uso desta semana (% já usado ÷ tempo desde o início das janelas). Passa a usar o ritmo medido quando houver 6h de histórico."
+        :"Gasto médio: quanto da capacidade semanal somada você consome por dia, no ritmo recente.")
       }${rate("Recarga",refill,"color-mix(in srgb,var(--foreground) 45%,transparent)","Recarga semanal: quanto as contas ativas devolvem por dia (100% a cada 7 dias por conta).")}</div>${spark}`;
 }
 function renderHero(){const now=Date.now();renderCapacity(now);renderNow(now);renderRunway(now)}
@@ -770,7 +788,7 @@ function renderTimeline(){
 
   const legend=ord.map(ai=>`<span><i style="--c:${ACC[accs[ai].auth_id]}"></i>${esc(nm(accs[ai]))}</span>`).join("");
   const rate=br.ok
-    ?`gasto médio <b>${Math.round(br.perDay)}%/dia</b> · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
+    ?`gasto médio <b>${Math.round(br.perDay)}%/dia</b>${br.source==="week"?` <span data-tip="${esc("Estimado pelo uso desta semana até haver 6h de histórico de cota.")}">(estimado)</span>`:""} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
 
   // Agenda: one column per day, aligned with the chart's midnight gridlines.
@@ -859,20 +877,25 @@ function renderAccounts(){
       const mode=a.mode||"normal",email=a.email||a.auth_id,limited=/429/.test(a.error||"");
       const exhausted=a.limit_reached||(a.windows||[]).some(w=>w.kind!=="model"&&w.used_percent>=100);
       const s=shortOf(a),wk=weeklyOf(a);
-      let h=`<div class="card acct${mode==="off"?" off":""}"><div class="acct-head"><span class="who"><i class="adot" style="--c:${ACC[a.auth_id]}"></i>${who(email)}</span>`;
+      let h=`<div class="card acct${mode==="off"?" off":""}"><div class="acct-head"><div class="who"><i class="adot" style="--c:${ACC[a.auth_id]}"></i>${who(email)}</div><div class="acct-sub">`;
+      if(a.plan)h+=`<span class="badge outline">${esc(a.plan)}</span>`;
       if(a.needs_login)h+=`<span class="badge err">desconectada</span><button class="btn sm" data-login="claude" data-auth="${esc(a.auth_id)}" data-keep="${esc(mode)}">Reconectar</button>`;
       else if(a.disabled)h+=`<span class="badge outline">desativada</span>`;
       else if(exhausted)h+=`<span class="badge err">no limite</span>`;
-      if(a.plan)h+=`<span class="badge outline">${esc(a.plan)}</span>`;
       h+=`<select class="sel" data-mode="${esc(a.auth_id)}" title="Modo de uso">
         <option value="normal"${mode==="normal"?" selected":""}>Normal</option>
         <option value="last"${mode==="last"?" selected":""}>Por último</option>
-        <option value="off"${mode==="off"?" selected":""}>Não usar</option></select></div>`;
-      if(s||wk)h+=`<div class="rings">${s?ringBlock(s,ACC[a.auth_id],now):`<div class="rb">${ring(null)}<div class="rl">5h</div><div class="rs">sem dados</div></div>`}${wk?ringBlock(wk,ACC[a.auth_id],now):`<div class="rb">${ring(null)}<div class="rl">Semanal</div><div class="rs">sem dados</div></div>`}</div>`;
+        <option value="off"${mode==="off"?" selected":""}>Não usar</option></select></div></div>`;
+      const noRing=(label,cap)=>`<div class="rb none">${ring(null)}<div class="rl">${label}</div><div class="rs">${cap}</div></div>`;
+      const loading=!(a.windows||[]).length&&!a.error&&!a.needs_login;
+      if(s&&wk)h+=`<div class="rings">${ringBlock(s,ACC[a.auth_id],now)}${ringBlock(wk,ACC[a.auth_id],now)}</div>`;
+      else if(wk)h+=`<div class="rings solo">${ringBlock(wk,ACC[a.auth_id],now)}</div>`;
+      else if(s)h+=`<div class="rings solo">${ringBlock(s,ACC[a.auth_id],now)}</div>`;
+      else if(loading)h+=`<div class="rings">${noRing("5h","carregando")}${noRing("Semanal","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
-      const f=wk&&mode!=="off"?accountForecast(a,now):null,sp=sparkline(a.auth_id);
-      if(f||sp)h+=`<div class="frow"><span class="forecast ${f?f.cls||"":""}">${f?esc(f.text):""}</span>${sp}</div>`;
+      const f=wk&&mode!=="off"?accountForecast(a,now):null,sp="";
+      if(f)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="est" data-tip="${esc(f.est)}">(estimado)</span>`:""}</span></div>`;
       if(!(a.windows||[]).length&&!a.error)h+=`<div class="note">Consultando uso…</div>`;
       if(limited&&!a.needs_login){
         const hasWin=(a.windows||[]).length>0,dataAt=Date.parse(a.data_at),retry=a.retry_at?Date.parse(a.retry_at):0;
@@ -882,9 +905,9 @@ function renderAccounts(){
         h+=`<div class="note">${esc(msg)}</div>`;
       }else if(a.error&&!a.needs_login)h+=`<div class="note err">Erro ao consultar: ${esc(a.error)}</div>`;
       const t=state.hist&&state.hist.accounts&&state.hist.accounts[a.auth_id];
-      h+=`<div class="afoot">${t&&(t.requests||t.input||t.output||t.cached)
-        ?`No período: <b>${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens</b> · ${fmtCount(t.requests||0)} req · cache ${Math.round((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`
-        :"Sem atividade no período"}</div></div>`;
+      h+=`<div class="afoot"><span>${t&&(t.requests||t.input||t.output||t.cached)
+        ?`No período: <b>${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens</b> · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`
+        :"Sem atividade no período"}</span>${sp}</div></div>`;
       return h;
   }).join("");
   if(box.dataset.key===markup)return;
@@ -980,7 +1003,7 @@ function renderActivity(){
   const stat=(k,v,s,tip,n,f)=>`<div class="card stat"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular"${f?` data-n="${n}" data-f="${f}"`:""}>${v}</div><div class="s">${s}</div></div>`;
   $("#stats").innerHTML=stat("Tokens processados",fmtTokens(tok),"input + cache + output","Tudo que o modelo processou: input novo, cache lido, cache escrito e output",tok,"tok")
     +stat("Input novo",fmtTokens(inp),`${pc(inp)} dos tokens`,"Input que não veio do cache nem foi gravado nele",inp,"tok")
-    +stat("Cache lido",fmtTokens(cache),`taxa de cache ${Math.round(hit*100)}%`,"Taxa de cache = lido / (input novo + cache lido + cache escrito)",cache,"tok")
+    +stat("Cache lido",fmtTokens(cache),`taxa de cache ${Math.floor(hit*100)}%`,"Taxa de cache = lido / (input novo + cache lido + cache escrito)",cache,"tok")
     +stat("Cache escrito",fmtTokens(cw),`${pc(cw)} dos tokens`,"Tokens gravados no cache de prompt",cw,"tok")
     +stat("Output",fmtTokens(out),`${pc(out)} dos tokens`,"",out,"tok")
     +stat("Requisições",fmtCount(req),fail?`${fmtCount(fail)} falha${fail===1?"":"s"}`:"sem falhas","",req,"cnt");
@@ -1032,8 +1055,6 @@ function updateLive(){
 }
 setInterval(updateLive,1000);
 
-document.addEventListener("click",e=>{const b=e.target.closest("[data-reveal]");if(!b)return;
-  const v=b.dataset.reveal;revealed.has(v)?revealed.delete(v):revealed.add(v);renderAll()});
 function renderAll(){
   hideTip();indexColors();
   state.loaded=true;
@@ -1173,10 +1194,13 @@ function demo(){
       error:"HTTP 429",retry_at:iso(4*60e3),windows:[
       {kind:"short",label:"5h",used_percent:62,reset_at:iso(.7*H),duration_sec:18000},
       {kind:"weekly",label:"Semanal",used_percent:94,reset_at:iso(52*H),duration_sec:604800},
-      {kind:"model",label:"Opus",used_percent:97,reset_at:iso(52*H),duration_sec:604800}]}]};
+      {kind:"model",label:"Opus",used_percent:97,reset_at:iso(52*H),duration_sec:604800}]},
+    // Only ~3h of history and no 5h window: exercises the estimated forecast and the solo weekly ring.
+    {provider:"claude",auth_id:"c4",email:"gustavosoares307@gmail.com",plan:"Pro",mode:"normal",fetched_at:iso(-30e3),data_at:iso(-30e3),windows:[
+      {kind:"weekly",label:"Semanal",used_percent:15,reset_at:iso(148*H),duration_sec:604800}]}]};
   // Hourly activity for the last 30 days, shaped like Claude Code use: work hours on weekdays,
   // light weekends, ~90% of the processed tokens read from the prompt cache.
-  const ids=["c1","c2","c3"],share={c1:.6,c2:.14,c3:.26},slots=state.period==="24h"?24:state.period==="30d"?30:7,step=state.period==="24h"?3600:86400;
+  const ids=["c1","c2","c3","c4"],share={c1:.5,c2:.12,c3:.22,c4:.16},slots=state.period==="24h"?24:state.period==="30d"?30:7,step=state.period==="24h"?3600:86400;
   const hourWeight=(wd,hr)=>wd===0||wd===6?(hr>=10&&hr<=17?.22:hr>=18&&hr<=22?.1:.01)
     :hr>=9&&hr<=11?1:hr===12?.55:hr>=13&&hr<=17?.95:hr===18?.5:hr>=20&&hr<=22?.3:hr===8||hr===19?.35:.02;
   const cur=new Date(n);cur.setMinutes(0,0,0);
@@ -1205,18 +1229,19 @@ function demo(){
   for(const hr of hours){if(hr.t*1000<n-28*24*H)continue;
     for(const id of ids){heat_tokens[hr.d.getDay()][hr.d.getHours()]+=sum(hr.per[id]);heat_requests[hr.d.getDay()][hr.d.getHours()]+=hr.per[id].r}}
   // Seven days of weekly-remaining samples every 2h: each account burns down since its last reset.
-  const quota={},weekStart={c1:-138,c2:-48,c3:-116},used={c1:61,c2:22,c3:94};
-  for(const id of["c1","c2","c3"]){
+  const quota={},weekStart={c1:-138,c2:-48,c3:-116,c4:-20},used={c1:61,c2:22,c3:94,c4:15};
+  for(const id of["c1","c2","c3","c4"]){
     const pts=[],ws=weekStart[id];
     const seg=(from,to,total)=>{const ts=[];for(let h=from;h<=to;h+=2)ts.push(h);const w=ts.map(()=>.2+rnd()),sum=w.reduce((a,b)=>a+b,0);let c=0;
       ts.forEach((h,k)=>{c+=w[k]/sum*total;pts.push({t:Math.round(n/1000+h*3600),w:Math.max(0,100-c)})})};
-    if(ws>-168)seg(-168,ws-2,id==="c2"?35:72);
-    seg(Math.max(-168,ws),0,used[id]);
+    if(id==="c4"){for(let k=-6;k<=0;k++)pts.push({t:Math.round(n/1000+k*1800),w:100-12-3*(k+6)/6})}
+    else{if(ws>-168)seg(-168,ws-2,id==="c2"?35:72);
+    seg(Math.max(-168,ws),0,used[id])}
     // Short-window (5h) samples every 15 min for the last 2h of the active account: 85% -> 66% left.
     if(id==="c1")for(let k=-8;k<=0;k++)pts.push({t:Math.round(n/1000+k*900),s:Math.round((66+19*(-k/8))*10)/10});
     pts.sort((a,b)=>a.t-b.t);
     quota[id]=pts}
-  state.hist={range:state.period,step,buckets,providers:{c1:"claude",c2:"claude",c3:"claude"},quota:empty?{}:quota,accounts,heat_tokens,heat_requests,heat_days:quiet||empty?0:28,heat_weekday_days:(()=>{const c=Array(7).fill(0),t=new Date();if(!quiet&&!empty)for(let k=0;k<28;k++)c[new Date(t.getFullYear(),t.getMonth(),t.getDate()-k).getDay()]++;return c})()};
+  state.hist={range:state.period,step,buckets,providers:{c1:"claude",c2:"claude",c3:"claude",c4:"claude"},quota:empty?{}:quota,accounts,heat_tokens,heat_requests,heat_days:quiet||empty?0:28,heat_weekday_days:(()=>{const c=Array(7).fill(0),t=new Date();if(!quiet&&!empty)for(let k=0;k<28;k++)c[new Date(t.getFullYear(),t.getMonth(),t.getDate()-k).getDay()]++;return c})()};
   state.quota7=quota;state.dataNow=n;state.recvAt=Date.now();
   // Add &anim to the URL to preview the first-render motion.
   if(!new URLSearchParams(location.search).has("anim"))document.body.classList.add("ready");
