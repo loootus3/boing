@@ -91,7 +91,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .card{border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,var(--surf-a),var(--surf-b));box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}
 
 /* hero */
-.hero{display:grid;grid-template-columns:minmax(260px,1fr) 2.2fr;gap:16px}
+.hero{display:grid;grid-template-columns:2.2fr minmax(260px,1fr);gap:16px}
 .tile{padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .tile .k{font-size:12px;font-weight:500;color:var(--muted-foreground);display:flex;align-items:center;gap:8px}
 .tile .k .pill{margin-left:auto}
@@ -562,8 +562,8 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
   </div>
 
   <section class="hero" id="secHero">
-    <div class="card tile" id="tRun"></div>
     <div class="card tile" id="tCap"></div>
+    <div class="card tile" id="tRun"></div>
   </section>
 
   <section class="blk" id="emptyState" hidden>
@@ -1293,7 +1293,7 @@ function renderTimeline(){
   const hasAll=F0<t0-2*DAY-3600;
   const fmtRange=t=>new Date(t*1000).toLocaleDateString("pt-BR",{day:"numeric",month:"short"}).replace(".","");
   const zOn=v=>!custom&&(tlz.preset===v||(v==="week"&&tlz.preset==="all"&&!hasAll));
-  const tools=`<div class="seg" role="group" aria-label="Janela do gráfico" data-tip="Ctrl + roda (ou pinça): zoom\nArraste: selecionar um trecho para ampliar\nCom zoom: arraste para mover, shift + arraste seleciona\nDuplo clique: voltar à semana\nTeclado: ← → percorrem o gráfico">${
+  const tools=`<div class="seg" role="group" aria-label="Janela do gráfico" data-tip="Roda do mouse (ou pinça): zoom\nArraste: selecionar um trecho para ampliar\nCom zoom: arraste para mover, shift + arraste seleciona\nDuplo clique: voltar à semana\nTeclado: ← → percorrem o gráfico">${
     [["24h","24h"],["3d","3 dias"],["week","7 dias"],["all","Tudo"]].filter(([v])=>v!=="all"||hasAll).map(([v,l])=>`<button type="button" data-z="${v}" aria-pressed="${zOn(v)}"${zOn(v)?` class="on"`:""}>${l}</button>`).join("")}</div>`;
   const nav=`<div class="tl-nav">${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir</button>`:""}${V0<=F0+1&&V1>=F1-1?"":`<button type="button" data-z="prev" aria-label="Período anterior"${V0<=F0+1?" disabled":""}>${ICON_CHEV}</button><button type="button" data-z="next" aria-label="Próximo período"${V1>=F1-1?" disabled":""}>${ICON_CHEV}</button>`}</div>`;
   // Controls row: view, pace window (global), scenario and accounts (this chart only).
@@ -1388,8 +1388,9 @@ function renderTimeline(){
   const lead=(x,top,y,a)=>y-top-18>4?`<i class="tl-lead" style="left:${x.toFixed(1)}px;top:${(top+18).toFixed(1)}px;height:${(y-top-22).toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`:"";
   const place=(x,yt2,txt)=>{const cw=cwOf(txt),l=Math.max(cw/2,Math.min(W-cw/2,x));let top=0;
     // Above the point first, then below it, never across another label or the cap line.
-    const cand=[yt2-26,yt2-47,yt2+12,yt2+33,yt2-68].map(t=>Math.max(0,Math.min(BOT-20,t)));
-    top=cand.find(t=>!boxes.some(b=>l-cw/2<b.r+4&&l+cw/2>b.l-4&&Math.abs(t-b.t)<19));if(top==null)top=cand[0];
+    const cand=[yt2-26,yt2-47,yt2+12,yt2+33,yt2-68,yt2+54,yt2-89].map(t=>Math.max(0,Math.min(BOT-20,t)));
+    const hits=t=>boxes.filter(b=>l-cw/2<b.r+4&&l+cw/2>b.l-4&&Math.abs(t-b.t)<19).length;
+    top=cand.find(t=>!hits(t));if(top==null)top=cand.reduce((m,t)=>hits(t)<hits(m)?t:m,cand[0]);
     boxes.push({l:l-cw/2,r:l+cw/2,t:top});return{l,top}};
   for(const e of evs)if(e.gain>=1&&e.x>=V0&&e.x<=V1){const x=P(e.x)/100*W;boxes.push({l:x-6,r:x+6,t:Y(e.top)-9})}
   if(!rateMode)boxes.push({l:0,r:W,t:Y(cap)-9});
@@ -1490,13 +1491,11 @@ function renderTimeline(){
     tlz.rng=[ta,tb];tlz.preset=null;renderTimeline()});
   plot.addEventListener("pointercancel",()=>{drag=null;band.remove()});
   plot.addEventListener("dblclick",()=>{if(tlz.rng||tlz.preset!=="week"){tlz.rng=null;tlz.preset="week";renderTimeline()}});
-  // Pan while zoomed: shift+wheel or horizontal wheel/trackpad. Plain vertical wheel keeps scrolling the page.
   let wacc=0,wraf=0;
   // Vertical wheel zooms around the pointer; shift or horizontal wheel pans while zoomed.
   let zacc=0,zx=0,zraf=0;
   plot.addEventListener("wheel",ev=>{
     const pan=ev.shiftKey||Math.abs(ev.deltaX)>Math.abs(ev.deltaY);
-    if(!pan&&!(ev.ctrlKey||ev.metaKey))return;
     if(!pan){
       const dy=ev.deltaY*(ev.deltaMode===1?16:ev.deltaMode===2?400:1);
       // Zooming out at the full range: let the page scroll.
@@ -1556,7 +1555,7 @@ function renderAccounts(){
       const wst=!wf?null:wf.zero!=null?{t:wf.zero*1000-now<=60000?"esgotada":`esgota em ${fmtLeft(wf.zero*1000-now)}`,c:"fast",tip:wTip+`\n${fmtLeft((wf.at-wf.zero)*1000)} antes do reset; depois o proxy passa para a próxima.`}
         :wf.before>=5?{t:`sobra ~${Math.round(wf.before)}% no reset`,c:"fast",tip:wTip+"\nO proxy usa esta conta depois das outras, então parte da cota não chega a ser usada."}
         :{t:"usa tudo até o reset",c:"ok",tip:wTip};
-      if(wk)h+=`<div class="rings">${ringBlock(wk,ACC[a.auth_id],now,wst)}${sOn?ringBlock(s,ACC[a.auth_id],now):noRing("5h","não iniciada")}</div>`;
+      if(wk)h+=`<div class="rings">${sOn?ringBlock(s,ACC[a.auth_id],now):noRing("5h","não iniciada")}${ringBlock(wk,ACC[a.auth_id],now,wst)}</div>`;
       else if(s)h+=`<div class="rings solo">${ringBlock(s,ACC[a.auth_id],now)}</div>`;
       else if(loading)h+=`<div class="rings">${noRing("5h","carregando")}${noRing("Semanal","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
