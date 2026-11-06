@@ -3,8 +3,11 @@ package subsusage
 import (
 	"context"
 	"encoding/json"
+	"maps"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -464,7 +467,8 @@ func (t *AccountTotals) addHour(stat *hourStat, provider string) map[string]mode
 	t.CacheWrite += stat.CacheWrite
 	costs := make(map[string]modelCost, len(stat.Models))
 	var tracked int64
-	for key, ms := range stat.Models {
+	for _, key := range slices.Sorted(maps.Keys(stat.Models)) {
+		ms := stat.Models[key]
 		tracked += ms.tokens()
 		cost, priced := priceOf(key, ms)
 		if priced {
@@ -583,11 +587,15 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 	}
 	prevStart := slotStart(-slots)
 	earliest := int64(0)
-	for id, hours := range h.data.Hours {
+	// Sorted iteration everywhere costs are summed: float sums depend on the order, and an unchanged history
+	// must give byte-identical views (the page skips re-rendering on an unchanged poll).
+	for _, id := range slices.Sorted(maps.Keys(h.data.Hours)) {
+		hours := h.data.Hours[id]
 		provider := h.data.Providers[id]
 		totals := view.Accounts[id]
 		prev := view.Previous[id]
-		for hour, stat := range hours {
+		for _, hour := range slices.Sorted(maps.Keys(hours)) {
+			stat := hours[hour]
 			if provider == "claude" && (earliest == 0 || hour < earliest) {
 				earliest = hour
 			}
@@ -625,7 +633,9 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			b.TokensByAccount[id] += total
 			b.Failed += stat.Failed
 			b.ByAccount[id] += stat.Requests
-			for key, mc := range totals.addHour(stat, provider) {
+			costs := totals.addHour(stat, provider)
+			for _, key := range slices.Sorted(maps.Keys(costs)) {
+				mc := costs[key]
 				if mc.priced {
 					b.Cost[provider] += mc.cost.Total
 					b.CostByAccount[id] += mc.cost.Total
@@ -670,7 +680,41 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			view.Quota[id] = markProxied(append([]quotaPoint(nil), points[i:]...), h.data.Hours[id])
 		}
 	}
+	view.roundCosts()
 	return view
+}
+
+// roundUSD rounds to a millionth of a dollar: the float sums carry ~17 digits nobody reads, and the payload gets shorter.
+func roundUSD(v float64) float64 { return math.Round(v*1e6) / 1e6 }
+
+func roundCostMap(m map[string]float64) {
+	for k, v := range m {
+		m[k] = roundUSD(v)
+	}
+}
+
+func (c *CostBreakdown) round() {
+	c.Total, c.Input, c.CacheRead = roundUSD(c.Total), roundUSD(c.Input), roundUSD(c.CacheRead)
+	c.CacheWrite, c.Output, c.NoCache = roundUSD(c.CacheWrite), roundUSD(c.Output), roundUSD(c.NoCache)
+}
+
+// roundCosts rounds every cost of the view in place (all its maps are built per view).
+func (v *HistoryView) roundCosts() {
+	for i := range v.Buckets {
+		roundCostMap(v.Buckets[i].Cost)
+		roundCostMap(v.Buckets[i].CostByAccount)
+		roundCostMap(v.Buckets[i].CostByModel)
+	}
+	for _, m := range []map[string]AccountTotals{v.Accounts, v.Previous} {
+		for k, t := range m {
+			t.Cost.round()
+			m[k] = t
+		}
+	}
+	for k, t := range v.Models {
+		t.Cost.round()
+		v.Models[k] = t
+	}
 }
 
 // proxyLag is how far before an interval markProxied still looks for proxied requests, since

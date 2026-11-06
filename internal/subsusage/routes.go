@@ -2,7 +2,9 @@ package subsusage
 
 import (
 	"bytes"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net"
@@ -19,6 +21,9 @@ import (
 
 //go:embed usage.html
 var usagePage []byte
+
+// usageETag identifies the embedded page, so a reload revalidates (304) instead of downloading it again.
+var usageETag = func() string { sum := sha256.Sum256(usagePage); return `"` + hex.EncodeToString(sum[:12]) + `"` }()
 
 // Handlers are the existing management handlers reused by the /usage page.
 type Handlers struct {
@@ -162,7 +167,13 @@ func Register(engine *gin.Engine, h Handlers) {
 	t := Default()
 	g := engine.Group("/usage", lanOnly())
 	page := func(c *gin.Context) {
-		c.Header("Cache-Control", "no-store")
+		// no-cache: the browser keeps the page but checks the ETag on every load, so a deploy shows at once.
+		c.Header("Cache-Control", "no-cache")
+		c.Header("ETag", usageETag)
+		if strings.Contains(c.GetHeader("If-None-Match"), usageETag) {
+			c.Status(http.StatusNotModified)
+			return
+		}
 		c.Data(http.StatusOK, "text/html; charset=utf-8", usagePage)
 	}
 	g.GET("", page)

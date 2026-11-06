@@ -46,9 +46,12 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
   backdrop-filter:blur(12px) saturate(1.14);-webkit-backdrop-filter:blur(12px) saturate(1.14)}
 .tb{max-width:72rem;margin:0 auto;min-height:56px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 24px}
 .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-foreground);white-space:nowrap}
-.live i{width:8px;height:8px;border-radius:50%;background:var(--st-good);animation:pulse 2.4s ease-in-out infinite}
+.live i{position:relative;width:8px;height:8px;border-radius:50%;background:var(--st-good)}
+.live i::after,.cr-n em.use::after{content:"";position:absolute;border-radius:50%;background:var(--st-good);animation:pulse 2.4s ease-out infinite;pointer-events:none}
+.live i::after{inset:0}
+.live.stale i::after{display:none}
 .live.stale i{background:var(--st-warn);animation:none}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-good) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
+@keyframes pulse{0%{transform:scale(1);opacity:.55}70%,100%{transform:scale(2.4);opacity:0}}
 .spacer{flex:1}
 .seg{display:flex;width:fit-content;gap:2px;border-radius:8px;background:color-mix(in srgb,var(--input) 40%,transparent);padding:2px}
 .seg button{height:28px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--muted-foreground);font-family:inherit;font-weight:500;font-size:12px;line-height:1;cursor:pointer}
@@ -124,7 +127,9 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .cr-e{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--foreground)}
 .cr-n em{flex:none;font-style:normal;font-size:12px;color:var(--muted-foreground)}
 .cr-n em.use{display:inline-flex;align-items:center;padding:4px;margin:-4px -2px;cursor:help}
-.cr-n em.use::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--st-good);animation:pulse 2.4s ease-in-out infinite}
+.cr-n em.use{position:relative}
+.cr-n em.use::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--st-good)}
+.cr-n em.use::after{width:7px;height:7px;left:4px;top:calc(50% - 3.5px)}
 .cr.on .cr-e{font-weight:600}
 .cr-m{grid-area:m;display:flex;align-items:center;gap:8px;min-width:0}
 .cr-m .meter{flex:1 1 0;min-width:0}
@@ -545,7 +550,7 @@ body.modal-open{overflow:hidden}
 .meter i,.rate .bar i{transform-origin:left}
 body:not(.ready) .segbar>i:not(.track),body:not(.ready) .meter i,body:not(.ready) .rate .bar i{animation:grow .5s cubic-bezier(.2,.7,.2,1) both}
 body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
-@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .rs .pc.ok{color:var(--muted-foreground)}
 .cap-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 12px}
 .cap-avg{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none;margin-left:auto;padding-bottom:2px;cursor:default}
@@ -827,9 +832,19 @@ const useOrder=(x,y)=>(x.last-y.last)||(x.reset-y.reset);
 // `ext` maps auth_id -> %/hour spent outside the proxy (Claude apps on the same account): it drains that account
 // in parallel, before the router's share, and an account it empties does not end the runway by itself.
 // rec.lefts[k] = every account's % left at rec.ts[k], indexed like `accs`.
+// The 5h window: an account whose 5h window is full is skipped by the router until it resets, like an empty one.
+// Each 1% of weekly also spends fiveHourRatios() % of the 5h window (it opens on first use and lasts 5h), so an
+// account gives at most s5/k5 weekly % before the window resets. Demand the 5h limits block is not served (the
+// pool stays put, it does not count as running out); only an empty pool ends the runway.
 function simulate(accs,perHour,now,rec,info,ext){
-  const pool=accs.map((a,i)=>{const w=weeklyOf(a);return{a,i,last:a.mode==="last"?1:0,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY}});
-  const cap=60*24,hz=7*24,total=()=>pool.reduce((s,p)=>s+p.left,0),t0=now/1000;
+  const R=r5Of(),t0=now/1000;
+  const pool=accs.map((a,i)=>{const w=weeklyOf(a),sh=shortOf(a),k5=R&&sh?(R.by[a.auth_id]||R.pool):0,sr=sh&&sh.reset_at?Date.parse(sh.reset_at)/1000:0;
+    return{a,i,last:a.mode==="last"?1:0,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY,
+      k5,s5:!k5?Infinity:sr>t0?Math.max(0,100-clampPct(sh.used_percent)):100,t5:k5&&sr>t0?sr:null,d5:(sh&&sh.duration_sec)||5*3600}});
+  // Weekly % an account can still give before its 5h window blocks it; spending also opens that window.
+  const room=p=>p.k5?Math.min(p.left,p.s5/p.k5):p.left;
+  const spend=(p,take,from)=>{p.left-=take;if(p.k5&&take>0){p.s5=Math.max(0,p.s5-take*p.k5);if(p.t5==null)p.t5=from+p.d5}};
+  const cap=60*24,hz=7*24,total=()=>pool.reduce((s,p)=>s+p.left,0);
   let t=t0,first=Infinity;
   const IH=8*24,infoDone=h=>!info||h>=IH||pool.every(p=>p.fr);
   if(info)for(const p of pool)if(p.left<=1e-9)p.zero=t0;
@@ -848,16 +863,18 @@ function simulate(accs,perHour,now,rec,info,ext){
       for(const e of evs){const ta=Math.min(t-2,Math.max(e.at,lastT()+2));push(ta-1,cur,l.slice());cur+=e.gain;l[e.i]=100;push(ta,cur,l.slice());e.top=cur}
     }
     pool.sort(useOrder);
-    if(ext)for(const p of pool){const e=ext[p.a.auth_id];if(!(e>0)||p.left<=1e-9)continue;const take=Math.min(p.left,e);
+    // A 5h window that resets by mid-hour is fresh for the whole hour.
+    for(const p of pool)if(p.t5!=null&&p.t5<=t-1800){p.s5=100;p.t5=null}
+    if(ext)for(const p of pool){const e=ext[p.a.auth_id];if(!(e>0)||p.left<=1e-9)continue;const take=Math.min(room(p),e);
       if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+take/e*3600;
-      p.left-=take}
-    if(rec&&h<hz){const u=pool.find(p=>p.left>1e-9);rec.use.push({a:t-3600,b:t,i:u?u.i:-1})}
-    for(const p of pool){if(need<=0)break;const take=Math.min(p.left,need);
-      if(info&&!p.fr&&p.zero==null&&take>0&&take>=p.left-1e-9)p.zero=t-3600+(perHour-need+take)/perHour*3600;
-      p.left-=take;need-=take}
+      spend(p,take,t-3600)}
+    if(rec&&h<hz){const u=pool.find(p=>room(p)>1e-9);rec.use.push({a:t-3600,b:t,i:u?u.i:-1})}
+    for(const p of pool){if(need<=0)break;const take=Math.min(room(p),need);if(!(take>0))continue;
+      if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+(perHour-need+take)/perHour*3600;
+      spend(p,take,t-3600);need-=take}
     // Outside-the-proxy use alone can also empty the pool (the router's share may be 0).
     if(first===Infinity&&need<=1e-9&&ext&&total()<=1e-9)first=h+1;
-    if(need>1e-9&&first===Infinity){
+    if(need>1e-9&&first===Infinity&&total()<=1e-9){
       first=h+(perHour-need)/perHour;
       if(rec&&h<hz)push(Math.min(t-1,Math.max(lastT()+1,t0+first*3600)),0);
     }
@@ -871,7 +888,7 @@ function simulate(accs,perHour,now,rec,info,ext){
 // hours count more. Weekly estimate: % already used ÷ time since the window started (valid after 6h).
 // The two blend by how much history there is (full measured weight after PACE_TRUST_H hours). Pure: `quota` is a map
 // auth_id -> [{t,w,s}] sorted by t, `now` is in seconds.
-const PACE_HALF_LIFE_H=12,PACE_TRUST_H=8;
+const PACE_HALF_LIFE_H=12,PACE_TRUST_H=24;
 function paceFrom(accs,quota,now,winH){
   const k=Math.LN2/(PACE_HALF_LIFE_H*3600),since=now-7*DAY,Q=quota||{};
   // The server marks (p) samples whose interval had proxied requests on that account; a weekly drop without it
@@ -924,6 +941,17 @@ function paceFrom(accs,quota,now,winH){
   out.total=out.perDay+extPerDay;
   return out;
 }
+// 5h-window % spent per 1% of weekly, from sample pairs in which neither window reset: pooled over the accounts, and
+// per account once it has 5% of weekly drops. Null without enough data (the simulation then ignores the 5h limit).
+function fiveHourRatios(quota){
+  const by={};let DS=0,DW=0;
+  for(const[id,pts]of Object.entries(quota||{})){let ds=0,dw=0;
+    for(let i=1;i<pts.length;i++){const x=pts[i-1],y=pts[i];
+      if(x.w==null||y.w==null||x.s==null||y.s==null||y.s>x.s||y.w>x.w)continue;ds+=x.s-y.s;dw+=x.w-y.w}
+    if(dw>=5&&ds>0)by[id]=ds/dw;DS+=ds;DW+=dw}
+  return DW>=5&&DS>0?{pool:DS/DW,by}:null;
+}
+const r5Of=()=>{if(r5Of.q!==state.quota7){r5Of.q=state.quota7;r5Of.v=fiveHourRatios(state.quota7)}return r5Of.v};
 // %/hour per account spent outside the proxy, for simulate().
 const extPerHour=br=>{if(!br.ok)return null;const o={};for(const[id,v]of Object.entries(br.ext||{}))o[id]=v/24;return o};
 // The one pace every forecast on the page uses; `span` (seconds) is the history behind the measured part.
@@ -944,9 +972,10 @@ function paceTip(br){
 }
 // The pace tip plus the outside-the-proxy part, per account.
 function paceTipFull(br){
-  const ids=Object.keys(br.ext||{}).filter(id=>br.ext[id]>=.05);
-  if(!ids.length)return paceTip(br);
-  return `Pelo proxy: ${paceTip(br)}\nFora do proxy (apps do Claude na mesma conta):\n`+ids.map(id=>`· ${accName(id)}: ${fmt1(br.ext[id])}%/dia`).join("\n");
+  const ids=Object.keys(br.ext||{}).filter(id=>br.ext[id]>=.05),R=r5Of();
+  const f5=R?`\nConta o limite de 5h: cada 1% do semanal gasta ~${fmt1(R.pool)}% da janela de 5h, e uma conta com a janela cheia fica de fora até ela resetar.`:"";
+  if(!ids.length)return paceTip(br)+f5;
+  return `Pelo proxy: ${paceTip(br)}\nFora do proxy (apps do Claude na mesma conta):\n`+ids.map(id=>`· ${accName(id)}: ${fmt1(br.ext[id])}%/dia`).join("\n")+f5;
 }
 // The pace source: a visible window ("últimas 3h") or just an info mark whose tip explains how it is measured.
 const paceTagHtml=(br,cls)=>br.ok?(br.source==="win"?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}" tabindex="0">${paceTag(br)}</span>`
@@ -985,13 +1014,16 @@ function chartForecast(now,rec){
 }
 // Highest proxy pace (%/h) that keeps the pool above 0% for the next 7 days, with outside-the-proxy use
 // (scaled by the scenario m) unchanged. 0 when outside use alone empties it. Bisection over simulate().
+// any=true when no pace empties it (the 5h limits keep the drain under the refills): there is no ceiling to show.
 function safeRate(accs,br,m,now){
   const ext=extPerHour(br);if(ext)for(const id in ext)ext[id]*=m;
   const ok=p=>simulate(accs,p,now,null,null,ext)>=7*24;
   if(!ok(0))return{p:0,ext:ext?Object.values(ext).reduce((a,b)=>a+b,0):0};
   let lo=0,hi=Math.max(.5,refillPerDay(accs)/24*10);
-  if(ok(hi))lo=hi;else for(let i=0;i<18;i++){const mid=(lo+hi)/2;if(ok(mid))lo=mid;else hi=mid}
-  return{p:lo,ext:ext?Object.values(ext).reduce((a,b)=>a+b,0):0};
+  const xs=ext?Object.values(ext).reduce((a,b)=>a+b,0):0;
+  if(ok(hi))return{p:0,ext:xs,any:true};
+  for(let i=0;i<18;i++){const mid=(lo+hi)/2;if(ok(mid))lo=mid;else hi=mid}
+  return{p:lo,ext:xs};
 }
 // Weekly % dropped per hour, hour by hour over [from,to]: past from the samples (a drop spread over its sample
 // pair, refills ignored), future from a simulated [[t,total]] series. Points at bucket centres.
@@ -1233,7 +1265,7 @@ function renderTimeline(){
   const VS=V1-V0,zoomed=VS<F1-F0-1,nowVis=t0>=V0-1e-6&&t0<=V1;
   // "Consumo por hora": hourly weekly-% burn instead of the remaining total, on its own scale.
   let burnPast=[],burnFut=[],refH=0;
-  const sr=br.ok?safeRate(accs,br,sm,now):null,safeH=sr?sr.p+sr.ext:0;
+  const sr0=br.ok?safeRate(accs,br,sm,now):null,sr=sr0&&!sr0.any?sr0:null,safeH=sr?sr.p+sr.ext:0;
   if(rateMode){
     const segs=[];
     for(const a of accs){const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);for(let k=1;k<q.length;k++)segs.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w])}
@@ -1348,6 +1380,8 @@ function renderTimeline(){
 
   // Advice: the pace that lasts the week, and quota that a reset will throw away.
   let advice="";
+  if(sr0&&sr0.any){const pa=`<div class="tl-tip good">${ICON_CHECK}<span>A cota dura a semana em qualquer ritmo: o limite de 5h segura o gasto abaixo das recargas.</span></div>`;
+    if(fullStats)advice=pa;else{state.runAdv=pa;const ra=$("#runAdv");if(ra)ra.innerHTML=pa}}
   if(sr){const cur=br.total*sm/24;
     const pa=zf&&safeH<cur-.05
       ?`<div class="tl-tip crit">${ICON_ALERT}<span>Para durar a semana: até <b>~${fmt1(safeH)}%/h</b>, ~${Math.round((1-safeH/Math.max(cur,1e-6))*100)}% a menos que agora.</span></div>`
@@ -1981,7 +2015,8 @@ const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}c
 const histUrl=range=>"/usage/api/history?range="+encodeURIComponent(range)+(TZ?"&tz="+encodeURIComponent(TZ):"");
 // loadSeq makes sure a slow response never overwrites the state of a newer load.
 let loadSeq=0;
-async function load(refresh){
+// A poll (`poll`) whose responses match the last ones only moves the clocks, re-rendering at most once a minute.
+async function load(refresh,poll){
   if(DEMO){if(DEMO_MODE!=="loading")demo();return}
   const seq=++loadSeq,period=state.period;
   try{
@@ -1991,15 +2026,20 @@ async function load(refresh){
     if(period==="24h")reqs.push(fetch(histUrl("7d"),{cache:"no-store"}));
     const [r1,r2,r3]=await Promise.all(reqs);
     if(!r1.ok)throw new Error("HTTP "+r1.status);
-    const data=await r1.json(),hist=r2.ok?await r2.json():state.hist;
-    // Every period needs the 7-day samples for the pace: 7d/30d responses carry the server's full retention, filtered client-side.
-    const quota7=period==="24h"?(r3&&r3.ok?(await r3.json()).quota:state.quota7):hist?hist.quota:state.quota7;
+    const t1=await r1.text(),t2=r2.ok?await r2.text():null,t3=r3&&r3.ok?await r3.text():null;
     if(seq!==loadSeq)return;
+    const nowM=t1.match(/"now":"([^"]*)"/),sig=[period,t1.replace(/"now":"[^"]*"/,""),t2,t3].join("\u0001");
+    if(poll&&t2!=null&&sig===state.sig&&Date.now()-state.renderAt<60e3){state.dataNow=(nowM&&Date.parse(nowM[1]))||Date.now();state.recvAt=Date.now();
+      if(/^Falha ao carregar/.test($("#toast").textContent))toast("");return}
+    const data=JSON.parse(t1),hist=t2!=null?JSON.parse(t2):state.hist;
+    // Every period needs the 7-day samples for the pace: 7d/30d responses carry the server's full retention, filtered client-side.
+    const quota7=period==="24h"?(t3!=null?JSON.parse(t3).quota:state.quota7):hist?hist.quota:state.quota7;
     // Committed only after every response parsed, so a failed poll keeps the last good data.
     applyNames(data);
     state.data=data;state.hist=hist;state.quota7=quota7;
     state.dataNow=Date.parse(data.now)||Date.now();state.recvAt=Date.now();
     if(/^Falha ao carregar/.test($("#toast").textContent))toast("");
+    state.sig=sig;state.renderAt=Date.now();
     renderAll();
   }catch(e){if(seq===loadSeq)toast("Falha ao carregar: "+e.message,true)}
 }
@@ -2238,8 +2278,8 @@ function demo(){
   renderAll();
 }
 if(!DEMO||DEMO_MODE==="loading")renderSkeleton();
-load(false);setInterval(()=>{if(!document.hidden)load(false)},15000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden)load(false)});
+load(false);setInterval(()=>{if(!document.hidden)load(false,true)},15000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)load(false,true)});
 </script>
 </body>
 </html>
