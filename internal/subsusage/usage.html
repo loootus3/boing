@@ -340,6 +340,34 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-xl span{position:absolute;top:4px;white-space:nowrap;padding-left:4px}
 .tl-xl span.first{padding-left:0}
 .tl-empty{font-size:13px;color:var(--muted-foreground)}
+.tl-ctl{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
+.tl-ctl .spacer{flex:1}
+.tl-lab{margin-left:6px;white-space:nowrap}
+.tl-nav{display:flex;align-items:center;gap:2px;white-space:nowrap}
+.tl-nav span{margin-right:6px}
+.tl-nav button{display:grid;place-items:center;width:26px;height:26px;border:0;border-radius:6px;background:none;color:var(--foreground);cursor:pointer}
+.tl-nav button:hover:not(:disabled){background:var(--accent)}
+.tl-nav button:disabled{opacity:.3;cursor:default}
+.tl-nav button[data-z="prev"] svg{transform:rotate(180deg)}
+.tl-accm{position:relative}
+.tl-accb{height:28px;padding:0 10px;border:0;border-radius:8px;background:color-mix(in srgb,var(--input) 40%,transparent);color:var(--muted-foreground);font:500 12px/1 inherit;cursor:pointer}
+.tl-accb b{font-weight:600;color:var(--foreground)}
+.tl-accb:hover,.tl-accb.on{color:var(--foreground)}
+.tl-accb.on{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--claude) 55%,transparent)}
+.tl-menu{position:absolute;left:0;top:calc(100% + 6px);z-index:20;min-width:15rem;padding:6px;border:1px solid var(--border);border-radius:10px;background:var(--popover);box-shadow:0 8px 24px rgba(0,0,0,.16)}
+.tl-menu label{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:13px;color:var(--foreground);cursor:pointer}
+.tl-menu label:hover{background:var(--accent)}
+.tl-menu input{margin:0;accent-color:var(--claude)}
+.tl-menu-n{padding:4px 8px 2px;font-size:11px;color:var(--muted-foreground)}
+.tl-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:12px 0 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.tl-st{min-width:0}
+.tl-st .k{font-size:11.5px;color:var(--muted-foreground)}
+.tl-st .v{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-st .s{font-size:11.5px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-scen{color:var(--warning-foreground)}
+.tl-chip.past{background:var(--card);border-style:dashed}
+@media (max-width:760px){.tl-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.tl-ctl .spacer{display:none}}
+
 /* agenda de recargas */
 .ag{display:flex;flex-direction:column;gap:10px;margin-top:2px;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
 .ag-t{font-size:12px;font-weight:500}
@@ -530,7 +558,11 @@ const ICON_CLOCK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
-const state={period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
+// Chart-only options of "Próximos 7 dias": view, future-use scenario, hidden accounts and the open menu.
+const SCEN={same:{l:"Igual a agora",m:1},half:{l:"Metade do ritmo",m:.5},double:{l:"Dobro do ritmo",m:2},none:{l:"Sem uso",m:0}};
+const tlo={view:store.get("usage.tlview","left")==="rate"?"rate":"left",scen:SCEN[store.get("usage.scen","same")]?store.get("usage.scen","same"):"same",
+  hide:new Set((()=>{try{const v=JSON.parse(store.get("usage.tlhide","[]"));return Array.isArray(v)?v:[]}catch(_){return[]}})()),menu:false};
+const state={burn:(b=>["auto","1","3","6"].includes(b)?b:"auto")(store.get("usage.burn","auto")),period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
 $("#emptyLogo").innerHTML=LOGO.claude;
 
 /* formatting (after T3 Code usageFormat) */
@@ -667,7 +699,7 @@ function accountForecast(a,now,pf){
   pf=pf||poolForecast(now);
   const f=pf.info[a.auth_id];if(!f)return null;
   if(!pf.br.ok)return{cls:"wait",text:"coletando ritmo",icon:ICON_CLOCK};
-  const out=o=>(o.est=paceTip(pf.br),o.tag=PACE_TAG[pf.br.source],o);
+  const out=o=>(o.est=paceTip(pf.br),o.tag=paceTag(pf.br),o);
   if(pf.br.total<=0)return out({text:pf.br.source==="week"?"sem gasto nesta janela":"sem gasto no período medido",cls:"ok",icon:ICON_CHECK});
   if(f.zero!=null){
     const ms=f.zero*1000-now;
@@ -738,11 +770,26 @@ function simulate(accs,perHour,now,rec,info,ext){
 // The two blend by how much history there is (full measured weight after PACE_TRUST_H hours). Pure: `quota` is a map
 // auth_id -> [{t,w,s}] sorted by t, `now` is in seconds.
 const PACE_HALF_LIFE_H=12,PACE_TRUST_H=8;
-function paceFrom(accs,quota,now){
+function paceFrom(accs,quota,now,winH){
   const k=Math.LN2/(PACE_HALF_LIFE_H*3600),since=now-7*DAY,Q=quota||{};
   // The server marks (p) samples whose interval had proxied requests on that account; a weekly drop without it
   // was spent outside the proxy. Without any mark (older server) every drop counts as proxied.
   const flagged=Object.values(Q).some(pts=>pts.some(p=>p.p));
+  // Fixed window (winH hours, from the "Ritmo" control): plain drop ÷ time covered, no decay or weekly blend.
+  // A sample pair straddling the window start counts in proportion. Falls back to the weighted pace without data.
+  if(winH>0){
+    const from=now-winH*3600,ext={},extD={};let drop=0,first=Infinity;
+    for(const a of accs){const pts=(Q[a.auth_id]||[]).filter(p=>p.w!=null);let de=0;
+      for(let i=1;i<pts.length;i++){const x=pts[i-1],y=pts[i];if(y.t<=from||y.t<=x.t)continue;
+        const f=x.t<from?(y.t-from)/(y.t-x.t):1,d=Math.max(0,x.w-y.w)*f;
+        if(flagged&&!y.p)de+=d;else drop+=d;first=Math.min(first,Math.max(x.t,from))}
+      if(de>0)extD[a.auth_id]=de}
+    const cov=isFinite(first)?now-first:0;
+    if(cov>=Math.min(winH*3600*.25,3600)){
+      for(const[id,d]of Object.entries(extD))ext[id]=d/cov*DAY;
+      const perDay=drop/cov*DAY,extPerDay=Object.values(ext).reduce((a,b)=>a+b,0);
+      return{perDay,ok:true,source:"win",winH,measured:perDay,weekEst:null,alpha:1,spanH:cov/3600,halfLifeH:PACE_HALF_LIFE_H,ext,extPerDay,total:perDay+extPerDay}}
+  }
   const ext={},extWin={};
   let N=0,tStart=Infinity;
   for(const a of accs){
@@ -778,13 +825,16 @@ function paceFrom(accs,quota,now){
 // %/hour per account spent outside the proxy, for simulate().
 const extPerHour=br=>{if(!br.ok)return null;const o={};for(const[id,v]of Object.entries(br.ext||{}))o[id]=v/24;return o};
 // The one pace every forecast on the page uses; `span` (seconds) is the history behind the measured part.
+// state.burn picks the measuring window ("auto" = decayed blend).
 function burnRate(accs){
-  const r=paceFrom(accs,state.quota7,Date.now()/1000);
+  const r=paceFrom(accs,state.quota7,Date.now()/1000,state.burn==="auto"?0:+state.burn);
   return{...r,span:r.spanH*3600};
 }
 const PACE_TAG={hist:"(ponderado)",blend:"(misto)",week:"(estimado)","hist-short":"(medido)"};
+const paceTag=br=>br.source==="win"?`(últimas ${br.winH}h)`:PACE_TAG[br.source]||"";
 function paceTip(br){
   const v=Math.round(br.perDay),h=Math.round(br.spanH);
+  if(br.source==="win")return `ritmo medido nas últimas ${br.winH}h (queda do % semanal ÷ tempo coberto) · ${v}%/dia`;
   return br.source==="hist"?`ritmo ponderado pelas últimas ~24h (meia-vida ${br.halfLifeH}h) · ${v}%/dia`
     :br.source==="blend"?`mistura: ${Math.round(br.alpha*100)}% do ritmo medido (${h}h de histórico) + estimativa da semana · ${v}%/dia`
     :br.source==="week"?`estimado pela semana (% já usado ÷ tempo da janela) · ${v}%/dia`
@@ -796,7 +846,7 @@ function paceTipFull(br){
   if(!ids.length)return paceTip(br);
   return `Pelo proxy: ${paceTip(br)}\nFora do proxy (apps do Claude na mesma conta):\n`+ids.map(id=>`· ${accName(id)}: ${fmt1(br.ext[id])}%/dia`).join("\n");
 }
-const paceTagHtml=(br,cls)=>br.ok?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}">${PACE_TAG[br.source]}</span>`:"";
+const paceTagHtml=(br,cls)=>br.ok?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}">${paceTag(br)}</span>`:"";
 // Weekly-remaining drop (resets ignored) over the last `hours` and its hourly average over the time the samples cover.
 function recentUse(points,now,hours=3){
   const pts=points.filter(p=>p.w!=null&&p.t>=now-hours*3600);
@@ -818,6 +868,22 @@ function poolForecast(now,rec){
   const accs=runwayAccs(),br=burnRate(accs),info={};
   if(accs.length)simulate(accs,br.ok?br.perDay/24:0,now,rec,info,extPerHour(br));
   return{accs,br,info};
+}
+// The 7-day chart's own run: only the accounts not hidden there, with the pace scaled by the scenario.
+function chartForecast(now,rec){
+  // When every projectable account is hidden (the visible ones dropped out for now), show them all, keeping the choice.
+  const all=runwayAccs(),vis=all.filter(a=>!tlo.hide.has(a.auth_id)),accs=vis.length?vis:all,br=burnRate(accs),m=SCEN[tlo.scen].m,info={};
+  const ext=extPerHour(br);if(ext)for(const id in ext)ext[id]*=m;
+  if(accs.length)simulate(accs,br.ok?br.perDay*m/24:0,now,rec,info,ext);
+  return{accs,br,info,m};
+}
+// Weekly % dropped per hour, hour by hour over [from,to]: past from the samples (a drop spread over its sample
+// pair, refills ignored), future from a simulated [[t,total]] series. Points at bucket centres.
+function burnBuckets(segs,from,to){
+  const H=3600,nb=Math.max(0,Math.ceil((to-from)/H)),b=new Array(nb).fill(0);
+  for(const[xs,xv,ys,yv]of segs){const d=xv-yv;if(!(d>0)||ys<=xs)continue;const s=Math.max(xs,from),e=Math.min(ys,to);if(e<=s)continue;
+    const r=d/(ys-xs);for(let k=Math.floor((s-from)/H);k<nb&&from+k*H<e;k++){const bs=from+k*H,ov=Math.min(bs+H,e)-Math.max(bs,s);if(ov>0)b[k]+=r*ov}}
+  return b.map((v,k)=>{const bs=from+k*H,be=Math.min(to,bs+H);return[(bs+be)/2,v/Math.max(1e-6,(be-bs)/H)]});
 }
 // %/day the pool gets back from the weekly resets.
 const refillPerDay=accs=>accs.reduce((s,a)=>s+100/(((weeklyOf(a).duration_sec)||7*DAY)/DAY),0);
@@ -1004,8 +1070,8 @@ function pastSeries(accs,t0,nowTotal,span){
   pts.push([t0,nowTotal]);return pts}
 
 // Zoom of the 7-day chart: `rng` is a custom [from,to] (unix s) from a brush or panning, else `preset` is
-// "all" | "24h" | "3d". Kept in memory only, so the 15s data refresh keeps the view.
-const tlz={rng:null,preset:"all"};
+// "week" (2 days back through the projection) | "all" (every recorded day) | "24h" | "3d". Kept in memory only, so the 15s data refresh keeps the view.
+const tlz={rng:null,preset:"week"};
 // Drag-to-pan while zoomed. The chart is re-rendered while dragging (replacing the plot), so the drag lives
 // here and follows the window's pointer events.
 let tlPan=null,tlPanRaf=0;
@@ -1019,6 +1085,9 @@ addEventListener("pointermove",ev=>{if(!tlPan||ev.pointerId!==tlPan.id)return;
   if(!tlPanRaf)tlPanRaf=requestAnimationFrame(()=>{tlPanRaf=0;renderTimeline()})});
 const tlPanEnd=ev=>{if(!tlPan||(ev&&ev.pointerId!==tlPan.id))return;tlPan=null;document.body.classList.remove("tl-panning")};
 addEventListener("pointerup",tlPanEnd);addEventListener("pointercancel",tlPanEnd);
+// A click that re-rendered the chart leaves a detached target: that one came from inside the chart.
+document.addEventListener("click",e=>{if(tlo.menu&&e.target.isConnected&&!e.target.closest(".tl-accm")){tlo.menu=false;renderTimeline()}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&tlo.menu&&!modalId){tlo.menu=false;renderTimeline()}});
 const TL_WIN={"24h":86400,"3d":3*86400},TL_MIN=2*3600;
 // Linear value of a [[t,v]…] series at t (clamped to its ends).
 function atPts(p,t){if(t<=p[0][0])return p[0][1];
@@ -1044,13 +1113,16 @@ function xTicks(V0,V1){const span=V1-V0,out=[],d=new Date(V0*1000);
       out.push({t:m,l:dt.getHours()===0?fmtWd(dt):dt.getHours()+"h"})}}
   return out}
 function renderTimeline(){
-  const el=$("#tl"),now=Date.now(),accs=runwayAccs();
-  if(!accs.length){el.dataset.key="";el.innerHTML=`<div class="tl-empty">Nenhuma conta com limite semanal para projetar.</div>`;return}
-  const rec={},br=poolForecast(now,rec).br,perHour=br.ok?br.total/24:0;
-  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),Object.values(ACC).join(","),accs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
+  const el=$("#tl"),now=Date.now(),allAccs=runwayAccs();
+  if(!allAccs.length){el.dataset.key="";el.innerHTML=`<div class="tl-empty">Nenhuma conta com limite semanal para projetar.</div>`;return}
+  // Re-rendering would close an open <select>.
+  if(el.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
+  const rec={},cf=chartForecast(now,rec),accs=cf.accs,br=cf.br,sm=cf.m,perHour=br.ok?br.total*sm/24:0,rateMode=tlo.view==="rate";
+  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,state.burn,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
-  const PH=240,TOP=44,BOT=PH-6,HZ=7*DAY,PAST=48*3600,t0=now/1000,cap=rec.cap,ts=rec.ts,tot=rec.tot,K=ts.length;
+  const PH=240,TOP=44,BOT=PH-6,HZ=7*DAY,PAST=7*DAY,t0=now/1000,ts=rec.ts,tot=rec.tot,K=ts.length;
+  let cap=rec.cap;
   const past=pastSeries(accs,t0,tot[0],PAST),F0=past?past[0][0]:t0,F1=t0+HZ;
   // Visible range: the whole chart, a preset window (starts 2h before "agora") or a custom zoom.
   let V0=F0,V1=F1,custom=false;
@@ -1058,7 +1130,19 @@ function renderTimeline(){
     if(w>=F1-F0-1){tlz.rng=null;tlz.preset="all"}
     else{V0=Math.min(Math.max(tlz.rng[0],F0),F1-w);V1=V0+w;custom=true}}
   else if(TL_WIN[tlz.preset]){V0=Math.max(F0,t0-2*3600);V1=Math.min(F1,V0+TL_WIN[tlz.preset])}
+  else if(tlz.preset==="week"){V0=Math.max(F0,t0-2*DAY);V1=F1}
   const VS=V1-V0,zoomed=VS<F1-F0-1,nowVis=t0>=V0-1e-6&&t0<=V1;
+  // "Gasto por hora": hourly weekly-% burn instead of the remaining total, on its own scale.
+  let burnPast=[],burnFut=[],refH=0;
+  if(rateMode){
+    const segs=[];
+    for(const a of accs){const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);for(let k=1;k<q.length;k++)segs.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w])}
+    burnPast=F0<t0-60?burnBuckets(segs,F0,t0):[];
+    const fs=[];for(let k=1;k<K;k++)fs.push([ts[k-1],tot[k-1],ts[k],tot[k]]);
+    burnFut=burnBuckets(fs,t0,F1);
+    refH=refillPerDay(accs)/24;
+    const vis=[...burnPast,...burnFut].filter(p=>p[0]>=V0-3600&&p[0]<=V1+3600).map(p=>p[1]);
+    cap=niceScale(Math.max(refH*1.15,.5,...vis),4).max}
   const X=t=>(t-V0)/VS*1000,P=t=>(t-V0)/VS*100,Y=v=>BOT-v/cap*(BOT-TOP);
   const nm=a=>legendName(a.email||a.auth_id);
   const d0=new Date(now),ticks=xTicks(V0,V1);
@@ -1079,34 +1163,73 @@ function renderTimeline(){
   const zv=zs.map(([s,e])=>({s,e,vs:Math.max(s,V0),ve:Math.min(e,V1)})).filter(z=>z.ve>z.vs);
 
   // At most 4 ticks: 0, steps of whole accounts, and the full capacity.
-  const n=cap/100,step=n===1?50:100*Math.ceil(n/3),yt=[];
-  for(let v=0;v<=cap;v+=step)yt.push(v);
-  if(cap-yt[yt.length-1]>step*.4)yt.push(cap);else yt[yt.length-1]=cap;
+  let yt=[];
+  if(rateMode)yt=niceScale(cap,4).ticks;
+  else{const n=cap/100,step=n===1?50:100*Math.ceil(n/3);
+    for(let v=0;v<=cap;v+=step)yt.push(v);
+    if(cap-yt[yt.length-1]>step*.4)yt.push(cap);else yt[yt.length-1]=cap}
   const grid=yt.filter(v=>v>0&&v!==cap).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")
     +ticks.map(k=>`<line class="gv" x1="${X(k.t).toFixed(1)}" x2="${X(k.t).toFixed(1)}" y1="8" y2="${BOT}" ${NS}/>`).join("");
   const zrect=zv.map(z=>`<rect x="${X(z.vs).toFixed(1)}" y="8" width="${Math.max(2,X(z.ve)-X(z.vs)).toFixed(1)}" height="${BOT-8}" fill="var(--st-crit)" fill-opacity=".12"/>`).join("");
   const evs=rec.events.map(e=>({...e,x:Math.max(e.at,t0)})).sort((a,b)=>a.x-b.x);
-  const svg=`<defs><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
+  let svg=`<defs><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
       <stop offset="0" stop-color="var(--claude)" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="var(--claude)" stop-opacity="0"/></linearGradient></defs>
     ${grid}${zrect}${areaD?`<path d="${areaD}" fill="url(#tlGrad)" stroke="none"${past?` opacity=".45"`:""}/>`:""}${pastArea}
     <line class="capl" x1="0" x2="1000" y1="${Y(cap)}" y2="${Y(cap)}" ${NS}/>
     <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past&&nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}${lineD?`<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`:""}`;
-  const ylab=yt.map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("");
-  const capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${cap===100?"conta cheia":"todas cheias"}</div>`;
+  const yfmt=v=>rateMode?(v>0&&v<1?fmt1(v):Math.round(v*10)/10).toString().replace(".",",")+"%/h":v+"%";
+  const ylab=yt.map(v=>`<span style="top:${Y(v)}px">${yfmt(v)}</span>`).join("");
+  let capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${cap===100?"conta cheia":"todas cheias"}</div>`;
+  if(rateMode){
+    const pd=burnPast.length>1?clipPts(burnPast,V0,V1):[],fd=clipPts([[t0,burnPast.length?burnPast[burnPast.length-1][1]:burnFut.length?burnFut[0][1]:0],...burnFut],V0,V1);
+    const dd=pts=>pts.map((p,k)=>(k?"L":"M")+fx(p)).join(""),ar=pts=>pts.length>1?`<path d="${dd(pts)}L${X(pts[pts.length-1][0]).toFixed(1)},${BOT}L${X(pts[0][0]).toFixed(1)},${BOT}Z" fill="url(#tlGrad)" stroke="none"/>`:"";
+    const gridR=yt.filter(v=>v>0).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")+ticks.map(k=>`<line class="gv" x1="${X(k.t).toFixed(1)}" x2="${X(k.t).toFixed(1)}" y1="8" y2="${BOT}" ${NS}/>`).join("");
+    svg=`<defs><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
+      <stop offset="0" stop-color="var(--claude)" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="var(--claude)" stop-opacity="0"/></linearGradient></defs>
+      ${gridR}${zrect}${ar(pd)}${fd.length>1?ar(fd).replace("<path ",'<path opacity=".45" '):""}
+      <line class="capl" x1="0" x2="1000" y1="${Y(refH)}" y2="${Y(refH)}" ${NS}/>
+      <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}
+      ${pd.length>1?`<path class="tl-line" d="${dd(pd)}" ${NS}/>`:""}${fd.length>1?`<path class="tl-line proj" d="${dd(fd)}" ${NS}/>`:""}`;
+    capLabel=`<div class="tl-capl" style="top:${Math.max(0,Y(refH)-18)}px" data-tip="${esc("Quanto as recargas semanais devolvem por hora. Acima dessa linha o total restante cai.")}">recarga ${fmt1(refH)}%/h</div>`}
   const zlab=zv.map(z=>{const right=P(z.vs)>60;
     return `<div class="tl-zero" style="top:${BOT-24}px;${right?`right:${(100-P(z.ve)).toFixed(2)}%`:`left:${P(z.vs).toFixed(2)}%`}" data-tip="${esc(`Sem limite de ${fmtDate(new Date(z.s*1000))} até ${z.e>=t0+HZ-1?"depois do fim da projeção":fmtDate(new Date(z.e*1000))}`)}">
       <b>${ICON_X}sem limite · ${fmtSpan((z.e-z.s)/3600)}</b></div>`}).join("");
   // Lowest point of the visible projection (skipped when it is its first point, or zero: the "sem limite" label covers that).
   let mk=0;for(let k=1;k<prc.length;k++)if(prc[k][1]<prc[mk][1]-.05)mk=k;
-  const minOn=prc.length>1&&mk>0&&prc[mk][1]>.5;
+  const minOn=!rateMode&&prc.length>1&&mk>0&&prc[mk][1]>.5;
 
-  const pastH=past?Math.round((t0-F0)/3600):0;
-  const legend=past?`<span><i></i>Real (${pastH}h)</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>Capacidade restante somada</span>`;
+  const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?Math.round(pastH/24)+" dias":pastH+"h";
+  const legend=past?`<span><i></i>Real (${pastLbl})</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>${rateMode?"Gasto por hora":"Capacidade restante somada"}</span>`;
   const rate=br.ok
-    ?`<span data-tip="${esc(paceTipFull(br))}">gasto <b>${Math.round(br.total)}%/dia</b></span>${paceTagHtml(br)} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
+    ?`<span data-tip="${esc(paceTipFull(br))}">gasto <b>${Math.round(br.total*sm)}%/dia</b></span>${paceTagHtml(br)}${sm!==1?` <span class="tl-scen">${esc(SCEN[tlo.scen].l.toLowerCase())}</span>`:""} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
-  const tools=`<div class="tl-tools">${zoomed?`<span class="tl-hint">arraste para mover · shift+arraste seleciona</span>`:""}${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir zoom</button>`:""}<div class="seg">${
-    [["24h","24h"],["3d","3 dias"],["all","Tudo"]].map(([v,l])=>`<button type="button" data-z="${v}"${!custom&&tlz.preset===v?` class="on"`:""}>${l}</button>`).join("")}</div></div>`;
+  const hasAll=F0<t0-2*DAY-3600;
+  const fmtRange=t=>new Date(t*1000).toLocaleDateString("pt-BR",{day:"numeric",month:"short"}).replace(".","");
+  const tools=`<div class="tl-tools">${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir zoom</button>`:""}<div class="seg">${
+    [["24h","24h"],["3d","3 dias"],["week","Semana"],["all","Tudo"]].filter(([v])=>v!=="all"||hasAll).map(([v,l])=>`<button type="button" data-z="${v}"${!custom&&(tlz.preset===v||(v==="week"&&tlz.preset==="all"&&!hasAll))?` class="on"`:""}>${l}</button>`).join("")}</div></div>`;
+  const nav=`<div class="tl-nav"><span class="tabular">${esc(fmtRange(V0))} – ${esc(fmtRange(V1))}</span><button type="button" data-z="prev" aria-label="Voltar"${V0<=F0+1?" disabled":""}>${ICON_CHEV}</button><button type="button" data-z="next" aria-label="Avançar"${V1>=F1-1?" disabled":""}>${ICON_CHEV}</button></div>`;
+  // Controls row: view, pace window (global), scenario and accounts (this chart only).
+  const segOf=(attr,cur,opts)=>`<div class="seg">${opts.map(([v,l,tip])=>`<button type="button" data-${attr}="${v}"${cur===v?` class="on"`:""}${tip?` data-tip="${esc(tip)}"`:""}>${l}</button>`).join("")}</div>`;
+  const accMenu=`<div class="tl-accm"><button type="button" class="tl-accb${tlo.hide.size?" on":""}" data-accmenu="1" aria-expanded="${tlo.menu}">Contas <b>${accs.length}/${allAccs.length}</b></button>${tlo.menu?`<div class="tl-menu">${allAccs.map(a=>`<label><input type="checkbox" data-hide="${esc(a.auth_id)}"${tlo.hide.has(a.auth_id)?"":" checked"}${!tlo.hide.has(a.auth_id)&&accs.length===1?" disabled":""}><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span>${esc(nm(a))}</span></label>`).join("")}<div class="tl-menu-n">Só muda este gráfico.</div></div>`:""}</div>`;
+  const ctl=`<div class="tl-ctl">${segOf("view",tlo.view,[["left","Restante"],["rate","Gasto por hora"]])}
+    <span class="tl-lab">Ritmo</span>${segOf("burn",state.burn,[["auto","Auto","Ponderado: as últimas horas pesam mais (meia-vida 12h) e mistura com a média da semana enquanto há pouco histórico"],["1","1h","Ritmo das últimas 1h"],["3","3h","Ritmo das últimas 3h"],["6","6h","Ritmo das últimas 6h"]])}
+    <span class="tl-lab">Uso futuro</span><select class="sel" data-scen="1" aria-label="Uso futuro">${Object.entries(SCEN).map(([v,o])=>`<option value="${v}"${tlo.scen===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select>
+    ${accMenu}<div class="spacer"></div>${nav}</div>`;
+  // Summary strip (this chart's run).
+  const hm=t=>{const d=new Date(t*1000);return fmtWd(d)+" "+fmtHour(d)};
+  const zf=zs.find(z=>z[0]>t0-60),firstEmpty=Object.entries(cf.info).filter(([,f])=>f.zero!=null).sort((a,b)=>a[1].zero-b[1].zero)[0];
+  const nxt=evs.find(e=>e.gain>=1)||evs[0];
+  let d3=0,c3=0;for(const a of accs){const r=recentUse(quota7Of(a.auth_id),t0,3);if(r.n>1){d3+=r.drop;c3=Math.max(c3,r.coveredH)}}
+  const stItem=(k,v,sub,tip)=>`<div class="tl-st"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div>${sub?`<div class="s">${sub}</div>`:""}</div>`;
+  const faName=firstEmpty&&legendName((allAccs.find(a=>a.auth_id===firstEmpty[0])||{}).email||firstEmpty[0]).split("@")[0];
+  const stats=`<div class="tl-stats">${
+    stItem("Sem limite",!br.ok?"—":zf?esc(hm(zf[0])):"Não até "+esc(fmtWd(new Date(F1*1000))+" "+new Date(F1*1000).getDate()),zf?`em ${fmtLeft(zf[0]*1000-now)} · por ${fmtSpan((zf[1]-zf[0])/3600)}`:br.ok?"no ritmo e cenário escolhidos":"coletando ritmo",
+      "Quando o total de todas as contas do gráfico chega a 0%.")
+    +stItem("Primeira a esgotar",firstEmpty?esc(faName):"Nenhuma",firstEmpty?(firstEmpty[1].zero*1000<=now+60e3?"já esgotada":`${esc(hm(firstEmpty[1].zero))} · ${fmtLeft((firstEmpty[1].at-firstEmpty[1].zero)*1000)} antes do reset`):"antes do próprio reset",
+      "Primeira conta a chegar a 0% antes do próprio reset semanal. É o esperado com várias contas: o proxy passa para a próxima.")
+    +stItem("Próxima recarga",nxt?`<i class="adot" style="--c:${ACC[nxt.a.auth_id]}"></i>+${Math.round(nxt.gain)}%`:"—",nxt?`${esc(nm(nxt.a).split("@")[0])} · ${esc(hm(nxt.at))}`:"nenhuma nos próximos 7 dias")
+    +stItem("Gasto, últimas 3h",c3>0?`${fmt1(d3/Math.max(c3,.5))}%/h`:"—",c3>0?`−${fmt1(d3)}% em ${fmt1(c3)}h`:"sem amostras",
+      "Queda somada do % semanal das contas do gráfico nas últimas 3 horas, por hora.")}</div>`;
 
   // Agenda: one equal column per calendar day, today through the day of now+7d. It does not follow the chart's zoom.
   // The chip shows the same simulated gain as the chart marker; today's usage is secondary.
@@ -1130,21 +1253,31 @@ function renderTimeline(){
   }
 
   const agOld=el.querySelector(".ag-row"),agScroll=agOld?agOld.scrollLeft:0;
-  el.innerHTML=`<div class="tl-cap"><div class="tl-leg">${legend}</div><div class="tl-rt"><span>${rate}</span>${tools}</div></div>
+  el.innerHTML=`${ctl}${stats}<div class="tl-cap"><div class="tl-leg">${legend}</div><div class="tl-rt"><span>${rate}</span>${zoomed?`<span class="tl-hint">arraste para mover · shift+arraste seleciona</span>`:""}${tools}</div></div>
     <div class="tl-chart"><div class="tl-y">${ylab}</div>
       <div class="tl-plot${zoomed?" zoomed":""}" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
         <div class="tl-hover" id="tlHover"></div><i class="tl-hdot" id="tlHdot"></i><div class="tip" id="tlTip"></div></div></div>
     <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>
     <div class="ag"><div class="ag-t">Agenda de recargas</div>${agenda}</div>`;
   const agNew=el.querySelector(".ag-row");if(agNew)agNew.scrollLeft=agScroll;
-  el.onclick=ev=>{const b=ev.target.closest&&ev.target.closest("[data-z]");if(!b)return;
-    tlz.rng=null;tlz.preset=b.dataset.z==="reset"?"all":b.dataset.z;renderTimeline()};
+  el.onclick=ev=>{const t=ev.target.closest?ev.target:null;if(!t)return;
+    const z=t.closest("[data-z]"),vw=t.closest("[data-view]"),bu=t.closest("[data-burn]"),am=t.closest("[data-accmenu]"),hd=t.closest("[data-hide]");
+    if(z){const v=z.dataset.z;
+      if(v==="prev"||v==="next"){const d=(v==="prev"?-1:1)*VS/2,a=Math.min(Math.max(F0,V0+d),F1-VS);tlz.rng=[a,a+VS];tlz.preset=null}
+      else{tlz.rng=null;tlz.preset=v==="reset"?"week":v}
+      renderTimeline()}
+    else if(vw){tlo.view=vw.dataset.view;store.set("usage.tlview",tlo.view);renderTimeline()}
+    else if(bu){state.burn=bu.dataset.burn;store.set("usage.burn",state.burn);el.dataset.key="";renderAll()}
+    else if(am){tlo.menu=!tlo.menu;renderTimeline()}
+    else if(hd){const id=hd.dataset.hide;if(hd.checked)tlo.hide.delete(id);else tlo.hide.add(id);
+      store.set("usage.tlhide",JSON.stringify([...tlo.hide]));renderTimeline()}};
+  const scSel=el.querySelector("[data-scen]");if(scSel)scSel.onchange=()=>{tlo.scen=scSel.value;store.set("usage.scen",tlo.scen);scSel.blur();renderTimeline()};
 
   const plot=$("#tlPlot"),W=plot.clientWidth||800;
   // Axis labels by priority (agora, left edge, then ticks), dropping any that would touch an accepted one.
   const xn=P(t0)/100*W,xs=[],xlab=[];
   if(nowVis)xlab.push({x:xn,t:"agora",first:true});
-  if(past&&V0<=F0+1)xlab.push({x:0,t:"−"+pastH+"h",first:true});
+  if(past&&V0<=F0+1)xlab.push({x:0,t:"−"+pastLbl.replace(" dias","d"),first:true});
   ticks.forEach(k=>xlab.push({x:P(k.t)/100*W,t:k.l,pct:P(k.t)}));
   let xl="";
   for(const l of xlab){
@@ -1157,6 +1290,8 @@ function renderTimeline(){
   // a second row when two would overlap ("agora" value label takes the first slot at the left).
   const CW=46,boxes=[];
   let ov="";
+  if(rateMode){if(nowVis)ov+=`<div class="tl-nowl" style="left:${xn.toFixed(1)}px">agora</div>`}
+  else{
   if(nowVis){const nr=xn+58>W;
     boxes.push({l:nr?xn-58:xn,r:nr?xn:xn+58,t:Y(tot[0])-24});
     if(past)boxes.push({l:xn-20,r:xn+20,t:0});
@@ -1170,9 +1305,18 @@ function renderTimeline(){
     boxes.push({l:l-CW/2,r:l+CW/2,t:top});
     ov+=`<i class="tl-dot" style="left:${P(e.x).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"></i>`
       +`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[e.a.auth_id]}">+${Math.round(e.gain)}%</div>`}
+  // Refills already seen in the recorded part: a rise of the weekly remaining between two samples.
+  if(past)for(const a of accs){const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);
+    for(let k=1;k<q.length;k++){const g=q[k].w-q[k-1].w;if(g<3||q[k].t<Math.max(V0,F0)||q[k].t>Math.min(V1,t0))continue;
+      const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),l=Math.max(CW/2,Math.min(W-CW/2,x));
+      let top=0;for(let row=0;row<4;row++){top=Math.max(0,yt2-24-row*20);if(!boxes.some(b=>l-CW/2<b.r+4&&l+CW/2>b.l-4&&Math.abs(top-b.t)<18))break}
+      boxes.push({l:l-CW/2,r:l+CW/2,t:top});
+      ov+=`<i class="tl-dot" style="left:${P(q[k].t).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`
+        +`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}">+${Math.round(g)}%</div>`}}
   if(minOn){const tm=prc[mk][0],vm=prc[mk][1],ym=Y(vm),l=Math.max(60,Math.min(W-60,P(tm)/100*W)),below=ym+26<=BOT;
     ov+=`<i class="tl-dot min" style="left:${P(tm).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
       +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(fmtWd(new Date(tm*1000))+" "+(m=>m.getHours()+"h"+(m.getMinutes()?String(m.getMinutes()).padStart(2,"0"):""))(new Date(tm*1000)))}</div>`}
+  }
   plot.insertAdjacentHTML("beforeend",ov);
 
   const tip=$("#tlTip"),hl=$("#tlHover"),hd=$("#tlHdot");
@@ -1204,6 +1348,20 @@ function renderTimeline(){
     tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
     let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
     tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"};
+  if(rateMode){const fut=[[t0,burnPast.length?burnPast[burnPast.length-1][1]:burnFut.length?burnFut[0][1]:0],...burnFut];
+    plot.onpointermove=plot.onpointerdown=ev=>{
+      if((drag&&drag.on)||tlPan)return;
+      const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=V0+x/r.width*VS,isPast=t<t0&&burnPast.length>1;
+      const src=isPast?burnPast:fut;if(src.length<2||t<src[0][0]-1800){tip.style.display="none";hd.style.opacity=0;hl.style.opacity=0;return}
+      const v=Math.max(0,atPts(src,t));
+      hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
+      tip.innerHTML=`<div class="d">${esc(fmtDate(new Date(t*1000)))} · ${isPast?"real":"projeção"}</div>
+        <div class="r tot"><span>Gasto</span><b class="tabular">${fmt1(v)}%/h</b></div>
+        <div class="r"><span>Recarga</span><b class="tabular">${fmt1(refH)}%/h</b></div>
+        <div class="d" style="margin:6px 0 0">${v>refH?"o total restante está caindo":"as recargas cobrem esse ritmo"}</div>`;
+      tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
+      let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
+      tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"}}
   plot.onpointerleave=()=>{if((drag&&drag.on)||tlPan)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
 
   // Brush to zoom (mouse/pen; touch keeps scrolling the page and uses the presets).
@@ -1230,7 +1388,7 @@ function renderTimeline(){
     if(tb>F1){ta=Math.max(F0,ta-(tb-F1));tb=F1}
     tlz.rng=[ta,tb];tlz.preset=null;renderTimeline()});
   plot.addEventListener("pointercancel",()=>{drag=null;band.remove()});
-  plot.addEventListener("dblclick",()=>{if(tlz.rng||tlz.preset!=="all"){tlz.rng=null;tlz.preset="all";renderTimeline()}});
+  plot.addEventListener("dblclick",()=>{if(tlz.rng||tlz.preset!=="week"){tlz.rng=null;tlz.preset="week";renderTimeline()}});
   // Pan while zoomed: shift+wheel or horizontal wheel/trackpad. Plain vertical wheel keeps scrolling the page.
   let wacc=0,wraf=0;
   // Vertical wheel zooms around the pointer; shift or horizontal wheel pans while zoomed.
@@ -1406,7 +1564,7 @@ function renderModal(){
   if(!a){closeAccModal();return}
   const now=Date.now(),email=a.email||a.auth_id,c=ACC[a.auth_id],mode=a.mode||"normal",wk=weeklyOf(a),sh=shortOf(a);
   const rec={},pf=poolForecast(now,rec),i=pf.accs.indexOf(a),f=pf.info[a.auth_id];
-  const own=paceFrom([a],state.quota7,now/1000),ext=pf.br.ok?(pf.br.ext||{})[a.auth_id]||0:0;
+  const own=paceFrom([a],state.quota7,now/1000,state.burn==="auto"?0:+state.burn),ext=pf.br.ok?(pf.br.ext||{})[a.auth_id]||0:0;
   const stat=(k,v,sub,tip,cls)=>`<div class="md-stat${cls?" "+cls:""}"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div><div class="s">${sub}</div></div>`;
   const wl=wk?Math.round(100-clampPct(wk.used_percent)):null,sl=sh?Math.round(100-clampPct(sh.used_percent)):null;
   const rs=w=>w&&w.reset_at?`reseta em ${fmtLeft(Date.parse(w.reset_at)-now)} · ${esc(fmtShort(new Date(w.reset_at)))}`:"sem horário de reset";
