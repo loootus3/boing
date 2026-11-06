@@ -12,6 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
@@ -109,12 +111,40 @@ type Entry struct {
 	Active    bool      `json:"active"` // next credential the soonest-reset selector will spend
 	// Mode is the spending mode: "normal", "last" or "off" (see coreauth.MetadataUsageMode).
 	Mode string `json:"mode"`
+	// Name is the display name chosen on the /usage page (metadata MetadataUsageName), empty when unset.
+	Name string `json:"name,omitempty"`
 	// NeedsLogin is set when the provider rejected the stored token.
 	NeedsLogin bool `json:"needs_login,omitempty"`
 	// LimitReached is set when the upstream reports the subscription limit as reached.
 	LimitReached bool `json:"limit_reached"`
 	// RetryAt is set while the credential is backing off after an upstream rate limit.
 	RetryAt *time.Time `json:"retry_at,omitempty"`
+}
+
+// MetadataUsageName is the auth-file metadata key holding the account name chosen on the /usage page.
+const MetadataUsageName = "usage_name"
+
+// maxAccountName caps the display name, in characters.
+const maxAccountName = 32
+
+// cleanAccountName collapses whitespace and control characters into single spaces and reports whether
+// the result fits maxAccountName.
+func cleanAccountName(s string) (string, bool) {
+	s = strings.Join(strings.FieldsFunc(s, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }), " ")
+	return s, utf8.RuneCountInString(s) <= maxAccountName
+}
+
+// accountName returns the stored display name of a credential, cleaned and capped.
+func accountName(a *coreauth.Auth) string {
+	if a == nil || a.Metadata == nil {
+		return ""
+	}
+	v, _ := a.Metadata[MetadataUsageName].(string)
+	s, ok := cleanAccountName(v)
+	if !ok {
+		s = string([]rune(s)[:maxAccountName])
+	}
+	return s
 }
 
 // weekly returns the main long window: weekly, or monthly for plans without one.
@@ -491,6 +521,7 @@ func (t *Tracker) Snapshot() []Entry {
 			}
 			e.Disabled = a.Disabled
 			e.Mode = coreauth.AuthUsageMode(a)
+			e.Name = accountName(a)
 			e.NeedsLogin = strings.Contains(e.Error, "HTTP 401") || strings.Contains(strings.ToLower(a.StatusMessage), "invalid_grant")
 			if !activeSet && !a.Disabled && e.Mode != coreauth.UsageModeOff && !e.NeedsLogin && !e.resetInfo().Exhausted {
 				e.Active = true

@@ -551,6 +551,16 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
 .cap-avg{display:flex;flex-direction:column;align-items:flex-end;text-align:right;flex:none;margin-left:auto;padding-bottom:2px;cursor:default}
 .cap-avg b{font-size:20px;line-height:1.1;font-weight:650;letter-spacing:-.01em}
 .cap-avg span{font-size:12px;color:var(--muted-foreground);margin-top:2px}
+.acct .who .redact{flex:0 1 auto}
+.redact .em{color:var(--muted-foreground);font-weight:400}
+.redact b{font-weight:600}
+.acct-ren{flex:none;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;margin-left:-4px;border:0;border-radius:6px;background:none;color:var(--muted-foreground);cursor:pointer}
+.acct-ren[hidden]{display:none}
+.acct-ren:hover{color:var(--foreground);background:var(--accent)}
+.acct-ren:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+.acct-ren svg.i{width:14px;height:14px}
+.rn-in{flex:1 1 auto;min-width:0;height:28px;padding:0 8px;border:1px solid var(--input,var(--border));border-radius:6px;background:var(--background);color:var(--foreground);font:inherit;font-size:13px}
+.rn-in:focus{outline:2px solid var(--focus);outline-offset:0;border-color:transparent}
 </style>
 </head>
 <body>
@@ -630,6 +640,7 @@ const ICON_GAUGE='<svg class="i" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path
 const ICON_ALERT='<svg class="i" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg>';
 const ICON_CHECK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>';
 const ICON_X='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>';
+const ICON_PEN='<svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9a2.83 2.83 0 0 0-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>';
 const ICON_CHEV='<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
 const ICON_CLOSE='<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const ICON_SLIDERS='<svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
@@ -682,11 +693,12 @@ function hue(v){let h=0;for(const c of v)h=(h*31+c.charCodeAt(0))|0;return Math.
 function initials(v){const l=String(v).split("@")[0].replace(/[^a-z]/gi,"");if(!l)return"?";
   const b=[...l.slice(1)].find(c=>!/[aeiou]/i.test(c))||l[1]||"";return(l[0]+b).toUpperCase()}
 // With `c` (the account's identity colour) the avatar wears it, so one colour marks the account everywhere.
-function who(email,c){const h=hue(email);
+function who(email,c,name){const h=hue(email),ini=name&&initials(name)!=="?"?initials(name):initials(email);
   const st=c?`background:color-mix(in srgb,${c} 22%,transparent);color:var(--foreground)`:`background:oklch(.85 .08 ${h});color:oklch(.35 .1 ${h})`;
-  return `<span class="avatar" style="${st}">${esc(initials(email))}</span>
-    <span class="redact" title="${esc(email)}">${esc(email)}</span>`}
+  return `<span class="avatar" style="${st}">${esc(ini)}</span>
+    <span class="redact" title="${esc(email)}">${name?`<b>${esc(name)}</b><span class="em"> · ${esc(email)}</span>`:esc(email)}</span>`}
 const legendName=email=>String(email).split("@")[0];
+const dispName=a=>a?(a.name||legendName(a.email||a.auth_id)):"";
 
 /* global tooltip for every [data-tip] mark */
 const gtip=document.createElement("div");gtip.className="gtip";document.body.appendChild(gtip);
@@ -1024,7 +1036,7 @@ function renderCapacity(now){
   const full=sum/100;
   // Segmented bar: one block per account sized by its remaining, then the spent part.
   const blocks=()=>accs.filter(a=>rem(a)>0).sort(capOrder).map(a=>{const w=weeklyOf(a),r=w.reset_at?Date.parse(w.reset_at):0;
-    const tip=`${legendName(a.email||a.auth_id)}${a.active?" · em uso":""}\n${Math.round(rem(a))}% restante`+(r?` · reseta em ${fmtLeft(r-now)}`:"");
+    const tip=`${dispName(a)}${a.active?" · em uso":""}\n${Math.round(rem(a))}% restante`+(r?` · reseta em ${fmtLeft(r-now)}`:"");
     return `<i data-tip="${esc(tip)}" style="flex:${rem(a)} 1 0;--c:${ACC[a.auth_id]};${a.mode==="off"?"opacity:.5":""}"></i>`}).join("");
   const spent=cap-sum;
   const track=spent>0?`<i class="track" data-tip="${esc(`Já gasto: ${Math.round(spent)}% de ${cap}%`)}" style="flex:${spent} 1 0"></i>`:"";
@@ -1035,12 +1047,12 @@ function renderCapacity(now){
   const rows=claudeAccs().sort(capOrder);
   const row=a=>{
     const w=weeklyOf(a),mode=a.mode||"normal",email=a.email||a.auth_id,r=resetOf(a),off=mode==="off",on=!!a.active&&!a.needs_login&&!!w;
-    const hint=mode==="last"?"por último":off?"não usar":"";
-    const name=`<div class="cr-n"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span class="cr-e" title="${esc(email)}">${esc(legendName(email))}</span>${on?`<em class="use" role="img" aria-label="em uso" data-tip="${esc("Em uso: o proxy está usando esta conta agora.\nQuando ela esgotar ou resetar, passa para a próxima.")}"></em>`:""}${hint?`<em>${hint}</em>`:""}</div>`;
+    const hint=off?"não usar":"";
+    const name=`<div class="cr-n"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span class="cr-e" title="${esc(email)}">${esc(dispName(a))}</span>${on?`<em class="use" role="img" aria-label="em uso" data-tip="${esc("Em uso: o proxy está usando esta conta agora.\nQuando ela esgotar ou resetar, passa para a próxima.")}"></em>`:""}${hint?`<em>${hint}</em>`:""}</div>`;
     const reason=a.needs_login?"desconectada":!w?"sem janela semanal":off?"sem projeção":!r?"sem horário de reset":"";
     if(a.needs_login||!w)return `<div class="cr dim">${name}<span class="cr-e2" style="grid-area:e">${reason}</span></div>`;
     const left=Math.round(rem(a)),l=lvl(left);
-    const meter=`<div class="cr-m" data-tip="${esc(`${legendName(email)}\n${left}% restante da janela semanal`)}"><div class="meter" style="--c:${ACC[a.auth_id]}"><i style="width:${left}%"></i></div><b class="tabular ${l}">${left}%</b></div>`;
+    const meter=`<div class="cr-m" data-tip="${esc(`${dispName(a)}\n${left}% restante da janela semanal`)}"><div class="meter" style="--c:${ACC[a.auth_id]}"><i style="width:${left}%"></i></div><b class="tabular ${l}">${left}%</b></div>`;
     const rst=r?`<span class="cr-r tabular" data-tip="${esc("Reseta "+fmtDate(new Date(r)))}">${fmtLeft(r-now)}<span class="abs"> · ${esc(fmtShort(new Date(r)).replace(", "," "))}</span></span>`:`<span class="cr-r">—</span>`;
     let est;
     if(reason)est=`<span class="cr-e2">${reason}</span>`;
@@ -1205,7 +1217,7 @@ function renderTimeline(){
   // Re-rendering would close an open <select>.
   if(el.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
   const rec={},cf=chartForecast(now,rec),accs=cf.accs,br=cf.br,sm=cf.m,perHour=br.ok?br.total*sm/24:0,rateMode=tlo.view==="rate";
-  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,state.burn,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
+  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,state.burn,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+dispName(a)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
   const PH=innerWidth<640?240:280,TOP=44,BOT=PH-6,HZ=7*DAY,PAST=7*DAY,t0=now/1000,ts=rec.ts,tot=rec.tot,K=ts.length;
@@ -1232,7 +1244,7 @@ function renderTimeline(){
     const vis=[...burnPast,...burnFut].filter(p=>p[0]>=V0-3600&&p[0]<=V1+3600).map(p=>p[1]);
     cap=niceScale(Math.max(refH*1.15,safeH*1.1,.5,...vis),4).max}
   const X=t=>(t-V0)/VS*1000,P=t=>(t-V0)/VS*100,Y=v=>BOT-v/cap*(BOT-TOP);
-  const nm=a=>legendName(a.email||a.auth_id);
+  const nm=a=>dispName(a);
   const d0=new Date(now),ticks=xTicks(V0,V1);
   // One date style for the whole card: "hoje 21:59", "amanhã 04:00", "seg 9, 17:28".
   const hm=t=>{const d=new Date(t*1000),dd=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()))/864e5);
@@ -1323,7 +1335,7 @@ function renderTimeline(){
   const measured=` · <span data-tip="${esc(`Quanto as recargas semanais devolvem, em média (≈${Math.round(refillPerDay(accs))}%/dia)`+(c3>0?`\nMedido nas últimas ${wH}h: ${fmt1(d3/Math.max(c3,.5))}%/h`:""))}" tabindex="0">recargas devolvem <b>~${fmt1(refillPerDay(accs)/24)}%/h</b></span>`;
   const stItem=(k,v,sub,tip,cls)=>`<div class="tl-st${cls?" "+cls:""}"${tip?` data-tip="${esc(tip)}" tabindex="0"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div>${sub?`<div class="s">${sub}</div>`:""}</div>`;
   const zCls=!br.ok||!zf?"good":"crit";
-  const faName=firstEmpty&&legendName((allAccs.find(a=>a.auth_id===firstEmpty[0])||{}).email||firstEmpty[0]).split("@")[0];
+  const faName=firstEmpty&&(x=>x?dispName(x):legendName(firstEmpty[0]))(allAccs.find(a=>a.auth_id===firstEmpty[0]));
   const zEnd=zf&&(zf[1]>=t0+HZ-1?resumeAfter(accs,zf[1]):zf[1]);
   const fullStats=tlo.scen!=="same"||tlo.hide.size>0;
   const stats=!fullStats?"":`<div class="tl-stats">${
@@ -1543,13 +1555,13 @@ function renderAccounts(){
   const accs=claudeAccs(),now=Date.now(),pf=poolForecast(now);
   $("#acctCount").innerHTML=`${accs.length} conta${accs.length===1?"":"s"} <span class="tick-key" data-tip="Onde o anel estaria se você gastasse por igual até o reset" tabindex="0">· <i></i>no anel = ritmo ideal</span>`;
   const box=$("#accts");
-  // Replacing the markup would close an open mode <select>; the next poll renders instead.
-  if(box.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
+  // Replacing the markup would close an open mode <select> or a name being edited; the next poll renders instead.
+  if(box.contains(document.activeElement)&&/^(SELECT|INPUT)$/.test(document.activeElement.tagName))return;
   const markup=accs.map(a=>{
       const mode=a.mode||"normal",email=a.email||a.auth_id,limited=/429/.test(a.error||"");
       const exhausted=a.limit_reached||(a.windows||[]).some(w=>w.kind!=="model"&&w.used_percent>=100);
       const s=shortOf(a),wk=weeklyOf(a);
-      let h=`<div class="card acct${mode==="off"?" off":""}" data-acc="${esc(a.auth_id)}"><div class="acct-head"><div class="who">${who(email,ACC[a.auth_id])}<button type="button" class="acct-more" data-open="${esc(a.auth_id)}" aria-label="${esc("Detalhes de "+email)}">Detalhes${ICON_CHEV}</button></div><div class="acct-sub">`;
+      let h=`<div class="card acct${mode==="off"?" off":""}" data-acc="${esc(a.auth_id)}"><div class="acct-head"><div class="who">${who(email,ACC[a.auth_id],a.name)}<button type="button" class="acct-ren" data-rename="${esc(a.auth_id)}" data-tip="Renomear" aria-label="${esc("Renomear "+(a.name||email))}">${ICON_PEN}</button><button type="button" class="acct-more" data-open="${esc(a.auth_id)}" aria-label="${esc("Detalhes de "+email)}">Detalhes${ICON_CHEV}</button></div><div class="acct-sub">`;
       if(a.plan)h+=`<span class="badge outline">${esc(a.plan)}</span>`;
       if(a.needs_login)h+=`<span class="badge err">desconectada</span><button class="btn sm" data-login="claude" data-auth="${esc(a.auth_id)}" data-keep="${esc(mode)}">Reconectar</button>`;
       else if(a.disabled)h+=`<span class="badge outline">desativada</span>`;
@@ -1613,6 +1625,7 @@ addEventListener("keydown",e=>{if(!modalId)return;
 $("#accModal").addEventListener("click",e=>{if(e.target.closest("[data-close]")){closeAccModal();return}
   const z=e.target.closest("[data-mdz]");if(z&&z.dataset.mdz!==mdRange){mdRange=z.dataset.mdz;renderModal()}});
 $("#accts").addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){openAccModal(o.dataset.open);return}
+  const rn=e.target.closest("[data-rename]");if(rn){startRename(rn.dataset.rename);return}
   if(e.target.closest("select,button,a,input"))return;
   const c=e.target.closest(".acct[data-acc]");if(c)openAccModal(c.dataset.acc)});
 $("#tCap").addEventListener("click",e=>{const r=e.target.closest(".cr[data-acc]");if(r)openAccModal(r.dataset.acc)});
@@ -1712,7 +1725,7 @@ function renderModal(){
         return `<span>${show?esc(hourly?d.getHours()+"h":k===n-1?"hoje":fmtWd(d)+" "+d.getDate()):""}</span>`}).join("")}</div>
       ${mx>0&&vals.length>8?`<div class="md-max">máx. ${esc(fmtMetric(mx))}</div>`:""}</div>`}
   const modeTxt={normal:"Normal",last:"Por último",off:"Não usar"}[mode]||mode;
-  const markup=`<div class="md-head">${who(email,c)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">Prioridade: ${esc(modeTxt)}</span>
+  const markup=`<div class="md-head">${who(email,c,a.name)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">Prioridade: ${esc(modeTxt)}</span>
       <button type="button" class="md-close" data-close aria-label="Fechar">${ICON_CLOSE}</button></div>
     <div class="md-stats">${stats}</div>
     <div class="md-sec"><div class="md-h"><span>Restante semanal · real e projeção</span>${ext>=.05?`<span>inclui ~${fmt1(ext)}%/dia fora do proxy</span>`:""}</div>${chart.html}</div>
@@ -1760,7 +1773,7 @@ function seriesIds(h){
   return[...ids].sort();
 }
 const accColor=id=>ACC[id]||"var(--muted-foreground)";
-const accName=id=>{const a=claudeAccs().find(x=>x.auth_id===id);return legendName(a?(a.email||a.auth_id):id)};
+const accName=id=>{const a=claudeAccs().find(x=>x.auth_id===id);return a?dispName(a):legendName(id)};
 // Sums the Claude accounts of an {auth_id: AccountTotals} map (current or previous period).
 function sumTotals(map,providers){
   const t={inp:0,out:0,cache:0,cw:0,req:0,fail:0,unpriced:0,cs:{total:0,input:0,cache_read:0,cache_write:0,output:0,no_cache:0}};
@@ -1983,6 +1996,7 @@ async function load(refresh){
     const quota7=period==="24h"?(r3&&r3.ok?(await r3.json()).quota:state.quota7):hist?hist.quota:state.quota7;
     if(seq!==loadSeq)return;
     // Committed only after every response parsed, so a failed poll keeps the last good data.
+    applyNames(data);
     state.data=data;state.hist=hist;state.quota7=quota7;
     state.dataNow=Date.parse(data.now)||Date.now();state.recvAt=Date.now();
     if(/^Falha ao carregar/.test($("#toast").textContent))toast("");
@@ -1996,6 +2010,46 @@ function setupSeg(id,key){const el=$("#"+id);el.setAttribute("role","group");
 setupSeg("period","period");setupSeg("stack","stack");
 $("#stats").onclick=e=>{const b=e.target.closest("[data-metric]");if(!b||b.dataset.metric===state.metric)return;state.metric=b.dataset.metric;store.set("usage.metric",state.metric);renderActivity();const nb=$(`#stats [data-metric="${state.metric}"]`);if(nb)nb.focus()};
 
+// Inline rename on the account card: Enter or leaving the field saves, Esc cancels, empty goes back to the e-mail.
+function startRename(id){
+  const box=$("#accts"),a=claudeAccs().find(x=>x.auth_id===id),card=[...box.querySelectorAll(".acct[data-acc]")].find(c=>c.dataset.acc===id);
+  const span=card&&card.querySelector(".who .redact"),btn=card&&card.querySelector("[data-rename]");if(!a||!span)return;
+  const inp=document.createElement("input");
+  inp.className="rn-in";inp.maxLength=32;inp.value=a.name||"";inp.placeholder=legendName(a.email||a.auth_id);inp.enterKeyHint="done";
+  inp.setAttribute("aria-label",`Nome de ${a.email||a.auth_id} (vazio volta a mostrar o e-mail)`);
+  span.replaceWith(inp);if(btn)btn.hidden=true;inp.focus();inp.select();
+  let done=false;
+  const finish=(save,key)=>{if(done)return;done=true;inp.blur();
+    const v=inp.value.replace(/\s+/g," ").trim();
+    if(save&&v!==(a.name||""))setName(id,v);else{box.dataset.key="";renderAccounts()}
+    if(key){const b=[...box.querySelectorAll("[data-rename]")].find(x=>x.dataset.rename===id);if(b)b.focus({preventScroll:true})}};
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();finish(true,true)}else if(e.key==="Escape"){e.preventDefault();e.stopPropagation();finish(false,true)}});
+  inp.addEventListener("blur",()=>{if(!document.hasFocus())return;
+    if(!pointerDown){finish(true,false);return}
+    const go=()=>{removeEventListener("pointerup",go,true);removeEventListener("pointercancel",go,true);setTimeout(()=>finish(true,false),0)};
+    addEventListener("pointerup",go,true);addEventListener("pointercancel",go,true)});
+}
+// Whether a pointer is pressed, so a click-away from the rename field can land before the cards are rebuilt.
+let pointerDown=false;
+addEventListener("pointerdown",()=>{pointerDown=true},true);
+for(const ev of["pointerup","pointercancel"])addEventListener(ev,()=>{pointerDown=false},true);
+// Names saved but maybe not yet in a poll response: applied over every load until the save settles.
+const nameOv={};
+const applyNames=data=>{for(const[id,n]of Object.entries(nameOv)){const x=(data.accounts||[]).find(a=>a.auth_id===id);if(x){if(n)x.name=n;else delete x.name}}};
+async function setName(authId,name){
+  const a=(state.data.accounts||[]).find(x=>x.auth_id===authId),prev=a?a.name:undefined;
+  nameOv[authId]=name;applyNames(state.data);
+  $("#accts").dataset.key="";renderAll();
+  if(DEMO){delete nameOv[authId];return}
+  try{
+    const r=await fetch("/usage/api/name",{method:"POST",headers:{"X-Usage-UI":"1","Content-Type":"application/json"},
+      body:JSON.stringify({auth_id:authId,name})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||("HTTP "+r.status))}
+    toast(name?`Conta renomeada para “${name}”.`:"Nome removido: volta a mostrar o e-mail.");
+  }catch(e){delete nameOv[authId];if(a){if(prev)a.name=prev;else delete a.name}$("#accts").dataset.key="";renderAll();toast("Falha ao renomear: "+e.message,true)}
+  await load(false);
+  delete nameOv[authId];
+}
 async function setMode(authId,mode){
   if(DEMO){const a=state.data.accounts.find(x=>x.auth_id===authId);if(a)a.mode=mode;renderAll();return}
   try{

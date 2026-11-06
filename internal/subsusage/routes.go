@@ -3,6 +3,7 @@ package subsusage
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"io"
 	"net"
 	"net/http"
@@ -228,6 +229,31 @@ func Register(engine *gin.Engine, h Handlers) {
 				return
 			}
 			setBody(c, doc.Bytes())
+			h.PatchFields(c)
+		}))
+		// {"auth_id": "...", "name": "..."} sets the account's display name; an empty name clears it.
+		g.POST("/api/name", requireUIHeader(func(c *gin.Context) {
+			body, ok := readBody(c)
+			if !ok {
+				return
+			}
+			authID := strings.TrimSpace(ojson.GetBytes(body, "auth_id").String())
+			nameField := ojson.GetBytes(body, "name")
+			name, okName := cleanAccountName(nameField.String())
+			if authID == "" || !nameField.Exists() || !okName {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "auth_id and a name of at most 32 characters are required"})
+				return
+			}
+			patch := map[string]any{"name": authID, MetadataUsageName: nil}
+			if name != "" {
+				patch[MetadataUsageName] = name
+			}
+			raw, errMarshal := json.Marshal(patch)
+			if errMarshal != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to build patch"})
+				return
+			}
+			setBody(c, raw)
 			h.PatchFields(c)
 		}))
 	}
