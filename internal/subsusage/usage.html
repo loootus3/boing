@@ -1023,15 +1023,16 @@ function renderCapacity(now){
   state.cap={sum,cap};
   const full=sum/100;
   // Segmented bar: one block per account sized by its remaining, then the spent part.
-  const byReset=a=>{const w=weeklyOf(a);return w.reset_at?Date.parse(w.reset_at):Infinity};
-  const blocks=accs.filter(a=>rem(a)>0).sort((x,y)=>byReset(x)-byReset(y)).map(a=>{const w=weeklyOf(a),r=w.reset_at?Date.parse(w.reset_at):0;
+  const blocks=()=>accs.filter(a=>rem(a)>0).sort(capOrder).map(a=>{const w=weeklyOf(a),r=w.reset_at?Date.parse(w.reset_at):0;
     const tip=`${legendName(a.email||a.auth_id)}${a.active?" · em uso":""}\n${Math.round(rem(a))}% restante`+(r?` · reseta em ${fmtLeft(r-now)}`:"");
     return `<i data-tip="${esc(tip)}" style="flex:${rem(a)} 1 0;--c:${ACC[a.auth_id]};${a.mode==="off"?"opacity:.5":""}"></i>`}).join("");
   const spent=cap-sum;
   const track=spent>0?`<i class="track" data-tip="${esc(`Já gasto: ${Math.round(spent)}% de ${cap}%`)}" style="flex:${spent} 1 0"></i>`:"";
   const pf=poolForecast(now),resetOf=a=>{const w=weeklyOf(a);return w&&w.reset_at?Date.parse(w.reset_at):0};
-  const key=a=>a.needs_login?Infinity:resetOf(a)||Infinity;
-  const rows=claudeAccs().sort((x,y)=>{const kx=key(x),ky=key(y);return kx===ky?0:kx<ky?-1:1});
+  // List order: the account in use, then the ones the proxy spends by reset, "por último", "não usar", unavailable.
+  const rank=a=>a.needs_login||!weeklyOf(a)?4:a.active?0:a.mode==="off"?3:a.mode==="last"?2:1;
+  const key=a=>resetOf(a)||Infinity,capOrder=(x,y)=>rank(x)-rank(y)||(key(x)===key(y)?0:key(x)<key(y)?-1:1);
+  const rows=claudeAccs().sort(capOrder);
   const row=a=>{
     const w=weeklyOf(a),mode=a.mode||"normal",email=a.email||a.auth_id,r=resetOf(a),off=mode==="off",on=!!a.active&&!a.needs_login&&!!w;
     const hint=mode==="last"?"por último":off?"não usar":"";
@@ -1061,7 +1062,7 @@ function renderCapacity(now){
   const avgHtml=pf.br.ok?`<div class="cap-avg" tabindex="0" data-tip="${esc(`Uso por dia no ritmo atual (o mesmo das projeções), somado nas contas.\n${paceTipFull(pf.br)}\nCada conta vale 100%; a recarga devolve ~${Math.round(refillPerDay(accs))}%/dia.`)}"><b class="tabular">~${Math.round(pf.br.total)}%</b><span>por dia · ritmo atual</span></div>`:"";
   el.innerHTML=`<div class="k">${title}</div>
     <div class="cap-top"><div class="hnum"><span id="capNum" data-n="${sum}" data-f="pct">${Math.round(sum)}%</span><small>de ${cap}% · ${cap/100} conta${cap>100?"s":""}</small></div>${avgHtml}</div>
-    <div class="segbar">${blocks}${track}</div>
+    <div class="segbar">${blocks()}${track}</div>
     <div class="caprows">${head}${rows.map(row).join("")}</div>`;
 }
 // Pace of the active account's 5h window from its last ~2h of samples (`s` = remaining %).
