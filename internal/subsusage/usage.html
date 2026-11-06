@@ -100,6 +100,9 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .legend .lg i{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
 .legend .lg b{font-weight:600;color:var(--foreground)}
 .legend .lg.dim{opacity:.55}
+.segbar{display:flex;gap:2px;height:28px;margin:2px 0 4px}
+.segbar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--c);transform-origin:left}
+.segbar>i.track{background:var(--track);min-width:0}
 .caprows{container-type:inline-size;display:flex;flex-direction:column;gap:10px}
 .cr{display:grid;grid-template-columns:minmax(0,1fr) 5.4rem 6rem 7.9rem;align-items:center;column-gap:10px;row-gap:6px;font-size:12px;color:var(--muted-foreground)}
 .cr.dim{opacity:.6}
@@ -203,6 +206,8 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .forecast{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--muted-foreground)}
 .forecast svg.i{width:14px;height:14px;flex:none;margin-top:1px}
 .forecast .est{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
+.recent{font-size:12px;color:var(--muted-foreground);cursor:help}
+.recent b{color:var(--foreground);font-weight:500}
 .forecast.bad{color:var(--error-foreground)}.forecast.ok{color:var(--success-foreground)}
 .spark{width:96px;height:24px;flex:none;display:block}
 .note{font-size:12px;color:var(--muted-foreground)}
@@ -358,7 +363,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 @keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 @keyframes ringin{from{stroke-dasharray:0 var(--circ)}}
 .meter i,.rate .bar i{transform-origin:left}
-body:not(.ready) .meter i,body:not(.ready) .rate .bar i{animation:grow .5s cubic-bezier(.2,.7,.2,1) both}
+body:not(.ready) .segbar>i:not(.track),body:not(.ready) .meter i,body:not(.ready) .rate .bar i{animation:grow .5s cubic-bezier(.2,.7,.2,1) both}
 body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -508,6 +513,7 @@ const lvlColor=l=>l==="crit"?"var(--st-crit)":l==="low"?"var(--st-warn)":"var(--
 // Healthy values wear the account's identity colour; status colours appear only at the low levels.
 const gaugeColor=(left,acc)=>lvl(left)?lvlColor(lvl(left)):(acc||"var(--muted-foreground)");
 const quotaOf=id=>(((state.hist&&state.hist.quota)||{})[id])||[];
+const quota7Of=id=>((state.quota7||{})[id]||[]);
 
 /* ring gauge: remaining % clockwise from 12 o'clock, optional even-pace tick */
 function ring(left,o){
@@ -561,8 +567,7 @@ function accountForecast(a,now,pf){
   pf=pf||poolForecast(now);
   const f=pf.info[a.auth_id];if(!f)return null;
   if(!pf.br.ok)return{cls:"wait",text:"coletando ritmo",icon:ICON_CLOCK};
-  const est=pf.br.source==="week";
-  const out=o=>(est&&(o.est="Poucos dados de histórico (menos de 6h): o ritmo foi estimado pelo que já foi gasto desde o início da janela semanal."),o);
+  const out=o=>(o.est=paceTip(pf.br),o.tag=PACE_TAG[pf.br.source],o);
   if(pf.br.perDay<=0)return out({text:pf.br.source==="week"?"sem gasto nesta janela":"sem gasto no período medido",cls:"ok",icon:ICON_CHECK});
   if(f.zero!=null){
     const ms=f.zero*1000-now;
@@ -617,19 +622,66 @@ function simulate(accs,perHour,now,rec,info){
   }
   return first;
 }
-// Average %/day drained from the accounts' weekly windows (summed) and the history span it covers.
-// With less than 6h of samples it falls back to the current windows: the weekly % already
-// used by all accounts divided by the longest time elapsed since a window started.
-function burnRate(accs){
-  let drop=0,span=0;
-  for(const a of accs){const st=burnStats(quotaOf(a.auth_id),"w");drop+=st.drop;span=Math.max(span,st.span)}
-  if(span>=6*3600)return{perDay:drop/span*DAY,span,ok:true,source:"hist"};
-  const now=Date.now()/1000;let used=0,elapsed=0;
+// Pace of the weekly windows (summed %/day), independent of the Atividade period filter.
+// Measured: weekly-remaining drops over the last 7 days (resets ignored), each weighted by an exponential
+// decay with half-life PACE_HALF_LIFE_H and divided by the equally weighted wall-clock coverage, so recent
+// hours count more. Weekly estimate: % already used ÷ time since the window started (valid after 6h).
+// The two blend by how much history there is (full measured weight at 24h). Pure: `quota` is a map
+// auth_id -> [{t,w,s}] sorted by t, `now` is in seconds.
+const PACE_HALF_LIFE_H=12;
+function paceFrom(accs,quota,now){
+  const k=Math.LN2/(PACE_HALF_LIFE_H*3600),since=now-7*DAY;
+  let N=0,tStart=Infinity;
+  for(const a of accs){
+    const pts=((quota||{})[a.auth_id]||[]).filter(p=>p.w!=null&&p.t>=since);
+    for(let i=1;i<pts.length;i++){
+      const x=pts[i-1],y=pts[i],drop=Math.max(0,x.w-y.w);
+      N+=Math.exp(-k*(now-(x.t+y.t)/2))*drop;
+      if(x.t<tStart)tStart=x.t;
+    }
+  }
+  const W=isFinite(tStart)?(1-Math.exp(-k*(now-tStart)))/k:0;
+  const measured=W>0?N/W*DAY:null,spanH=isFinite(tStart)?(now-tStart)/3600:0;
+  let used=0,elapsed=0;
   for(const a of accs){const w=weeklyOf(a),r=w&&Date.parse(w.reset_at)/1000;if(!r)continue;
     const dur=w.duration_sec||7*DAY,el=Math.max(0,Math.min(dur,now-(r-dur)));
     used+=clampPct(w.used_percent);elapsed=Math.max(elapsed,el)}
-  if(elapsed>=6*3600)return{perDay:used/elapsed*DAY,span,ok:true,source:"week"};
-  return{perDay:0,span,ok:false,source:""};
+  const weekEst=elapsed>=6*3600?used/elapsed*DAY:null;
+  const alpha=Math.max(0,Math.min(1,spanH/24));
+  const out={perDay:0,ok:false,source:"",measured,weekEst,alpha,spanH,halfLifeH:PACE_HALF_LIFE_H};
+  if(measured!=null&&weekEst!=null){
+    out.perDay=alpha*measured+(1-alpha)*weekEst;out.ok=true;out.source=alpha>=1?"hist":"blend";
+  }else if(weekEst!=null){out.perDay=weekEst;out.ok=true;out.source="week"}
+  else if(measured!=null&&spanH>=1){out.perDay=measured;out.ok=true;out.source="hist-short"}
+  return out;
+}
+// The one pace every forecast on the page uses; `span` (seconds) is the history behind the measured part.
+function burnRate(accs){
+  const r=paceFrom(accs,state.quota7,Date.now()/1000);
+  return{...r,span:r.spanH*3600};
+}
+const PACE_TAG={hist:"(ponderado)",blend:"(misto)",week:"(estimado)","hist-short":"(medido)"};
+function paceTip(br){
+  const v=Math.round(br.perDay),h=Math.round(br.spanH);
+  return br.source==="hist"?`ritmo ponderado pelas últimas ~24h (meia-vida ${br.halfLifeH}h) · ${v}%/dia`
+    :br.source==="blend"?`mistura: ${Math.round(br.alpha*100)}% do ritmo medido (${h}h de histórico) + estimativa da semana · ${v}%/dia`
+    :br.source==="week"?`estimado pela semana (% já usado ÷ tempo da janela) · ${v}%/dia`
+    :br.source==="hist-short"?`ritmo medido em ${h}h de histórico · ${v}%/dia`:"";
+}
+const paceTagHtml=(br,cls)=>br.ok?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}">${PACE_TAG[br.source]}</span>`:"";
+// Weekly-remaining drop (resets ignored) over the last `hours` and its hourly average over the time the samples cover.
+function recentUse(points,now,hours=3){
+  const pts=points.filter(p=>p.w!=null&&p.t>=now-hours*3600);
+  let drop=0;
+  for(let i=1;i<pts.length;i++)drop+=Math.max(0,pts[i-1].w-pts[i].w);
+  const coveredH=pts.length>1?(pts[pts.length-1].t-pts[0].t)/3600:0;
+  return{drop,perHour:pts.length>1?drop/Math.max(coveredH,.5):null,coveredH,n:pts.length};
+}
+function recentUseHtml(a,now){
+  const r=recentUse(quota7Of(a.auth_id),now/1000,3);
+  const tip=`Média da queda do % semanal nas últimas 3 horas (${r.n} ${r.n===1?"amostra":"amostras"})`;
+  const body=r.n<2?"sem dados suficientes":r.drop<=0?"sem uso":`<b>−${fmt1(r.drop)}%</b> · <b>${fmt1(r.perHour)}%/h</b>`;
+  return `<div class="recent" data-tip="${esc(tip)}">Últimas 3h: ${body}</div>`;
 }
 // Accounts whose weekly window feeds the pool: in use, connected, with a reset time.
 const runwayAccs=()=>claudeAccs().filter(a=>a.mode!=="off"&&!a.needs_login&&weeklyOf(a)&&weeklyOf(a).reset_at);
@@ -669,6 +721,13 @@ function renderCapacity(now){
   if(!accs.length){el.innerHTML=`<div class="k">${title}</div><div class="hnum">—</div><div class="sub">Sem dados de capacidade ainda.</div>`;return}
   const rem=a=>100-clampPct(weeklyOf(a).used_percent),sum=accs.reduce((t,a)=>t+rem(a),0),cap=accs.length*100;
   const full=sum/100;
+  // Segmented bar: one block per account sized by its remaining, then the spent part.
+  const byReset=a=>{const w=weeklyOf(a);return w.reset_at?Date.parse(w.reset_at):Infinity};
+  const blocks=accs.filter(a=>rem(a)>0).sort((x,y)=>byReset(x)-byReset(y)).map(a=>{const w=weeklyOf(a),r=w.reset_at?Date.parse(w.reset_at):0;
+    const tip=`${legendName(a.email||a.auth_id)}\n${Math.round(rem(a))}% restante`+(r?` · reseta em ${fmtLeft(r-now)}`:"");
+    return `<i data-tip="${esc(tip)}" style="flex:${rem(a)} 1 0;--c:${ACC[a.auth_id]};${a.mode==="off"?"opacity:.5":""}"></i>`}).join("");
+  const spent=cap-sum;
+  const track=spent>0?`<i class="track" data-tip="${esc(`Já gasto: ${Math.round(spent)}% de ${cap}%`)}" style="flex:${spent} 1 0"></i>`:"";
   const pf=poolForecast(now),resetOf=a=>{const w=weeklyOf(a);return w&&w.reset_at?Date.parse(w.reset_at):0};
   const key=a=>a.needs_login?Infinity:resetOf(a)||Infinity;
   const rows=claudeAccs().sort((x,y)=>{const kx=key(x),ky=key(y);return kx===ky?0:kx<ky?-1:1});
@@ -685,7 +744,7 @@ function renderCapacity(now){
     if(reason)est=`<span class="cr-e2">${reason}</span>`;
     else{
       const f=pf.info[a.auth_id];
-      if(!pf.br.ok)est=`<span class="cr-e2" data-tip="${esc("Coletando ritmo: a projeção aparece com 6h de uso pelo proxy.")}">—</span>`;
+      if(!pf.br.ok)est=`<span class="cr-e2" data-tip="${esc("Coletando ritmo: a projeção aparece quando a janela semanal tiver 6h de uso ou o histórico, 1h.")}">—</span>`;
       else if(!f)est=`<span class="cr-e2" data-tip="${esc("Reset além de 8 dias: sem projeção.")}">—</span>`;
       else{
         const e=Math.round(f.before),zms=f.zero==null?0:f.zero*1000-now;
@@ -696,10 +755,11 @@ function renderCapacity(now){
     }
     return `<div class="cr${off?" dim":""}">${name}${meter}${rst}${est}</div>`;
   };
-  const estTag=pf.br.ok&&pf.br.source==="week"?` <span class="est" data-tip="${esc("Estimado pelo uso desta semana até haver 6h de histórico de cota.")}">(estimado)</span>`:"";
-  const note=pf.br.ok?`Restante estimado no reset, no ritmo atual; a conta que reseta antes é usada primeiro${estTag}.`:"Coletando ritmo: as estimativas aparecem com 6h de uso pelo proxy.";
+  const estTag=paceTagHtml(pf.br,"est");
+  const note=pf.br.ok?`Restante estimado no reset, no ritmo atual; a conta que reseta antes é usada primeiro${estTag}.`:"Coletando ritmo: as estimativas aparecem quando a janela semanal tiver 6h de uso ou o histórico, 1h.";
   el.innerHTML=`<div class="k">${title}</div>
     <div class="hnum"><span id="capNum" data-n="${sum}" data-f="pct">${Math.round(sum)}%</span><small>de ${cap}% · ≈${fmt1(full)} ${Math.abs(full-1)<.05?"conta cheia":"contas cheias"}</small></div>
+    <div class="segbar">${blocks}${track}</div>
     <div class="caprows">${rows.map(row).join("")}</div><div class="sub capnote">${note}</div>`;
 }
 // Pace of the active account's 5h window from its last ~2h of samples (`s` = remaining %).
@@ -751,7 +811,7 @@ function renderRunway(now){
       <div class="sub" style="display:flex;justify-content:space-between;margin-top:-6px"><span>${days===1?"24 h":days+" dias"} atrás</span><span>agora</span></div>`})():"";
   if(!br.ok){
     el.innerHTML=`<div class="k">Fôlego<span class="pill idle">${ICON_CLOCK}Coletando dados…</span></div><div class="hnum">—</div>
-      <div class="sub">Histórico de ${Math.round(span/3600)}h; as projeções aparecem com 6h de uso pelo proxy.</div>${spark}`;
+      <div class="sub">Histórico de ${Math.round(span/3600)}h; as projeções aparecem quando a janela semanal tiver 6h de uso ou o histórico, 1h.</div>${spark}`;
     return;
   }
   const perDay=br.perDay,perHour=perDay/24,hours=perDay>0?simulate(accs,perHour,now):Infinity;
@@ -766,9 +826,7 @@ function renderRunway(now){
   const rate=(name,v,c,tip)=>`<div class="rate" data-tip="${esc(tip)}"><span>${name}</span><div class="bar"><i style="width:${(v/mx*100).toFixed(1)}%;--c:${c}"></i></div><b class="tabular">${Math.round(v)}%/dia</b></div>`;
   el.innerHTML=`<div class="k">Fôlego${pill}</div><div class="hnum">${num}</div>
     <div class="sub" style="margin-top:-8px">${note}</div>
-    <div class="rates">${rate("Gasto",perDay,"var(--claude)",br.source==="week"
-        ?"Gasto médio estimado pelo uso desta semana (% já usado ÷ tempo desde o início das janelas). Passa a usar o ritmo medido quando houver 6h de histórico."
-        :"Gasto médio: quanto da capacidade semanal somada você consome por dia, no ritmo recente.")
+    <div class="rates">${rate("Gasto",perDay,"var(--claude)",paceTip(br))
       }${rate("Recarga",refill,"color-mix(in srgb,var(--foreground) 45%,transparent)","Recarga semanal: quanto as contas ativas devolvem por dia (100% a cada 7 dias por conta).")}</div>${spark}`;
 }
 function renderHero(){const now=Date.now();renderCapacity(now);renderNow(now);renderRunway(now)}
@@ -825,7 +883,7 @@ function renderTimeline(){
 
   const legend=`<span><i></i>Capacidade restante somada</span>`;
   const rate=br.ok
-    ?`gasto <b>${Math.round(br.perDay)}%/dia</b>${br.source==="week"?` <span data-tip="${esc("Estimado pelo uso desta semana até haver 6h de histórico de cota.")}">(estimado)</span>`:""} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
+    ?`gasto <b>${Math.round(br.perDay)}%/dia</b>${paceTagHtml(br)} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
 
   // Agenda: one column per day, aligned with the chart's midnight gridlines.
@@ -942,7 +1000,8 @@ function renderAccounts(){
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
       const f=wk&&mode!=="off"?accountForecast(a,now,pf):null,sp="";
-      if(f)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="est" data-tip="${esc(f.est)}">(estimado)</span>`:""}</span></div>`;
+      if(wk&&!a.needs_login)h+=recentUseHtml(a,now);
+      if(f)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="est" data-tip="${esc(f.est)}">${f.tag}</span>`:""}</span></div>`;
       if(!(a.windows||[]).length&&!a.error)h+=`<div class="note">Consultando uso…</div>`;
       if(limited&&!a.needs_login){
         const hasWin=(a.windows||[]).length>0,dataAt=Date.parse(a.data_at),retry=a.retry_at?Date.parse(a.retry_at):0;
@@ -1133,6 +1192,7 @@ async function load(refresh){
     const [r1,r2,r3]=await Promise.all(reqs);
     if(!r1.ok)throw new Error("HTTP "+r1.status);
     const data=await r1.json(),hist=r2.ok?await r2.json():state.hist;
+    // Every period needs the 7-day samples for the pace: 7d/30d responses carry the server's full retention, filtered client-side.
     const quota7=period==="24h"?(r3&&r3.ok?(await r3.json()).quota:state.quota7):hist?hist.quota:state.quota7;
     if(seq!==loadSeq)return;
     // Committed only after every response parsed, so a failed poll keeps the last good data.
@@ -1283,7 +1343,10 @@ function demo(){
       ts.forEach((h,k)=>{c+=w[k]/sum*total;pts.push({t:Math.round(n/1000+h*3600),w:Math.max(0,100-c)})})};
     if(id==="c4"){for(let k=-6;k<=0;k++)pts.push({t:Math.round(n/1000+k*1800),w:100-12-3*(k+6)/6})}
     else{if(ws>-168)seg(-168,ws-2,id==="c2"?35:72);
-    seg(Math.max(-168,ws),0,used[id])}
+      // c1: pace doubles over the last 4h (0.5%/30min against ~0.43%/h before); c2: idle for the last 4h.
+      if(id==="c1"){seg(Math.max(-168,ws),-4,used[id]-4);for(let k=1;k<=8;k++)pts.push({t:Math.round(n/1000+(-4+k/2)*3600),w:100-(used[id]-4)-.5*k})}
+      else if(id==="c2"){seg(Math.max(-168,ws),-4,used[id]);for(let h=-3;h<=0;h++)pts.push({t:Math.round(n/1000+h*3600),w:100-used[id]})}
+      else seg(Math.max(-168,ws),0,used[id])}
     // Short-window (5h) samples every 15 min for the last 2h of the active account: 85% -> 66% left.
     if(id==="c1")for(let k=-8;k<=0;k++)pts.push({t:Math.round(n/1000+k*900),s:Math.round((66+19*(-k/8))*10)/10});
     pts.sort((a,b)=>a.t-b.t);
