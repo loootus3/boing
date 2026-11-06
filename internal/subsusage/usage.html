@@ -123,6 +123,9 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .cr-n{grid-area:n;display:flex;align-items:center;gap:8px;min-width:0}
 .cr-e{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--foreground)}
 .cr-n em{flex:none;font-style:normal;font-size:12px;color:var(--muted-foreground)}
+.cr-n em.use{display:inline-flex;align-items:center;gap:5px;font-weight:600;color:var(--success-foreground);cursor:help}
+.cr-n em.use::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--st-good);animation:pulse 2.4s ease-in-out infinite}
+.cr.on .cr-e{font-weight:600}
 .cr-m{grid-area:m;display:flex;align-items:center;gap:8px;min-width:0}
 .cr-m .meter{flex:1 1 0;min-width:0}
 .cr-m b{flex:none;min-width:2rem;text-align:right;font-weight:600;color:var(--foreground)}
@@ -1022,7 +1025,7 @@ function renderCapacity(now){
   // Segmented bar: one block per account sized by its remaining, then the spent part.
   const byReset=a=>{const w=weeklyOf(a);return w.reset_at?Date.parse(w.reset_at):Infinity};
   const blocks=accs.filter(a=>rem(a)>0).sort((x,y)=>byReset(x)-byReset(y)).map(a=>{const w=weeklyOf(a),r=w.reset_at?Date.parse(w.reset_at):0;
-    const tip=`${legendName(a.email||a.auth_id)}\n${Math.round(rem(a))}% restante`+(r?` · reseta em ${fmtLeft(r-now)}`:"");
+    const tip=`${legendName(a.email||a.auth_id)}${a.active?" · em uso":""}\n${Math.round(rem(a))}% restante`+(r?` · reseta em ${fmtLeft(r-now)}`:"");
     return `<i data-tip="${esc(tip)}" style="flex:${rem(a)} 1 0;--c:${ACC[a.auth_id]};${a.mode==="off"?"opacity:.5":""}"></i>`}).join("");
   const spent=cap-sum;
   const track=spent>0?`<i class="track" data-tip="${esc(`Já gasto: ${Math.round(spent)}% de ${cap}%`)}" style="flex:${spent} 1 0"></i>`:"";
@@ -1030,9 +1033,9 @@ function renderCapacity(now){
   const key=a=>a.needs_login?Infinity:resetOf(a)||Infinity;
   const rows=claudeAccs().sort((x,y)=>{const kx=key(x),ky=key(y);return kx===ky?0:kx<ky?-1:1});
   const row=a=>{
-    const w=weeklyOf(a),mode=a.mode||"normal",email=a.email||a.auth_id,r=resetOf(a),off=mode==="off";
+    const w=weeklyOf(a),mode=a.mode||"normal",email=a.email||a.auth_id,r=resetOf(a),off=mode==="off",on=!!a.active&&!a.needs_login&&!!w;
     const hint=mode==="last"?"por último":off?"não usar":"";
-    const name=`<div class="cr-n"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span class="cr-e" title="${esc(email)}">${esc(legendName(email))}</span>${hint?`<em>${hint}</em>`:""}</div>`;
+    const name=`<div class="cr-n"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span class="cr-e" title="${esc(email)}">${esc(legendName(email))}</span>${on?`<em class="use" data-tip="${esc("O proxy está usando esta conta agora.\nQuando ela esgotar ou resetar, passa para a próxima.")}">em uso</em>`:""}${hint?`<em>${hint}</em>`:""}</div>`;
     const reason=a.needs_login?"desconectada":!w?"sem janela semanal":off?"sem projeção":!r?"sem horário de reset":"";
     if(a.needs_login||!w)return `<div class="cr dim">${name}<span class="cr-e2" style="grid-area:e">${reason}</span></div>`;
     const left=Math.round(rem(a)),l=lvl(left);
@@ -1051,7 +1054,7 @@ function renderCapacity(now){
         est=`<span class="cr-e2 pv tabular${f.zero==null&&e>=5?" waste":""}" data-tip="${esc(tip)}">~${e}%</span>`;
       }
     }
-    return `<div class="cr${off?" dim":""}" data-acc="${esc(a.auth_id)}" tabindex="0" role="button" aria-label="${esc("Detalhes de "+email)}">${name}${meter}${rst}${est}</div>`;
+    return `<div class="cr${off?" dim":""}${on?" on":""}" data-acc="${esc(a.auth_id)}" tabindex="0" role="button" aria-label="${esc("Detalhes de "+email+(on?" (em uso)":""))}">${name}${meter}${rst}${est}</div>`;
   };
   const estTag=pf.br.ok?` <span class="info" data-tip="${esc("Quanto deve sobrar quando cada conta resetar, no ritmo atual. A conta que reseta antes é usada primeiro.\n\n"+paceTip(pf.br))}" tabindex="0" aria-label="Como é estimado">i</span>`:"";
   const head=`<div class="cr cr-h"><span style="grid-area:n"></span><span style="grid-area:m">restante</span><span style="grid-area:r">reseta em</span><span style="grid-area:e">sobra no reset${pf.br.ok?estTag:""}</span></div>`;
