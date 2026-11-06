@@ -132,3 +132,47 @@ func TestMigrateV2ToV3KeepsCounts(t *testing.T) {
 		t.Errorf("v2 data changed: %+v", data.Hours["a"][0])
 	}
 }
+
+func TestViewByModelAndPrevious(t *testing.T) {
+	h := &History{data: newHistoryData()}
+	now := time.Date(2026, 11, 5, 15, 30, 0, 0, time.UTC)
+	rec := func(at time.Time, model string, in int64) {
+		h.HandleUsage(context.Background(), usage.Record{
+			Provider: "claude", AuthID: "a", Model: model, RequestedAt: at,
+			Detail: usage.Detail{InputTokens: in, OutputTokens: 1000},
+		})
+	}
+	rec(now.Add(-time.Hour), "claude-opus-5-5", 1_000_000)
+	rec(now.Add(-time.Hour), "claude-sonnet-5-5", 1_000_000)
+	rec(now.Add(-30*time.Hour), "claude-opus-5-5", 500_000) // previous 24h window
+
+	v := h.View("24h", now)
+	var opus, sonnet float64
+	var sonnetTok, sonnetReq int64
+	for _, b := range v.Buckets {
+		opus += b.CostByModel["claude-opus-5-5"]
+		sonnet += b.CostByModel["claude-sonnet-5-5"]
+		sonnetTok += b.TokensByModel["claude-sonnet-5-5"]
+		sonnetReq += b.RequestsByModel["claude-sonnet-5-5"]
+	}
+	if !near(opus, 4+0.02) || !near(sonnet, 2+0.01) || sonnetTok != 1_001_000 || sonnetReq != 1 {
+		t.Errorf("by model: opus %v sonnet %v tok %d req %d", opus, sonnet, sonnetTok, sonnetReq)
+	}
+	if !near(opus+sonnet, v.Accounts["a"].Cost.Total) {
+		t.Errorf("model sum %v != account %v", opus+sonnet, v.Accounts["a"].Cost.Total)
+	}
+	p := v.Previous["a"]
+	if p.Requests != 1 || p.Input != 500_000 || !near(p.Cost.Total, 2+0.02) {
+		t.Errorf("previous = %+v", p)
+	}
+	if v.Accounts["a"].Requests != 2 {
+		t.Errorf("previous leaked into range: %+v", v.Accounts["a"])
+	}
+	if v.PreviousComplete {
+		t.Error("history starts inside the previous window, should be incomplete")
+	}
+	rec(now.Add(-60*time.Hour), "claude-opus-5-5", 1)
+	if !h.View("24h", now).PreviousComplete {
+		t.Error("history reaches before the previous window, should be complete")
+	}
+}

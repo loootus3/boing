@@ -17,7 +17,7 @@ import (
 const (
 	// Not *.json: the auth watcher treats every JSON file in the auth dir as a credential.
 	historyFileName    = "usage-history.dat"
-	historyKeepHours   = 31 * 24
+	historyKeepHours   = 62 * 24 // two 30-day ranges, for the previous-period comparison
 	quotaKeepDuration  = 8 * 24 * time.Hour
 	quotaPointSpacing  = 10 * time.Minute
 	historyFlushPeriod = 2 * time.Minute
@@ -54,6 +54,8 @@ type modelStat struct {
 	CacheWrite1h int64 `json:"cw1h,omitempty"`
 	Output       int64 `json:"out,omitempty"`
 }
+
+func (s *hourStat) tokens() int64 { return s.Input + s.Cached + s.CacheWrite + s.Output }
 
 func (m *modelStat) tokens() int64 {
 	return m.Input + m.CacheRead + m.CacheWrite5m + m.CacheWrite1h + m.Output
@@ -380,6 +382,11 @@ type Bucket struct {
 	// Cost maps provider -> estimated API cost in USD; CostByAccount maps auth ID -> USD.
 	Cost          map[string]float64 `json:"cost"`
 	CostByAccount map[string]float64 `json:"cost_by_account"`
+	// CostByModel, TokensByModel and RequestsByModel are keyed by pricing key (Claude only).
+	// Priced models only contribute to CostByModel.
+	CostByModel     map[string]float64 `json:"cost_by_model"`
+	TokensByModel   map[string]int64   `json:"tokens_by_model"`
+	RequestsByModel map[string]int64   `json:"requests_by_model"`
 }
 
 // AccountTotals summarizes one credential over the selected range.
@@ -395,6 +402,36 @@ type AccountTotals struct {
 	// unknown models or recorded before per-model tracking, which Cost leaves out.
 	Cost           CostBreakdown `json:"cost"`
 	UnpricedTokens int64         `json:"unpriced_tokens"`
+}
+
+type modelCost struct {
+	cost   CostBreakdown
+	priced bool
+}
+
+// addHour adds one hour of a credential to the totals and returns the cost of each of its
+// pricing keys.
+func (t *AccountTotals) addHour(stat *hourStat) map[string]modelCost {
+	t.Requests += stat.Requests
+	t.Failed += stat.Failed
+	t.Input += stat.Input
+	t.Output += stat.Output
+	t.Cached += stat.Cached
+	t.CacheWrite += stat.CacheWrite
+	costs := make(map[string]modelCost, len(stat.Models))
+	var tracked int64
+	for key, ms := range stat.Models {
+		tracked += ms.tokens()
+		cost, priced := priceOf(key, ms)
+		if priced {
+			t.Cost.add(cost)
+		} else {
+			t.UnpricedTokens += ms.tokens()
+		}
+		costs[key] = modelCost{cost, priced}
+	}
+	t.UnpricedTokens += max(0, stat.tokens()-tracked)
+	return costs
 }
 
 // ModelTotals summarizes one pricing key (model, plus "+fast" / "+long") over the range.
@@ -418,6 +455,11 @@ type HistoryView struct {
 	Quota     map[string][]quotaPoint  `json:"quota"`
 	// Models aggregates Claude tokens and cost by pricing key over the range.
 	Models map[string]ModelTotals `json:"models"`
+	// Previous holds Claude account totals for the equally long period right before the range.
+	// PreviousComplete reports whether history reaches back to its start; when false the
+	// previous totals cover only part of it and should not be compared.
+	Previous         map[string]AccountTotals `json:"previous"`
+	PreviousComplete bool                     `json:"previous_complete"`
 	// HeatTokens and HeatRequests are weekday (0 = Sunday) x hour totals in the location of the
 	// View time over the last 28 days (Claude only), independent of the range. HeatDays is how
 	// many of those days have data and HeatWeekdayDays how many of them fall on each weekday.
@@ -460,6 +502,7 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 		Providers: make(map[string]string),
 		Quota:     make(map[string][]quotaPoint),
 		Models:    make(map[string]ModelTotals),
+		Previous:  make(map[string]AccountTotals),
 	}
 	for i := range view.Buckets {
 		view.Buckets[i] = Bucket{
@@ -471,6 +514,9 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			TokensByAccount: map[string]int64{},
 			Cost:            map[string]float64{},
 			CostByAccount:   map[string]float64{},
+			CostByModel:     map[string]float64{},
+			TokensByModel:   map[string]int64{},
+			RequestsByModel: map[string]int64{},
 		}
 	}
 
@@ -483,18 +529,28 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 	for id, provider := range h.data.Providers {
 		view.Providers[id] = provider
 	}
+	prevStart := slotStart(-slots)
+	earliest := int64(0)
 	for id, hours := range h.data.Hours {
 		provider := h.data.Providers[id]
 		totals := view.Accounts[id]
+		prev := view.Previous[id]
 		for hour, stat := range hours {
+			if provider == "claude" && (earliest == 0 || hour < earliest) {
+				earliest = hour
+			}
 			t := time.Unix(hour, 0).In(loc)
 			if provider == "claude" && !t.Before(heatStart) && !t.After(now) {
-				total := stat.Input + stat.Cached + stat.CacheWrite + stat.Output
+				total := stat.tokens()
 				view.HeatTokens[t.Weekday()][t.Hour()] += total
 				view.HeatRequests[t.Weekday()][t.Hour()] += stat.Requests
 				if !haveHeat || t.Before(heatFirst) {
 					heatFirst, haveHeat = t, true
 				}
+			}
+			if provider == "claude" && !t.Before(prevStart) && t.Before(start) {
+				prev.addHour(stat)
+				continue
 			}
 			if t.Before(start) || !t.Before(end) {
 				continue
@@ -511,46 +567,41 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 				continue
 			}
 			b := &view.Buckets[idx]
+			total := stat.tokens()
 			b.Requests[provider] += stat.Requests
-			total := stat.Input + stat.Cached + stat.CacheWrite + stat.Output
 			b.Tokens[provider] += total
 			b.TokensByAccount[id] += total
 			b.Failed += stat.Failed
 			b.ByAccount[id] += stat.Requests
-			totals.Requests += stat.Requests
-			totals.Failed += stat.Failed
-			totals.Input += stat.Input
-			totals.Output += stat.Output
-			totals.Cached += stat.Cached
-			totals.CacheWrite += stat.CacheWrite
-			var tracked int64
-			for key, ms := range stat.Models {
-				tracked += ms.tokens()
-				cost, priced := priceOf(key, ms)
-				if priced {
-					totals.Cost.add(cost)
-					b.Cost[provider] += cost.Total
-					b.CostByAccount[id] += cost.Total
-				} else {
-					totals.UnpricedTokens += ms.tokens()
+			for key, mc := range totals.addHour(stat) {
+				if mc.priced {
+					b.Cost[provider] += mc.cost.Total
+					b.CostByAccount[id] += mc.cost.Total
 				}
 				if provider != "claude" {
 					continue
 				}
+				ms := stat.Models[key]
+				b.CostByModel[key] += mc.cost.Total
+				b.TokensByModel[key] += ms.tokens()
+				b.RequestsByModel[key] += ms.Requests
 				mt := view.Models[key]
 				mt.Requests += ms.Requests
 				mt.Input += ms.Input
 				mt.CacheRead += ms.CacheRead
 				mt.CacheWrite += ms.CacheWrite5m + ms.CacheWrite1h
 				mt.Output += ms.Output
-				mt.Priced = priced
-				mt.Cost.add(cost)
+				mt.Priced = mc.priced
+				mt.Cost.add(mc.cost)
 				view.Models[key] = mt
 			}
-			totals.UnpricedTokens += max(0, total-tracked)
 		}
 		view.Accounts[id] = totals
+		if provider == "claude" && prev.Requests > 0 {
+			view.Previous[id] = prev
+		}
 	}
+	view.PreviousComplete = earliest != 0 && earliest <= prevStart.Unix()
 	if haveHeat {
 		view.HeatDays = min(heatDays, max(1, int(now.Sub(heatFirst)/(24*time.Hour))+1))
 		y, m, d := now.In(loc).Date()
