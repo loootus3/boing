@@ -21,8 +21,9 @@ const (
 	quotaKeepDuration  = 8 * 24 * time.Hour
 	quotaPointSpacing  = 10 * time.Minute
 	historyFlushPeriod = 2 * time.Minute
-	// historyVersion 2 stores fresh input, cache reads and cache writes separately.
-	historyVersion = 2
+	// historyVersion 2 stores fresh input, cache reads and cache writes separately; version 3
+	// adds per-model token counts for cost estimates.
+	historyVersion = 3
 	heatDays       = 28
 )
 
@@ -37,6 +38,37 @@ type hourStat struct {
 	Cached int64 `json:"cache,omitempty"`
 	// CacheWrite counts cache creation tokens.
 	CacheWrite int64 `json:"cw,omitempty"`
+	// Models maps pricingKey -> tokens of that model. Hours recorded before version 3 have no
+	// entries; their tokens cannot be priced.
+	Models map[string]*modelStat `json:"m,omitempty"`
+}
+
+// modelStat counts the tokens of one pricing key within one hour.
+type modelStat struct {
+	Requests  int64 `json:"req"`
+	Input     int64 `json:"in,omitempty"`
+	CacheRead int64 `json:"cache,omitempty"`
+	// CacheWrite5m counts writes billed at the 5-minute rate, CacheWrite1h those billed at the
+	// 1-hour rate (1-hour and longer TTLs).
+	CacheWrite5m int64 `json:"cw5,omitempty"`
+	CacheWrite1h int64 `json:"cw1h,omitempty"`
+	Output       int64 `json:"out,omitempty"`
+}
+
+func (m *modelStat) tokens() int64 {
+	return m.Input + m.CacheRead + m.CacheWrite5m + m.CacheWrite1h + m.Output
+}
+
+// splitCacheWrite divides cache writes by billing TTL. Writes without a TTL breakdown are
+// billed at the 5-minute rate, the API default.
+func splitCacheWrite(d usage.Detail, write int64) (w5m, w1h int64) {
+	for _, p := range []*int64{d.CacheCreation1hTokens, d.CacheCreation12hTokens} {
+		if p != nil && *p > 0 {
+			w1h += *p
+		}
+	}
+	w1h = min(w1h, write)
+	return write - w1h, w1h
 }
 
 // normalizeTokens splits a usage record into fresh input, cache read, cache write and output
@@ -57,6 +89,11 @@ func normalizeTokens(provider string, d usage.Detail) (fresh, read, write, outpu
 func migrateHistory(data *historyData) bool {
 	if data.Version >= historyVersion {
 		return false
+	}
+	if data.Version >= 2 {
+		// Version 3 only adds per-model counts.
+		data.Version = historyVersion
+		return true
 	}
 	// Before v2 both CachedTokens and CacheReadTokens were added, counting cache reads twice.
 	// Codex input also included the cached subset.
@@ -256,6 +293,26 @@ func (h *History) HandleUsage(_ context.Context, record usage.Record) {
 	stat.Output += output
 	stat.Cached += read
 	stat.CacheWrite += write
+	model := record.ResponseModel
+	if strings.TrimSpace(model) == "" {
+		model = record.Model
+	}
+	key := pricingKey(model, record.Detail.Speed, fresh+read+write)
+	if stat.Models == nil {
+		stat.Models = make(map[string]*modelStat)
+	}
+	ms := stat.Models[key]
+	if ms == nil {
+		ms = &modelStat{}
+		stat.Models[key] = ms
+	}
+	w5m, w1h := splitCacheWrite(record.Detail, write)
+	ms.Requests++
+	ms.Input += fresh
+	ms.CacheRead += read
+	ms.CacheWrite5m += w5m
+	ms.CacheWrite1h += w1h
+	ms.Output += output
 	h.data.Providers[authID] = provider
 	if h.lastUsed == nil {
 		h.lastUsed = make(map[string]time.Time)
@@ -320,6 +377,9 @@ type Bucket struct {
 	ByAccount map[string]int64 `json:"by_account"` // auth ID -> requests
 	// TokensByAccount maps auth ID -> all processed tokens (fresh input, cache read and write, output).
 	TokensByAccount map[string]int64 `json:"tokens_by_account"`
+	// Cost maps provider -> estimated API cost in USD; CostByAccount maps auth ID -> USD.
+	Cost          map[string]float64 `json:"cost"`
+	CostByAccount map[string]float64 `json:"cost_by_account"`
 }
 
 // AccountTotals summarizes one credential over the selected range.
@@ -331,6 +391,21 @@ type AccountTotals struct {
 	Cached   int64 `json:"cached"` // cache reads
 	// CacheWrite counts cache creation tokens.
 	CacheWrite int64 `json:"cache_write"`
+	// Cost estimates the API price of the priced tokens; UnpricedTokens counts tokens of
+	// unknown models or recorded before per-model tracking, which Cost leaves out.
+	Cost           CostBreakdown `json:"cost"`
+	UnpricedTokens int64         `json:"unpriced_tokens"`
+}
+
+// ModelTotals summarizes one pricing key (model, plus "+fast" / "+long") over the range.
+type ModelTotals struct {
+	Requests   int64         `json:"requests"`
+	Input      int64         `json:"input"`
+	CacheRead  int64         `json:"cache_read"`
+	CacheWrite int64         `json:"cache_write"`
+	Output     int64         `json:"output"`
+	Priced     bool          `json:"priced"`
+	Cost       CostBreakdown `json:"cost"`
 }
 
 // HistoryView is the JSON payload for /usage/api/history.
@@ -341,6 +416,8 @@ type HistoryView struct {
 	Accounts  map[string]AccountTotals `json:"accounts"`
 	Providers map[string]string        `json:"providers"`
 	Quota     map[string][]quotaPoint  `json:"quota"`
+	// Models aggregates Claude tokens and cost by pricing key over the range.
+	Models map[string]ModelTotals `json:"models"`
 	// HeatTokens and HeatRequests are weekday (0 = Sunday) x hour totals in the location of the
 	// View time over the last 28 days (Claude only), independent of the range. HeatDays is how
 	// many of those days have data and HeatWeekdayDays how many of them fall on each weekday.
@@ -382,6 +459,7 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 		Accounts:  make(map[string]AccountTotals),
 		Providers: make(map[string]string),
 		Quota:     make(map[string][]quotaPoint),
+		Models:    make(map[string]ModelTotals),
 	}
 	for i := range view.Buckets {
 		view.Buckets[i] = Bucket{
@@ -391,6 +469,8 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			ByAccount: map[string]int64{},
 
 			TokensByAccount: map[string]int64{},
+			Cost:            map[string]float64{},
+			CostByAccount:   map[string]float64{},
 		}
 	}
 
@@ -443,6 +523,31 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			totals.Output += stat.Output
 			totals.Cached += stat.Cached
 			totals.CacheWrite += stat.CacheWrite
+			var tracked int64
+			for key, ms := range stat.Models {
+				tracked += ms.tokens()
+				cost, priced := priceOf(key, ms)
+				if priced {
+					totals.Cost.add(cost)
+					b.Cost[provider] += cost.Total
+					b.CostByAccount[id] += cost.Total
+				} else {
+					totals.UnpricedTokens += ms.tokens()
+				}
+				if provider != "claude" {
+					continue
+				}
+				mt := view.Models[key]
+				mt.Requests += ms.Requests
+				mt.Input += ms.Input
+				mt.CacheRead += ms.CacheRead
+				mt.CacheWrite += ms.CacheWrite5m + ms.CacheWrite1h
+				mt.Output += ms.Output
+				mt.Priced = priced
+				mt.Cost.add(cost)
+				view.Models[key] = mt
+			}
+			totals.UnpricedTokens += max(0, total-tracked)
 		}
 		view.Accounts[id] = totals
 	}

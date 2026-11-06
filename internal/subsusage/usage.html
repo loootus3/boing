@@ -261,12 +261,23 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .heat .hc:hover{outline:2px solid var(--foreground);outline-offset:-1px}
 .tip .logo{width:12px;height:12px}
 .empty-chart{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:var(--muted-foreground)}
-.stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.cm{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.cm-h{font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.cm-row{display:grid;grid-template-columns:minmax(0,1fr) 4.5rem 4.5rem 8rem 6rem;grid-template-areas:"n r t b c";align-items:center;column-gap:14px;font-size:12px;color:var(--muted-foreground);cursor:default}
+.cm-n{grid-area:n;font-size:13px;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-r{grid-area:r;text-align:right;white-space:nowrap}
+.cm-t{grid-area:t;text-align:right;white-space:nowrap}
+.cm-b{grid-area:b;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
+.cm-b i{display:block;height:100%;border-radius:999px;background:var(--claude)}
+.cm-c{grid-area:c;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;color:var(--foreground)}
+.cm-c.mut{font-weight:400;font-size:12px;color:var(--muted-foreground)}
+@media (max-width:640px){.cm-row{grid-template-columns:auto auto minmax(0,1fr);grid-template-areas:"n n c" "r t t" "b b b";row-gap:4px;column-gap:10px}.cm-r,.cm-t{text-align:left}}
 .stat{padding:14px 16px;display:flex;flex-direction:column;gap:2px}
 .stat .k{font-size:12px;color:var(--muted-foreground)}
 .stat .v{font-size:22px;font-weight:600;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .stat .s{font-size:12px;color:var(--muted-foreground)}
-@media (max-width:900px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:12px 14px}.stat .v{font-size:20px}}
 @media (max-width:640px){.mdl{grid-template-columns:4rem minmax(0,1fr) auto;column-gap:10px}.rb .rs{flex-wrap:wrap;justify-content:center}}
 @media (max-width:640px){.ylabels{width:40px}.xlabels,.chart-legend{padding-left:48px}.heat-card{padding:14px 12px 16px}.heat{grid-template-columns:1.8rem repeat(24,minmax(0,1fr));gap:2px}.heat .hc{height:20px}.chart-card{padding:16px 14px 12px}
@@ -376,7 +387,7 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
     <button data-v="24h">24h</button><button data-v="7d">7 dias</button><button data-v="30d">30 dias</button>
   </div>
   <div class="seg" id="metric">
-    <button data-v="tokens">Tokens</button><button data-v="requests">Requisições</button>
+    <button data-v="cost">Custo</button><button data-v="tokens">Tokens</button><button data-v="requests">Requisições</button>
   </div>
   <div class="menu-wrap"><button class="btn" data-menu="claude"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Claude</button></div>
 </div></header>
@@ -423,6 +434,8 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
       <div class="legend chart-legend" id="chartLegend"></div>
     </div>
     <div class="stats" id="stats"></div>
+    <div class="card cm" id="modelCost" hidden></div>
+    <div class="sub" id="unpricedNote" hidden></div>
   </section>
 
   <section class="blk" id="secHeat">
@@ -446,14 +459,27 @@ const ICON_CLOCK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
-const state={period:store.get("usage.period","7d"),metric:store.get("usage.metric","tokens"),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
+const state={period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
 $("#emptyLogo").innerHTML=LOGO.claude;
 
 /* formatting (after T3 Code usageFormat) */
 function fmtTokens(v){const a=Math.abs(v);for(const[u,d]of[["T",1e12],["B",1e9],["M",1e6],["K",1e3]]){if(a>=d){const x=v/d;
   return String(Number(x.toFixed(Math.abs(x)>=100?0:Math.abs(x)>=10?1:2))).replace(".",",")+u}}return String(Math.round(v))}
 const fmtCount=v=>Math.round(v).toLocaleString("pt-BR");
-const fmtMetric=v=>state.metric==="tokens"?fmtTokens(v):fmtCount(v);
+const USD=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"USD"}),USD0=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"USD",maximumFractionDigits:0});
+function fmtUSD(v){v=Number(v)||0;if(Math.abs(v)<.005)return v>0?"< US$ 0,01":USD.format(0);return(Math.abs(v)>=999.5?USD0:USD).format(v)}
+// Short USD for chart axis ticks.
+function fmtUSDc(v){const tr=(x,d)=>String(Number(x.toFixed(d))).replace(".",","),a=Math.abs(v);
+  if(a>=999950)return"US$ "+tr(v/1e6,1)+" mi";if(a>=999.5)return"US$ "+tr(v/1000,1)+" mil";
+  // Enough decimals that small ticks (e.g. 0,001 … 0,004) stay distinct.
+  const d=a>=10?1:a>=.1?2:a>=.01?3:4;return"US$ "+tr(v,d)}
+const fmtMetric=v=>state.metric==="cost"?fmtUSD(v):state.metric==="tokens"?fmtTokens(v):fmtCount(v);
+const fmtAxis=v=>state.metric==="cost"?fmtUSDc(v):fmtMetric(v);
+const MODEL_NAMES={opus:"Opus",sonnet:"Sonnet",haiku:"Haiku",fable:"Fable"};
+function prettyModel(key){const parts=String(key).split("+"),m=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2}))?$/.exec(parts[0]);
+  if(!m)return String(key);
+  let s=(MODEL_NAMES[m[1]]||m[1][0].toUpperCase()+m[1].slice(1))+" "+m[2]+(m[3]!=null?"."+m[3]:"");
+  if(parts.includes("fast"))s+=" · fast";if(parts.includes("long"))s+=" · >100K";return s}
 const fmtPct=s=>s>0&&s<.001?"<0,1%":(s*100).toFixed(1).replace(".",",")+"%";
 const fmtDay=d=>d.toLocaleDateString("pt-BR",{day:"numeric",month:"short"}).replace(".","");
 const fmtHour=d=>d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
@@ -486,7 +512,7 @@ document.addEventListener("scroll",hideTip,true);
 
 /* chart helpers (after T3 Code UsageProviderChart) */
 function niceScale(peak,n){if(!(peak>0))return{max:1,ticks:[0,1]};const raw=peak/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),norm=raw/mag;
-  const step=(norm>5?10:norm>2?5:norm>1?2:1)*mag,max=Math.ceil(peak/step)*step,ticks=[];for(let v=0;v<=max+step/2;v+=step)ticks.push(v);return{max,ticks}}
+  const step=(norm>5?10:norm>2?5:norm>1?2:1)*mag,cnt=Math.max(1,Math.round(Math.ceil(peak/step-1e-9))),max=cnt*step,ticks=[];for(let i=0;i<=cnt;i++)ticks.push(i*step);return{max,ticks}}
 
 
 // Monotone cubic (Fritsch-Carlson) samples of ys: SUB points per segment, never outside the neighbouring values.
@@ -550,7 +576,7 @@ function setNum(el,target,fmt){
   (function step(t){const k=Math.min(1,(t-t0)/500),e=1-Math.pow(1-k,3);el.textContent=fmt(target*e);if(k<1)requestAnimationFrame(step);else el.textContent=fmt(target)})(t0);
 }
 
-const NUMFMT={pct:v=>Math.round(v)+"%",tok:fmtTokens,cnt:fmtCount};
+const NUMFMT={pct:v=>Math.round(v)+"%",tok:fmtTokens,cnt:fmtCount,usd:fmtUSD};
 function countUps(){document.querySelectorAll("[data-n]").forEach(el=>setNum(el,Number(el.dataset.n),NUMFMT[el.dataset.f]))}
 
 /* history-derived helpers */
@@ -1012,7 +1038,7 @@ function renderAccounts(){
       }else if(a.error&&!a.needs_login)h+=`<div class="note err">Erro ao consultar: ${esc(a.error)}</div>`;
       const t=state.hist&&state.hist.accounts&&state.hist.accounts[a.auth_id];
       h+=`<div class="afoot"><span>${t&&(t.requests||t.input||t.output||t.cached)
-        ?`No período: <b>${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens</b> · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`
+        ?`No período: <b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`
         :"Sem atividade no período"}</span>${sp}</div></div>`;
       return h;
   }).join("");
@@ -1035,7 +1061,7 @@ function renderSkeleton(){
   const acct=`<div class="card acct"><div class="skrow">${sk("22px","22px","round")}${sk("45%","12px")}<span style="flex:1"></span>${sk("4.5rem","24px")}</div>
     <div class="skrow sp">${sk("88px","88px","round")}${sk("88px","88px","round")}</div>${sk("100%","6px")}${sk("100%","6px")}${sk("60%","12px")}</div>`;
   $("#accts").dataset.key="";$("#accts").innerHTML=acct+acct;
-  $("#stats").innerHTML=Array(6).fill(`<div class="card stat">${sk("60%","12px")}${sk("45%","22px")}${sk("70%","10px")}</div>`).join("");
+  $("#stats").innerHTML=Array(8).fill(`<div class="card stat">${sk("60%","12px")}${sk("45%","22px")}${sk("70%","10px")}</div>`).join("");
   $("#heat").innerHTML=sk("100%","200px");
   $("#plot").insertAdjacentHTML("beforeend",`<div class="empty-chart">${sk("100%","100%")}</div>`);
   document.querySelectorAll("#secHero,#secTl,#secAcc,#secAct").forEach(e=>e.setAttribute("aria-busy","true"));
@@ -1052,7 +1078,7 @@ const accColor=id=>ACC[id]||"var(--muted-foreground)";
 const accName=id=>{const a=claudeAccs().find(x=>x.auth_id===id);return legendName(a?(a.email||a.auth_id):id)};
 function renderActivity(){
   const h=state.hist;if(!h||!h.buckets||!h.buckets.length)return;
-  const hourly=h.step<86400,mk=state.metric==="tokens"?"tokens_by_account":"by_account",mlabel=state.metric==="tokens"?"Tokens":"Requisições";
+  const hourly=h.step<86400,cost=state.metric==="cost",mk=cost?"cost_by_account":state.metric==="tokens"?"tokens_by_account":"by_account",mlabel=cost?"Custo":state.metric==="tokens"?"Tokens":"Requisições";
   const ids=seriesIds(h),n=h.buckets.length;
   const val=(b,id)=>((b[mk]||{})[id])||0;
   // cum[j][i]: stacked total of accounts 0..j in bucket i.
@@ -1061,7 +1087,7 @@ function renderActivity(){
   const totals=ids.length?cum[ids.length-1]:new Array(n).fill(0),total=totals.reduce((a,b)=>a+b,0);
   const first=new Date(h.buckets[0].t*1000),last=new Date(h.buckets[n-1].t*1000);
   $("#rangeLabel").textContent="Consumo ao longo do tempo · "+(hourly?`${fmtHour(first)} até agora`:`${fmtDay(first)} até ${fmtDay(last)}`);
-  $("#chartTitle").textContent=(state.metric==="tokens"?"Tokens processados":"Requisições")+(hourly?" por hora":" por dia")+" · por conta";
+  $("#chartTitle").textContent=(cost?"Custo estimado":state.metric==="tokens"?"Tokens processados":"Requisições")+(hourly?" por hora":" por dia")+" · por conta";
   // Every layer is interpolated on its own (monotone, so never below 0) and then stacked, so a layer
   // can neither dip below the one under it nor below the baseline.
   const SUB=12,N=n<2?n:(n-1)*SUB+1,per=ids.map(id=>monoSamples(h.buckets.map(b=>val(b,id)),SUB));
@@ -1082,9 +1108,13 @@ function renderActivity(){
   $("#chartSvg").innerHTML=svg;
   const plot=$("#plot"),tip=$("#tip"),hl=$("#hoverLine");
   plot.querySelectorAll(".empty-chart,.dot").forEach(e=>e.remove());
-  if(!total)plot.insertAdjacentHTML("beforeend",`<div class="empty-chart">Nenhuma atividade nesse período.</div>`);
+  if(!total){
+    // Cost is zero when the range only has tokens recorded before per-model tracking (or unknown models).
+    const anyReq=h.buckets.some(b=>ids.some(id=>((b.by_account||{})[id]||0)>0));
+    const msg=state.metric==="cost"&&anyReq?"Ainda sem custo nesse período: o custo é calculado por modelo, registrado a partir de agora. Veja Tokens ou Requisições para o histórico anterior.":"Nenhuma atividade nesse período.";
+    plot.insertAdjacentHTML("beforeend",`<div class="empty-chart">${msg}</div>`)}
   const dots=ids.map(id=>{const d=document.createElement("i");d.className="dot";d.style.setProperty("--c",accColor(id));plot.appendChild(d);return d});
-  $("#ylabels").innerHTML=sc.ticks.map(t=>`<span style="top:${Y(t)/260*100}%">${t?fmtMetric(t):"0"}</span>`).join("");
+  $("#ylabels").innerHTML=sc.ticks.map(t=>`<span style="top:${Y(t)/260*100}%">${t?fmtAxis(t):"0"}</span>`).join("");
   const lab=i=>{const d=new Date(h.buckets[i].t*1000);return hourly?fmtHour(d):fmtDay(d)};
   $("#xlabels").innerHTML=[0,1,2,3,4].map(k=>`<span>${lab(Math.round(k*(n-1)/4))}</span>`).join("");
   $("#chartLegend").innerHTML=ids.map(id=>`<span class="lg"><i style="--c:${accColor(id)}"></i>${esc(accName(id))}</span>`).join("");
@@ -1102,18 +1132,40 @@ function renderActivity(){
     tip.style.left=lx+"px";tip.style.top=ly+"px"};
   plot.onmouseleave=()=>{tip.style.display="none";hl.style.opacity=0;dots.forEach(d=>d.style.display="none")};
 
-  let inp=0,out=0,cache=0,cw=0,req=0,fail=0;
+  let inp=0,out=0,cache=0,cw=0,req=0,fail=0,unpriced=0;
+  const cs$={total:0,input:0,cache_read:0,cache_write:0,output:0,no_cache:0};
   for(const[id,a]of Object.entries(h.accounts||{})){if((h.providers||{})[id]!=="claude")continue;
-    inp+=a.input||0;out+=a.output||0;cache+=a.cached||0;cw+=a.cache_write||0;req+=a.requests||0;fail+=a.failed||0}
+    inp+=a.input||0;out+=a.output||0;cache+=a.cached||0;cw+=a.cache_write||0;req+=a.requests||0;fail+=a.failed||0;
+    unpriced+=a.unpriced_tokens||0;for(const k in cs$)cs$[k]+=(a.cost&&a.cost[k])||0}
+  const saved=cs$.no_cache-cs$.total;
   const tok=inp+cache+cw+out,inTot=inp+cache+cw,hit=inTot>0?cache/inTot:0,pc=v=>tok>0?fmtPct(v/tok):"0,0%";
   const stat=(k,v,s,tip,n,f)=>`<div class="card stat"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular"${f?` data-n="${n}" data-f="${f}"`:""}>${v}</div><div class="s">${s}</div></div>`;
-  $("#stats").innerHTML=stat("Tokens processados",fmtTokens(tok),"input + cache + output","Tudo que o modelo processou: input novo, cache lido, cache escrito e output",tok,"tok")
-    +stat("Input novo",fmtTokens(inp),`${pc(inp)} dos tokens`,"Input que não veio do cache nem foi gravado nele",inp,"tok")
-    +stat("Cache lido",fmtTokens(cache),`taxa de cache ${Math.floor(hit*100)}%`,"Taxa de cache = lido / (input novo + cache lido + cache escrito)",cache,"tok")
-    +stat("Cache escrito",fmtTokens(cw),`${pc(cw)} dos tokens`,"Tokens gravados no cache de prompt",cw,"tok")
-    +stat("Output",fmtTokens(out),`${pc(out)} dos tokens`,"",out,"tok")
+  $("#stats").innerHTML=stat("Custo estimado",fmtUSD(cs$.total),"preço de API · com cache","Quanto esses tokens custariam na API da Anthropic, por modelo e com preços de cache. Não é o que a assinatura cobra.",cs$.total,"usd")
+    +stat("Economia com cache",fmtUSD(saved),saved<0?"escritas custaram mais do que poupou":`sem cache: ${fmtUSD(cs$.no_cache)}`,
+      "Diferença entre cobrar toda leitura e escrita de cache como input normal e o custo real com os preços de cache. Negativo significa que as escritas de cache custaram mais do que as leituras economizaram.",saved,"usd")
+    +stat("Tokens processados",fmtTokens(tok),"input + cache + output","Tudo que o modelo processou: input novo, cache lido, cache escrito e output",tok,"tok")
+    +stat("Input novo",fmtTokens(inp),`${fmtUSD(cs$.input)} · ${pc(inp)} dos tokens`,"Input que não veio do cache nem foi gravado nele",inp,"tok")
+    +stat("Cache lido",fmtTokens(cache),`${fmtUSD(cs$.cache_read)} · cache ${Math.floor(hit*100)}%`,"Taxa de cache = lido / (input novo + cache lido + cache escrito)",cache,"tok")
+    +stat("Cache escrito",fmtTokens(cw),`${fmtUSD(cs$.cache_write)} · ${pc(cw)} dos tokens`,"Tokens gravados no cache de prompt",cw,"tok")
+    +stat("Output",fmtTokens(out),`${fmtUSD(cs$.output)} · ${pc(out)} dos tokens`,"",out,"tok")
     +stat("Requisições",fmtCount(req),fail?`${fmtCount(fail)} falha${fail===1?"":"s"}`:"sem falhas","",req,"cnt");
+  const un=$("#unpricedNote");un.hidden=!(unpriced>0);
+  if(unpriced>0)un.textContent=`${fmtCount(unpriced)} tokens sem preço (registrados antes do rastreio por modelo ou de modelo desconhecido) não entram no custo.`;
+  renderModels(h);
   renderHeat();
+}
+
+/* ---- cost per model ---- */
+function renderModels(h){
+  const el=$("#modelCost"),rows=Object.entries(h.models||{}).map(([k,m])=>({k,m,tok:(m.input||0)+(m.cache_read||0)+(m.cache_write||0)+(m.output||0),c:(m.cost&&m.cost.total)||0}));
+  rows.sort((a,b)=>b.c-a.c||b.tok-a.tok);
+  el.hidden=!rows.length;if(!rows.length){el.innerHTML="";return}
+  const top=rows.reduce((s,r)=>s+r.c,0);
+  el.innerHTML=`<div class="cm-h">Custo por modelo</div>`+rows.map(({k,m,tok,c})=>{
+    const b=m.cost||{},tip=m.priced?`Input novo: ${fmtUSD(b.input)}\nCache lido: ${fmtUSD(b.cache_read)}\nCache escrito: ${fmtUSD(b.cache_write)}\nOutput: ${fmtUSD(b.output)}\nTotal: ${fmtUSD(b.total)}\nSem cache: ${fmtUSD(b.no_cache)}`:"Modelo sem preço conhecido: não entra no custo.";
+    const w=m.priced&&top>0?Math.max(c>0?2:0,c/top*100):0;
+    return `<div class="cm-row" data-tip="${esc(tip)}"><span class="cm-n">${esc(prettyModel(k))}</span><span class="cm-r">${fmtCount(m.requests||0)} req</span><span class="cm-t">${fmtTokens(tok)} tokens</span>`
+      +`<span class="cm-b"><i style="width:${w.toFixed(1)}%"></i></span><span class="cm-c${m.priced?"":" mut"}">${m.priced?fmtUSD(c):"sem preço"}</span></div>`}).join("");
 }
 
 /* ---- when you work: weekday x hour heatmap of the last 4 weeks ---- */
@@ -1121,7 +1173,7 @@ const WD_ROWS=[1,2,3,4,5,6,0],WD_NAMES={1:"seg",2:"ter",3:"qua",4:"qui",5:"sex",
 function renderHeat(){
   const h=state.hist,el=$("#heat"),sub=$("#heatSub");
   if(!h||!h.heat_tokens||!h.heat_requests){el.innerHTML="";return}
-  const days=h.heat_days||0,tokens=state.metric==="tokens";
+  const days=h.heat_days||0,tokens=state.metric!=="requests";
   sub.textContent=(days>=28?"últimas 4 semanas":days===1?"último dia":`últimos ${days} dias`)+" · média por dia da semana, hora local";
   if(!days){el.innerHTML=`<div class="sub">Sem atividade nas últimas 4 semanas.</div>`;return}
   // How many times each weekday occurred in the covered days, to turn totals into per-day averages.
@@ -1320,18 +1372,37 @@ function demo(){
     hours.push({t:Math.floor(d.getTime()/1000),d,per})}
   const sum=o=>o.f+o.rd+o.w+o.o;
   const buckets=[],accounts={};
-  for(const id of ids)accounts[id]={requests:0,failed:id==="c3"?2:0,input:0,output:0,cached:0,cache_write:0};
+  // Prices per million tokens: Opus 5.5 and Haiku 5.5. no_cache bills every cache read/write as fresh input.
+  const OP={i:4,r:.2,w:5,o:20},HK={i:.1,r:.01,w:.125,o:.5};
+  const zc=()=>({total:0,input:0,cache_read:0,cache_write:0,output:0,no_cache:0});
+  const addCost=(c,R,f,rd,w,o,m)=>{const i=f*R.i*m/1e6,r=rd*R.r*m/1e6,wr=w*R.w*m/1e6,ou=o*R.o*m/1e6;
+    c.input+=i;c.cache_read+=r;c.cache_write+=wr;c.output+=ou;c.total+=i+r+wr+ou;c.no_cache+=(f+rd+w)*R.i*m/1e6+ou;return i+r+wr+ou};
+  const newModel=()=>({requests:0,input:0,cache_read:0,cache_write:0,output:0,priced:true,cost:zc()});
+  const models={"claude-opus-5-5":newModel(),"claude-haiku-5-5":newModel()};
+  const addModel=(mo,R,r,f,rd,w,o,m)=>{mo.requests+=r;mo.input+=f;mo.cache_read+=rd;mo.cache_write+=w;mo.output+=o;return addCost(mo.cost,R,f,rd,w,o,m)};
+  for(const id of ids)accounts[id]={requests:0,failed:id==="c3"?2:0,input:0,output:0,cached:0,cache_write:0,cost:zc(),unpriced_tokens:id==="c2"?1.2e6:0};
   const dayStart=off=>{const t=new Date(n);return new Date(t.getFullYear(),t.getMonth(),t.getDate()+off).getTime()};
   for(let i=0;i<slots;i++){
-    const b={t:0,requests:{claude:0},tokens:{claude:0},failed:0,by_account:{},tokens_by_account:{}};
+    const b={t:0,requests:{claude:0},tokens:{claude:0},failed:0,by_account:{},tokens_by_account:{},cost:{claude:0},cost_by_account:{}};
     const start=step===3600?cur.getTime()-(slots-1-i)*H:dayStart(-(slots-1-i));
     const end=step===3600?start+H:dayStart(-(slots-1-i)+1);
     b.t=Math.floor(start/1000);
     for(const hr of hours){const ms=hr.t*1000;if(ms<start||ms>=end)continue;
       for(const id of ids){const o=hr.per[id];
         b.requests.claude+=o.r;b.tokens.claude+=sum(o);b.by_account[id]=(b.by_account[id]||0)+o.r;b.tokens_by_account[id]=(b.tokens_by_account[id]||0)+sum(o);
-        const a=accounts[id];a.requests+=o.r;a.input+=o.f;a.output+=o.o;a.cached+=o.rd;a.cache_write+=o.w}}
+        const a=accounts[id];a.requests+=o.r;a.input+=o.f;a.output+=o.o;a.cached+=o.rd;a.cache_write+=o.w;
+        // ~10% of the tokens go to Haiku 5.5, the rest to Opus 5.5.
+        const hk=x=>Math.round(x*.1),hr_=hk(o.r),hf=hk(o.f),hrd=hk(o.rd),hw=hk(o.w),ho=hk(o.o);
+        const usd=addModel(models["claude-opus-5-5"],OP,o.r-hr_,o.f-hf,o.rd-hrd,o.w-hw,o.o-ho,1)+addModel(models["claude-haiku-5-5"],HK,hr_,hf,hrd,hw,ho,1);
+        addCost(a.cost,OP,o.f-hf,o.rd-hrd,o.w-hw,o.o-ho,1);addCost(a.cost,HK,hf,hrd,hw,ho,1);
+        b.cost.claude+=usd;b.cost_by_account[id]=(b.cost_by_account[id]||0)+usd}}
     buckets.push(b)}
+  // A small fast-mode Opus row (2x rates) for c1, counted in its totals.
+  if(!quiet&&!empty&&accounts.c1.requests>0){
+    const fm=newModel(),a=accounts.c1,fr=40,ff=300000,frd=4e6,fw=400000,fo=90000;
+    addModel(fm,OP,fr,ff,frd,fw,fo,2);models["claude-opus-5-5+fast"]=fm;
+    addCost(a.cost,OP,ff,frd,fw,fo,2);a.requests+=fr;a.input+=ff;a.cached+=frd;a.cache_write+=fw;a.output+=fo}
+  if(quiet||empty)for(const k of Object.keys(models))delete models[k];
   const heat_tokens=Array.from({length:7},()=>Array(24).fill(0)),heat_requests=Array.from({length:7},()=>Array(24).fill(0));
   for(const hr of hours){if(hr.t*1000<n-28*24*H)continue;
     for(const id of ids){heat_tokens[hr.d.getDay()][hr.d.getHours()]+=sum(hr.per[id]);heat_requests[hr.d.getDay()][hr.d.getHours()]+=hr.per[id].r}}
@@ -1351,7 +1422,7 @@ function demo(){
     if(id==="c1")for(let k=-8;k<=0;k++)pts.push({t:Math.round(n/1000+k*900),s:Math.round((66+19*(-k/8))*10)/10});
     pts.sort((a,b)=>a.t-b.t);
     quota[id]=pts}
-  state.hist={range:state.period,step,buckets,providers:{c1:"claude",c2:"claude",c3:"claude",c4:"claude"},quota:empty?{}:quota,accounts,heat_tokens,heat_requests,heat_days:quiet||empty?0:28,heat_weekday_days:(()=>{const c=Array(7).fill(0),t=new Date();if(!quiet&&!empty)for(let k=0;k<28;k++)c[new Date(t.getFullYear(),t.getMonth(),t.getDate()-k).getDay()]++;return c})()};
+  state.hist={range:state.period,step,buckets,providers:{c1:"claude",c2:"claude",c3:"claude",c4:"claude"},quota:empty?{}:quota,accounts,models,heat_tokens,heat_requests,heat_days:quiet||empty?0:28,heat_weekday_days:(()=>{const c=Array(7).fill(0),t=new Date();if(!quiet&&!empty)for(let k=0;k<28;k++)c[new Date(t.getFullYear(),t.getMonth(),t.getDate()-k).getDay()]++;return c})()};
   state.quota7=quota;state.dataNow=n;state.recvAt=Date.now();
   // Add &anim to the URL to preview the first-render motion.
   if(!new URLSearchParams(location.search).has("anim"))document.body.classList.add("ready");
