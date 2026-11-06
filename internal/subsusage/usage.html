@@ -235,11 +235,8 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .plot{position:relative;flex:1;height:240px;min-width:0}
 .plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .plot .grid{stroke:var(--border);stroke-width:1;opacity:.55}
-.plot .hover{position:absolute;top:0;bottom:0;transform:translateX(-50%);border-radius:6px;background:color-mix(in srgb,var(--foreground) 5%,transparent);opacity:0;pointer-events:none}
-.plot .bar{transition:opacity .12s}
-.plot .bar.dim{opacity:.45}
-.xlabels{position:relative;height:14px;margin-left:56px;font-size:10px;color:var(--muted-foreground);text-transform:uppercase}
-.xlabels span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.plot .hover{position:absolute;top:8px;bottom:0;width:1px;background:var(--muted-foreground);opacity:0;pointer-events:none}
+.xlabels{display:flex;justify-content:space-between;padding-left:56px;font-size:10px;color:var(--muted-foreground);text-transform:uppercase}
 .plot .halo{fill:none;stroke:var(--card);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round}
 .plot .ln{fill:none;stroke:var(--c);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
 .plot .dot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--card);pointer-events:none;display:none}
@@ -255,7 +252,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tip .r.tot{margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
 .tip .r.tot span{color:var(--foreground)}
 .chart-legend{padding-left:56px}
-.chart-legend .lg i{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.chart-legend .lg i{width:12px;height:10px;border-radius:2px;background:linear-gradient(to bottom,color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 8%,transparent));border-top:2px solid var(--c)}
 .heat-card{padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
 .heat-top{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
 .heat-top b{color:var(--foreground);font-weight:600}
@@ -291,7 +288,8 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 @media (max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:12px 14px}.stat .v{font-size:20px}}
 @media (max-width:640px){.mdl{grid-template-columns:4rem minmax(0,1fr) auto;column-gap:10px}.rb .rs{flex-wrap:wrap;justify-content:center}}
-@media (max-width:640px){.ylabels{width:40px}.xlabels{margin-left:48px}.chart-legend{padding-left:48px}.heat-card{padding:14px 12px 16px}.heat{grid-template-columns:1.8rem repeat(24,minmax(0,1fr));gap:2px}.heat .hc{height:20px}.chart-card{padding:16px 14px 12px}}
+@media (max-width:640px){.ylabels{width:40px}.xlabels,.chart-legend{padding-left:48px}.heat-card{padding:14px 12px 16px}.heat{grid-template-columns:1.8rem repeat(24,minmax(0,1fr));gap:2px}.heat .hc{height:20px}.chart-card{padding:16px 14px 12px}
+  .xlabels span:nth-child(2),.xlabels span:nth-child(4){display:none}}
 
 /* timeline: next 7 days */
 .tl-card{--g:56px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px}
@@ -590,6 +588,17 @@ document.addEventListener("scroll",hideTip,true);
 function niceScale(peak,n){if(!(peak>0))return{max:1,ticks:[0,1]};const raw=peak/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),norm=raw/mag;
   const step=(norm>5?10:norm>2?5:norm>1?2:1)*mag,cnt=Math.max(1,Math.round(Math.ceil(peak/step-1e-9))),max=cnt*step,ticks=[];for(let i=0;i<=cnt;i++)ticks.push(i*step);return{max,ticks}}
 
+
+// Monotone cubic (Fritsch-Carlson) samples of ys: SUB points per segment, never outside the neighbouring values.
+function monoSamples(ys,sub){
+  const n=ys.length;if(n<2)return ys.slice();
+  const m=[],t=[];for(let i=0;i<n-1;i++)m.push(ys[i+1]-ys[i]);
+  t[0]=m[0];for(let i=1;i<n-1;i++)t[i]=m[i-1]*m[i]<=0?0:(m[i-1]+m[i])/2;t[n-1]=m[n-2];
+  for(let i=0;i<n-1;i++){if(m[i]===0){t[i]=0;t[i+1]=0;continue}const a=t[i]/m[i],b=t[i+1]/m[i],q=a*a+b*b;if(q>9){const k=3/Math.sqrt(q);t[i]=k*a*m[i];t[i+1]=k*b*m[i]}}
+  const out=[];
+  for(let i=0;i<n-1;i++)for(let k=0;k<sub;k++){const u=k/sub,u2=u*u,u3=u2*u;
+    out.push(Math.max(0,(2*u3-3*u2+1)*ys[i]+(u3-2*u2+u)*t[i]+(-2*u3+3*u2)*ys[i+1]+(u3-u2)*t[i+1]))}
+  out.push(ys[n-1]);return out}
 
 const DAY=86400;
 function weeklyOf(a){return(a.windows||[]).find(w=>w.kind==="weekly"||w.kind==="monthly")}
@@ -1510,20 +1519,23 @@ function renderActivity(){
   const first=new Date(h.buckets[0].t*1000),last=new Date(h.buckets[n-1].t*1000);
   $("#rangeLabel").textContent="Consumo ao longo do tempo · "+(hourly?`${fmtHour(first)} até agora`:`${fmtDay(first)} até ${fmtDay(last)}`);
   $("#chartTitle").textContent=(cost?"Custo estimado":state.metric==="tokens"?"Tokens processados":"Requisições")+(hourly?" por hora":" por dia")+(byModel?" · por modelo":" · por conta");
-  // Stacked bars, one per bucket; the stack of a bucket is clipped to one rounded column.
-  const peak=Math.max(0,...totals),sc=niceScale(peak,4);
-  const slot=960/Math.max(1,n),bw=Math.min(slot*(n>40?.78:.66),56),BX=i=>i*slot+(slot-bw)/2,Y=v=>260-(v/sc.max)*(260-8);
+  // Every layer is interpolated on its own (monotone, so never below 0) and then stacked, so a layer
+  // can neither dip below the one under it nor below the baseline.
+  const SUB=12,N=n<2?n:(n-1)*SUB+1,per=ids.map(id=>monoSamples(h.buckets.map(b=>val(b,id)),SUB));
+  const cs=[];let run=new Array(N).fill(0);per.forEach(p=>{run=run.map((v,k)=>v+p[k]);cs.push(run)});
+  const peak=Math.max(0,...(cs.length?cs[cs.length-1]:[0])),sc=niceScale(peak,4);
+  const X=k=>N<2?480:k/(N-1)*960,Y=v=>260-(v/sc.max)*(260-8);
+  const pathOf=a=>a.map((v,k)=>`${k?"L":"M"}${X(k).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
   const NS='vector-effect="non-scaling-stroke"';
   let svg=sc.ticks.map(t=>`<line class="grid" x1="0" x2="960" y1="${Y(t)}" y2="${Y(t)}" ${NS}/>`).join("");
-  if(total){
-    let clips="",bars="";
-    h.buckets.forEach((b,i)=>{if(!(totals[i]>0))return;
-      const x=BX(i).toFixed(1),top=Y(totals[i]),hh=Math.max(1.5,260-top);
-      clips+=`<clipPath id="bc${i}"><rect x="${x}" y="${(260-hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${(hh+4).toFixed(1)}" rx="3"/></clipPath>`;
-      let seg="";ids.forEach((id,j)=>{const v=val(b,id);if(!(v>0))return;const y0=Y(cum[j][i]-v),y1=Y(cum[j][i]);
-        seg+=`<rect x="${x}" y="${y1.toFixed(2)}" width="${bw.toFixed(1)}" height="${Math.max(.6,y0-y1).toFixed(2)}" style="fill:${color(id)}"/>`});
-      bars+=`<g class="bar" data-i="${i}" clip-path="url(#bc${i})">${seg}</g>`});
-    svg+=`<defs>${clips}</defs>${bars}`}
+  if(total&&n>1){
+    const tops=cs.map(pathOf),st=id=>`style="--c:${color(id)}"`;
+    svg+=`<defs>${ids.map((id,j)=>`<linearGradient id="ag${j}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${color(id)};stop-opacity:var(--lg-top)"/><stop offset="1" style="stop-color:${color(id)};stop-opacity:var(--lg-bot)"/></linearGradient>`).join("")}</defs>`;
+    svg+=ids.map((id,j)=>{
+      const bottom=j?cs[j-1].map((v,k)=>[k,v]).reverse().map(([k,v])=>`L${X(k).toFixed(1)},${Y(v).toFixed(1)}`).join(" "):`L${X(N-1)},260 L${X(0)},260`;
+      return `<path ${st(id)} fill="url(#ag${j})" d="${tops[j]} ${bottom} Z"/>`}).join("")
+      +tops.map(d=>`<path class="halo" d="${d}" ${NS}/>`).join("")
+      +ids.map((id,j)=>`<path class="ln" ${st(id)} d="${tops[j]}" ${NS}/>`).join("")}
   $("#chartSvg").innerHTML=svg;
   const plot=$("#plot"),tip=$("#tip"),hl=$("#hoverLine");
   plot.querySelectorAll(".empty-chart,.dot").forEach(e=>e.remove());
@@ -1532,30 +1544,28 @@ function renderActivity(){
     const anyReq=h.buckets.some(b=>Object.values(b.by_account||{}).some(v=>v>0));
     const msg=state.metric==="cost"&&anyReq?"Ainda sem custo nesse período: o custo é calculado por modelo, registrado a partir de agora. Veja Tokens ou Requisições para o histórico anterior.":"Nenhuma atividade nesse período.";
     plot.insertAdjacentHTML("beforeend",`<div class="empty-chart">${msg}</div>`)}
+  const dots=ids.map(id=>{const d=document.createElement("i");d.className="dot";d.style.setProperty("--c",color(id));plot.appendChild(d);return d});
   $("#ylabels").innerHTML=sc.ticks.map(t=>`<span style="top:${Y(t)/260*100}%">${t?fmtAxis(t):"0"}</span>`).join("");
   const lab=i=>{const d=new Date(h.buckets[i].t*1000);return hourly?fmtHour(d):fmtDay(d)};
-  // Labels under their bars: about 5, spread evenly.
-  const every=Math.max(1,Math.ceil(n/(innerWidth<640?4:7))),xl=[];
-  for(let i=n-1;i>=0;i-=every)xl.unshift(i);
-  $("#xlabels").innerHTML=xl.map(i=>`<span style="left:${((BX(i)+bw/2)/960*100).toFixed(2)}%">${lab(i)}</span>`).join("");
+  $("#xlabels").innerHTML=[0,1,2,3,4].map(k=>`<span>${lab(Math.round(k*(n-1)/4))}</span>`).join("");
   // By-model sums miss tokens recorded before per-model tracking.
   const accTotal=h.buckets.reduce((s,b)=>s+Object.values(b[acck]||{}).reduce((x,v)=>x+v,0),0);
   const note=$("#chartNote");note.hidden=!(byModel&&total<accTotal*(1-1e-6));
   note.textContent="Parte do histórico foi registrada antes do rastreio por modelo e não aparece nesta visão.";
   $("#chartLegend").innerHTML=ids.map(id=>`<span class="lg"><i style="--c:${color(id)}"></i>${esc(sname(id))}</span>`).join("");
 
-  const svgEl=$("#chartSvg");
-  plot.onmousemove=e=>{const r=plot.getBoundingClientRect(),x=e.clientX-r.left,i=Math.max(0,Math.min(n-1,Math.floor(x/r.width*n)));
-    const d=new Date(h.buckets[i].t*1000);
-    hl.style.left=((BX(i)+bw/2)/960*100)+"%";hl.style.width=(bw/960*100)+"%";hl.style.opacity=1;
-    svgEl.querySelectorAll(".bar").forEach(g=>g.classList.toggle("dim",+g.dataset.i!==i));
-    const rows=ids.slice().reverse().filter(id=>val(h.buckets[i],id)>0).map(id=>`<div class="r"><span><i class="adot" style="--c:${color(id)}"></i>${esc(sname(id))}</span><b class="tabular">${fmtMetric(val(h.buckets[i],id))}</b></div>`).join("");
+  plot.onmousemove=e=>{const r=plot.getBoundingClientRect(),x=e.clientX-r.left,i=Math.max(0,Math.min(n-1,Math.round(x/r.width*(n-1))));
+    const d=new Date(h.buckets[i].t*1000);hl.style.left=(n<2?50:i/(n-1)*100)+"%";hl.style.opacity=.6;
+    const k=n<2?0:i*SUB;
+    dots.forEach((dt,j)=>{const shown=total>0&&val(h.buckets[i],ids[j])>0;dt.style.display=shown?"block":"none";
+      if(shown){dt.style.left=(X(k)/960*100)+"%";dt.style.top=(Y(cs[j][k])/260*r.height)+"px"}});
+    const rows=ids.slice().reverse().map(id=>`<div class="r"><span><i class="adot" style="--c:${color(id)}"></i>${esc(sname(id))}</span><b class="tabular">${fmtMetric(val(h.buckets[i],id))}</b></div>`).join("");
     tip.innerHTML=`<div class="d">${hourly?fmtDate(d):d.toLocaleDateString("pt-BR",{weekday:"short",day:"numeric",month:"short"})}</div>${rows}
       <div class="r tot"><span>${mlabel} · total</span><b class="tabular">${fmtMetric(totals[i])}</b></div>`;
     tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
     let lx=x+12;if(lx+tw>r.width)lx=x-12-tw;const ly=Math.max(-8,Math.min(r.height-th+8,e.clientY-r.top-th/2));
     tip.style.left=lx+"px";tip.style.top=ly+"px"};
-  plot.onmouseleave=()=>{tip.style.display="none";hl.style.opacity=0;svgEl.querySelectorAll(".bar.dim").forEach(g=>g.classList.remove("dim"))};
+  plot.onmouseleave=()=>{tip.style.display="none";hl.style.opacity=0;dots.forEach(d=>d.style.display="none")};
 
   const cur=sumTotals(h.accounts,h.providers),{inp,out,cache,cw,req,fail,unpriced,cs:cs$,saved,tok,hit}=cur;
   const pc=v=>tok>0?fmtPct(v/tok):"0,0%";
