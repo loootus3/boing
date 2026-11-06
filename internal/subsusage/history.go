@@ -360,7 +360,14 @@ func (h *History) recordQuota(e *Entry, now time.Time) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	points := h.data.Quota[e.AuthID]
-	if n := len(points); n > 0 && now.Unix()-points[n-1].T < int64(quotaPointSpacing/time.Second) {
+	// The last point is provisional: it is replaced until it lies quotaPointSpacing after the
+	// point before it, then kept. Comparing the new sample with the last point instead would
+	// keep sliding that point forward for an account polled more often than the spacing, so it
+	// would never gain new points.
+	// A minute of tolerance keeps polls at about the spacing (with jitter) appending every time,
+	// and a provisional point older than the spacing is kept, so a gap in polling never erases it.
+	spacing := int64(quotaPointSpacing / time.Second)
+	if n := len(points); n > 1 && points[n-1].T-points[n-2].T < spacing-60 && now.Unix()-points[n-1].T < spacing {
 		points[n-1] = point
 	} else {
 		points = append(points, point)

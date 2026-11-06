@@ -175,3 +175,48 @@ func TestQueryLocation(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordQuotaKeepsHistoryForFrequentPolls(t *testing.T) {
+	h := &History{data: newHistoryData()}
+	start := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	// Polled every 2 minutes for an hour, losing 1% per poll.
+	for i := 0; i <= 30; i++ {
+		e := &Entry{AuthID: "a", Provider: "claude", Windows: []Window{{Kind: "weekly", UsedPercent: float64(i)}}}
+		h.recordQuota(e, start.Add(time.Duration(i)*2*time.Minute))
+	}
+	pts := h.data.Quota["a"]
+	if len(pts) < 6 || len(pts) > 8 {
+		t.Fatalf("got %d points, want about one per 10 minutes", len(pts))
+	}
+	for i := 2; i < len(pts); i++ {
+		if gap := pts[i-1].T - pts[i-2].T; gap < int64(quotaPointSpacing/time.Second) {
+			t.Errorf("points %d-%d only %ds apart", i-2, i-1, gap)
+		}
+	}
+	last := pts[len(pts)-1]
+	if last.T != start.Add(60*time.Minute).Unix() || *last.Weekly != 70 {
+		t.Errorf("last point = %d / %v, want the latest sample", last.T, *last.Weekly)
+	}
+}
+
+func TestRecordQuotaGapsAndSlowPolls(t *testing.T) {
+	h := &History{data: newHistoryData()}
+	start := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	rec := func(at time.Time, used float64) {
+		h.recordQuota(&Entry{AuthID: "a", Provider: "claude", Windows: []Window{{Kind: "weekly", UsedPercent: used}}}, at)
+	}
+	// Slow polling every ~10 min with jitter appends every sample.
+	for i, sec := range []int{0, 599, 1201, 1799, 2400} {
+		rec(start.Add(time.Duration(sec)*time.Second), float64(i))
+	}
+	if n := len(h.data.Quota["a"]); n != 5 {
+		t.Fatalf("slow polling kept %d points, want 5", n)
+	}
+	// A provisional point followed by a long gap is kept.
+	rec(start.Add(2520*time.Second), 5) // 2 min after the last: provisional
+	rec(start.Add(5*time.Hour), 6)
+	pts := h.data.Quota["a"]
+	if got := pts[len(pts)-2].T; got != start.Add(2520*time.Second).Unix() {
+		t.Errorf("point before the gap = %d, want the provisional point kept", got)
+	}
+}

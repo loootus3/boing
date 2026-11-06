@@ -661,9 +661,9 @@ function simulate(accs,perHour,now,rec,info){
 // Measured: weekly-remaining drops over the last 7 days (resets ignored), each weighted by an exponential
 // decay with half-life PACE_HALF_LIFE_H and divided by the equally weighted wall-clock coverage, so recent
 // hours count more. Weekly estimate: % already used ÷ time since the window started (valid after 6h).
-// The two blend by how much history there is (full measured weight at 24h). Pure: `quota` is a map
+// The two blend by how much history there is (full measured weight after PACE_TRUST_H hours). Pure: `quota` is a map
 // auth_id -> [{t,w,s}] sorted by t, `now` is in seconds.
-const PACE_HALF_LIFE_H=12;
+const PACE_HALF_LIFE_H=12,PACE_TRUST_H=8;
 function paceFrom(accs,quota,now){
   const k=Math.LN2/(PACE_HALF_LIFE_H*3600),since=now-7*DAY;
   let N=0,tStart=Infinity;
@@ -682,7 +682,8 @@ function paceFrom(accs,quota,now){
     const dur=w.duration_sec||7*DAY,el=Math.max(0,Math.min(dur,now-(r-dur)));
     used+=clampPct(w.used_percent);elapsed=Math.max(elapsed,el)}
   const weekEst=elapsed>=6*3600?used/elapsed*DAY:null;
-  const alpha=Math.max(0,Math.min(1,spanH/24));
+  // The measured pace takes over from the weekly average within PACE_TRUST_H of history.
+  const alpha=Math.max(0,Math.min(1,spanH/PACE_TRUST_H));
   const out={perDay:0,ok:false,source:"",measured,weekEst,alpha,spanH,halfLifeH:PACE_HALF_LIFE_H};
   if(measured!=null&&weekEst!=null){
     out.perDay=alpha*measured+(1-alpha)*weekEst;out.ok=true;out.source=alpha>=1?"hist":"blend";
@@ -1120,8 +1121,23 @@ function renderTimeline(){
   plot.addEventListener("dblclick",()=>{if(tlz.rng||tlz.preset!=="all"){tlz.rng=null;tlz.preset="all";renderTimeline()}});
   // Pan while zoomed: shift+wheel or horizontal wheel/trackpad. Plain vertical wheel keeps scrolling the page.
   let wacc=0,wraf=0;
+  // Vertical wheel zooms around the pointer; shift or horizontal wheel pans while zoomed.
+  let zacc=0,zx=0,zraf=0;
   plot.addEventListener("wheel",ev=>{
-    if(!zoomed||!(ev.shiftKey||Math.abs(ev.deltaX)>Math.abs(ev.deltaY)))return;
+    const pan=ev.shiftKey||Math.abs(ev.deltaX)>Math.abs(ev.deltaY);
+    if(!pan){
+      const dy=ev.deltaY*(ev.deltaMode===1?16:ev.deltaMode===2?400:1);
+      // Zooming out at the full range: let the page scroll.
+      if(dy>0&&!zoomed)return;
+      ev.preventDefault();zacc+=dy;zx=Math.max(0,Math.min(1,(ev.clientX-plot.getBoundingClientRect().left)/(plot.clientWidth||1)));
+      if(zraf)return;
+      zraf=requestAnimationFrame(()=>{zraf=0;const f=Math.exp(zacc*0.0015);zacc=0;
+        const full=F1-F0,w=Math.min(full,Math.max(TL_MIN,VS*f)),at=V0+zx*VS;
+        if(w>=full-1){tlz.rng=null;tlz.preset="all"}
+        else{const a=Math.min(Math.max(F0,at-zx*w),F1-w);tlz.rng=[a,a+w];tlz.preset=null}
+        renderTimeline()});
+      return}
+    if(!zoomed)return;
     ev.preventDefault();
     wacc+=(Math.abs(ev.deltaX)>=Math.abs(ev.deltaY)?ev.deltaX:ev.deltaY)*(ev.deltaMode===1?16:1);
     if(wraf)return;
