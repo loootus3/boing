@@ -12,22 +12,22 @@
 <style>
 :root{
   --background:oklch(99.2% 0 0);--foreground:#18181b;--card:#fff;--popover:#fff;
-  --muted:#f4f4f5;--muted-foreground:#71717a;--accent:#f4f4f5;--border:#e4e4e7;--input:#d4d4d8;
+  --muted:#f4f4f5;--muted-foreground:#63636b;--accent:#f4f4f5;--border:#e4e4e7;--input:#d4d4d8;
   --success:#10b981;--success-foreground:#047857;--warning:#f59e0b;--warning-foreground:#b45309;
   --error:#ef4444;--error-foreground:#b91c1c;--info:#3b82f6;--info-foreground:#1d4ed8;
   --st-good:#0ca30c;--st-warn:#fab219;--st-crit:#d03b3b;
-  --acc-1:#ce6234;--acc-2:#008aa3;--acc-3:#be8700;--acc-4:#bf4a7f;--acc-5:#7250ba;--acc-6:#319751;
+  --acc-1:#4f63d9;--acc-2:#008aa3;--acc-3:#c2378a;--acc-4:#be8700;--acc-5:#7250ba;--acc-6:#319751;
   --claude:#d97757;--radius:.5rem;color-scheme:light;
-  --surf-a:#fff;--surf-b:#f6f6f7;--track:#e9e9ec;--tl-a:.16;--lg-top:.30;--lg-bot:.03;--focus:#2563eb;
+  --surf-a:#fff;--surf-b:#f6f6f7;--track:#e9e9ec;--tl-a:.16;--ht-a:.04;--ht-l:.10;--lg-top:.30;--lg-bot:.03;--focus:#2563eb;
   --font-mono:ui-monospace,"SF Mono","SFMono-Regular",Menlo,Consolas,"Liberation Mono",monospace;
 }
 @media (prefers-color-scheme:dark){:root{
-  --background:#000;--foreground:#f5f5f5;--card:#0b0b0b;--popover:#0b0b0b;
+  --background:#000;--foreground:#f5f5f5;--card:#111113;--popover:#141416;
   --muted:rgba(255,255,255,.07);--muted-foreground:#a3a3a3;--accent:rgba(255,255,255,.05);
-  --border:rgba(255,255,255,.09);--input:rgba(255,255,255,.11);
+  --border:rgba(255,255,255,.14);--input:rgba(255,255,255,.11);
   --success-foreground:#34d399;--warning-foreground:#fbbf24;--error:#f05252;--error-foreground:#f87171;--info-foreground:#60a5fa;
-  --acc-1:#d16b42;--acc-2:#0096af;--acc-3:#b68b16;--acc-4:#c25485;--acc-5:#8264c8;--acc-6:#459f5d;
-  --surf-a:rgba(255,255,255,.045);--surf-b:rgba(255,255,255,.012);--track:rgba(255,255,255,.09);--tl-a:.22;--lg-top:.40;--lg-bot:.04;--focus:#60a5fa;
+  --acc-1:#7d8cf0;--acc-2:#0096af;--acc-3:#e0609f;--acc-4:#b68b16;--acc-5:#8264c8;--acc-6:#459f5d;
+  --surf-a:rgba(255,255,255,.045);--surf-b:rgba(255,255,255,.012);--track:rgba(255,255,255,.09);--tl-a:.22;--ht-a:.10;--ht-l:.26;--lg-top:.40;--lg-bot:.04;--focus:#60a5fa;
   color-scheme:dark;
 }}
 *{box-sizing:border-box}
@@ -42,7 +42,7 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .tabular{font-variant-numeric:tabular-nums}
 
 /* top bar */
-.topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--background) 80%,transparent);
+.topbar{position:sticky;top:0;z-index:30;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--background) 94%,transparent);
   backdrop-filter:blur(12px) saturate(1.14);-webkit-backdrop-filter:blur(12px) saturate(1.14)}
 .tb{max-width:72rem;margin:0 auto;min-height:56px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 24px}
 .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-foreground);white-space:nowrap}
@@ -51,12 +51,12 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
 @keyframes pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--st-good) 45%,transparent)}50%{box-shadow:0 0 0 5px transparent}}
 .spacer{flex:1}
 .seg{display:flex;width:fit-content;gap:2px;border-radius:8px;background:color-mix(in srgb,var(--input) 40%,transparent);padding:2px}
-.seg button{height:24px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--muted-foreground);font:500 12px/1 inherit;cursor:pointer}
+.seg button{height:28px;padding:0 10px;border:0;border-radius:6px;background:none;color:var(--muted-foreground);font-family:inherit;font-weight:500;font-size:12px;line-height:1;cursor:pointer}
 .seg button:hover{background:color-mix(in srgb,var(--background) 55%,transparent);color:var(--foreground)}
-.seg button.on{background:var(--background);color:var(--foreground);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-@media (prefers-color-scheme:dark){.seg button.on{background:color-mix(in srgb,var(--input) 72%,transparent)}}
+.seg button.on{background:var(--background);color:var(--foreground);font-weight:600;box-shadow:0 0 0 1px var(--border),0 1px 2px rgba(0,0,0,.1)}
+@media (prefers-color-scheme:dark){.seg button.on{background:color-mix(in srgb,var(--foreground) 16%,transparent);font-weight:600}}
 .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border:1px solid var(--input);border-radius:var(--radius);
-  background:var(--popover);color:var(--foreground);font:500 14px/1 inherit;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:background .15s,transform .05s}
+  background:var(--popover);color:var(--foreground);font-family:inherit;font-weight:500;font-size:14px;line-height:1;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04);transition:background .15s,transform .05s}
 .btn:hover{background:var(--accent)}
 .btn:active{transform:scale(.97)}
 .btn:disabled{opacity:.64;cursor:default}
@@ -66,7 +66,7 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
   background:var(--popover);box-shadow:0 8px 24px rgba(0,0,0,.14);display:none}
 .menu.open{display:block}
 .menu button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;padding:8px 10px;border:0;border-radius:6px;
-  background:none;color:var(--foreground);font:500 13px/1.3 inherit;text-align:left;cursor:pointer}
+  background:none;color:var(--foreground);font-family:inherit;font-weight:500;font-size:13px;line-height:1.3;text-align:left;cursor:pointer}
 .menu button:hover{background:var(--accent)}
 .menu button small{font-size:12px;font-weight:400;color:var(--muted-foreground)}
 
@@ -80,21 +80,33 @@ main{max-width:72rem;margin:0 auto;padding:32px 24px 80px;display:flex;flex-dire
 .paste .row{display:flex;gap:8px}
 .paste input{flex:1;min-width:0;height:32px;padding:0 10px;border:1px solid var(--input);border-radius:var(--radius);background:var(--popover);
   color:var(--foreground);font:13px/1 var(--font-mono)}
-@media (max-width:640px){.tb{padding:8px 16px}main{padding:24px 16px 56px;gap:32px}.toast{margin:-8px 0 -16px}}
+@media (max-width:640px),(hover:none){.seg button{height:34px;padding:0 12px;font-size:13px}.sel{height:34px;font-size:13px}html .sel,html .tl-ctl .sel{height:34px}.btn.sm{height:34px}}
+@media (max-width:640px){.topbar{position:static}.tb{padding:8px 16px;row-gap:8px}.tb>.spacer{display:none}.tb>.menu-wrap{order:-1;margin-left:auto}.tb>.tb-title,.tb>.live{order:-2}.tb-add{display:none}.tb>.menu-wrap .btn{width:34px;height:34px;padding:0;justify-content:center}main{padding:24px 16px 56px;gap:32px}.toast{margin:-8px 0 -16px}}
 
 section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .sec-head{display:flex;flex-direction:column;gap:2px}
-.sec-head h2{font-size:15px;font-weight:600;margin:0;letter-spacing:-.005em}
+.acc-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}@media (max-width:640px){.acc-head .btn{width:34px;padding:0;justify-content:center}.acc-head .btn .lbl{display:none}}.acc-head .menu-wrap .menu{right:0;left:auto}
+.sec-head h2{font-size:18px;font-weight:600;margin:0;letter-spacing:-.005em}
 .sec-head .sec-sub,.sec-head .count,.sec-head .range{font-size:13px;color:var(--muted-foreground)}
 .card{border:1px solid var(--border);border-radius:14px;background:linear-gradient(180deg,var(--surf-a),var(--surf-b));box-shadow:0 1px 2px rgba(0,0,0,.04);min-width:0}
 
 /* hero */
-.hero{display:grid;grid-template-columns:2.3fr 1fr 1fr;gap:16px}
+.hero{display:grid;grid-template-columns:minmax(260px,1fr) 2.2fr;gap:16px}
 .tile{padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
 .tile .k{font-size:12px;font-weight:500;color:var(--muted-foreground);display:flex;align-items:center;gap:8px}
 .tile .k .pill{margin-left:auto}
 .hnum{font-size:44px;line-height:1;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .hnum small{font-size:13px;font-weight:400;letter-spacing:0;color:var(--muted-foreground);margin-left:8px}
+.tb-title{margin:0 6px 0 0;font-size:16px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+.act-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
+.act-ctl{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:640px){.act-ctl{width:100%}.act-ctl .seg{flex:1 1 auto}.act-ctl .seg button{flex:1;padding:0 6px}}
+.seg button{white-space:nowrap}
+.info::after{content:"";position:absolute;inset:-5px}
+.info{position:relative;display:inline-grid;place-items:center;width:16px;height:16px;border-radius:50%;border:1px solid var(--input);font-family:inherit;font-weight:600;font-size:11px;line-height:1;font-style:normal;color:var(--muted-foreground);cursor:help;vertical-align:1px}
+.info::after{content:"";position:absolute;inset:-8px}
+.info:hover,.info:focus-visible{color:var(--foreground);border-color:var(--muted-foreground)}
+.cr[data-acc]:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
 .legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted-foreground)}
 .legend .lg{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .legend .lg i{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
@@ -104,13 +116,13 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .segbar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--c);transform-origin:left}
 .segbar>i.track{background:var(--track);min-width:0}
 .caprows{container-type:inline-size;display:flex;flex-direction:column;gap:10px}
-.cr{display:grid;grid-template-columns:minmax(0,1fr) 5.4rem 7rem 7.6rem;align-items:center;column-gap:10px;row-gap:6px;font-size:12px;color:var(--muted-foreground)}
+.cr{display:grid;grid-template-columns:minmax(7rem,max-content) minmax(5.4rem,1fr) 9.5rem 6.4rem;align-items:center;column-gap:10px;row-gap:6px;font-size:12px;color:var(--muted-foreground)}
 .cr.dim{opacity:.6}
 .cr[data-acc]{cursor:pointer;border-radius:6px;margin:-3px -6px;padding:3px 6px;transition:background .12s}
 .cr[data-acc]:hover{background:color-mix(in srgb,var(--foreground) 4%,transparent)}
 .cr-n{grid-area:n;display:flex;align-items:center;gap:8px;min-width:0}
 .cr-e{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--foreground)}
-.cr-n em{flex:none;font-style:normal;font-size:11px;color:var(--muted-foreground)}
+.cr-n em{flex:none;font-style:normal;font-size:12px;color:var(--muted-foreground)}
 .cr-m{grid-area:m;display:flex;align-items:center;gap:8px;min-width:0}
 .cr-m .meter{flex:1 1 0;min-width:0}
 .cr-m b{flex:none;min-width:2rem;text-align:right;font-weight:600;color:var(--foreground)}
@@ -121,7 +133,11 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .cr-e2.ok{color:var(--success-foreground)}.cr-e2.low{color:var(--warning-foreground)}.cr-e2.crit{color:var(--error-foreground)}
 .cr-e2[data-tip]{cursor:help}
 .cr{grid-template-areas:"n m r e"}
-@container (max-width:480px){.cr{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"n r" "m e"}.caprows{gap:14px}}
+.cr-r .abs{color:var(--muted-foreground)}
+.cr[role=button]{cursor:pointer;border-radius:6px;margin:0 -6px;padding:2px 6px;transition:background-color .12s}.cr[role=button]:hover{background:var(--accent)}
+@container (max-width:480px){.cr-r .abs{display:none}.cr-h{display:none}.cr>.cr-r:not(:empty)::before{content:"reseta em ";color:var(--muted-foreground)}.cr>.cr-e2.pv::before{content:"sobra ";color:var(--muted-foreground)}.cr{grid-template-columns:minmax(0,1fr) 7.4rem;grid-template-areas:"n r" "m e"}.caprows{gap:14px}}
+.cr-h{font-size:12px;color:var(--muted-foreground);text-transform:none;margin-bottom:-4px}.cr-h span{white-space:nowrap}.cr-h span:nth-child(2){text-align:right;padding-right:2px}
+.cr-e2.waste{color:var(--warning-foreground)}
 .capnote .est{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
 .agora-who{display:flex;align-items:center;gap:8px;min-width:0}
 .agora-who .redact{flex:1 1 0}
@@ -147,11 +163,11 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .rate .bar{position:relative;height:6px;border-radius:999px;background:var(--track)}
 .rate .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--c)}
 .sub{font-size:12px;color:var(--muted-foreground)}
-@media (max-width:900px){.hero{grid-template-columns:1fr 1fr}.hero>:first-child{grid-column:1/-1}}
-@media (max-width:600px){.hero{grid-template-columns:1fr}.hnum{font-size:38px}.tile{padding:16px}}
+@media (max-width:900px){.hero{grid-template-columns:1fr}}
+@media (max-width:600px){.hero{grid-template-columns:1fr}.hero>#tCap{order:0}#tCap .hnum small{display:block;line-height:1.4;margin:4px 0 0}.hnum{font-size:38px}.tile{padding:16px}}
 
 /* pills, badges */
-.pill{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap}
+.pill{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
 .pill svg.i{width:13px;height:13px}
 .pill.ok{background:color-mix(in srgb,var(--success) 13%,transparent);color:var(--success-foreground)}
 .pill.warn{background:color-mix(in srgb,var(--warning) 15%,transparent);color:var(--warning-foreground)}
@@ -161,12 +177,12 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
   border:1px solid transparent;white-space:nowrap}
 .badge.outline{border-color:var(--input);color:var(--muted-foreground)}
 .badge.err{background:color-mix(in srgb,var(--error) 10%,transparent);color:var(--error-foreground)}
-.avatar{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:600;flex:none}
+.avatar{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;font-size:10.5px;font-weight:600;flex:none}
 .redact{min-width:0;font-size:13px;line-height:1.5;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
 .sel{height:24px;padding:0 22px 0 8px;border:1px solid var(--input);border-radius:6px;background-color:var(--popover);color:var(--muted-foreground);
-  font:500 12px/1 inherit;cursor:pointer;appearance:none;-webkit-appearance:none;
-  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
-  background-position:calc(100% - 11px) 10px,calc(100% - 7px) 10px;background-size:4px 4px;background-repeat:no-repeat}
+  font-family:inherit;font-weight:500;font-size:12px;line-height:1;cursor:pointer;appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8a93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-position:right 6px center;background-size:14px 14px;background-repeat:no-repeat}
 .sel:hover{color:var(--foreground)}
 
 /* rings */
@@ -174,7 +190,8 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ring svg{display:block;overflow:visible}
 .ring .trk{stroke:var(--track)}
 .ring text{fill:var(--foreground);font-weight:600;font-family:inherit}
-.ring .tick{stroke:var(--muted-foreground)}
+.rb .rs{flex-wrap:wrap;justify-content:center}.rs .pc{flex-basis:100%;text-align:center;font-size:12px;margin-top:1px;color:var(--muted-foreground);cursor:help}.rs .pc.fast{color:var(--warning-foreground)}
+.ring .tick{stroke:var(--foreground);stroke-opacity:.7;stroke-linecap:round}.ring text.rsub{fill:var(--muted-foreground);font-weight:500}
 
 /* accounts */
 .acc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:16px}
@@ -189,13 +206,17 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .adot{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
 .rings{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .rings.solo{grid-template-columns:1fr}
+.r5-none{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:-2px;font-size:12px;color:var(--muted-foreground)}.r5-none svg.i{width:14px;height:14px;flex:none}
+.ring>svg{display:block}
+.ring.empty{display:inline-block;padding:6px}
 .ring.empty text{fill:var(--muted-foreground);font-weight:500}
 .rb.none .rl{color:var(--muted-foreground)}
 .rb{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:0}
 .rb .rl{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px}
 .rb .rs{font-size:12px;color:var(--muted-foreground);display:flex;align-items:center;gap:5px;text-align:center}
 .rb .rs svg.i{width:14px;height:14px}
-.chip{display:inline-flex;align-items:center;gap:3px;height:18px;padding:0 6px;border-radius:999px;font-size:10.5px;font-weight:600}
+.tick-key{white-space:normal}.tick-key i{display:inline-block;width:2px;height:10px;margin:0 5px 0 1px;border-radius:1px;background:var(--foreground);opacity:.7;vertical-align:-1px}
+.chip{display:inline-flex;align-items:center;gap:3px;height:20px;padding:0 7px;border-radius:999px;font-size:11.5px;font-weight:600}
 .chip svg.i{width:11px;height:11px}
 .chip.crit{background:color-mix(in srgb,var(--error) 13%,transparent);color:var(--error-foreground)}
 .chip.low{background:color-mix(in srgb,var(--warning) 15%,transparent);color:var(--warning-foreground)}
@@ -208,17 +229,18 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .forecast{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--muted-foreground)}
 .forecast svg.i{width:14px;height:14px;flex:none;margin-top:1px}
 .forecast .est{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
-.recent{font-size:12px;color:var(--muted-foreground);cursor:help}
+.recent{display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--muted-foreground);cursor:help}.recent>svg.i{width:14px;height:14px;flex:none;margin-top:1px}
 .recent b{color:var(--foreground);font-weight:500}
 .recent.ext{display:flex;align-items:center;gap:6px;margin-top:-8px}
 .recent.ext svg.i{width:13px;height:13px}
-.forecast.bad{color:var(--error-foreground)}.forecast.ok{color:var(--success-foreground)}
+.forecast.bad{color:var(--error-foreground)}.forecast.warn{color:var(--warning-foreground,#a15c00)}.forecast.ok{color:var(--success-foreground)}
 .spark{width:96px;height:24px;flex:none;display:block}
 .note{font-size:12px;color:var(--muted-foreground)}
 .note.err{color:var(--error-foreground)}
-.afoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:12px;font-size:12px;color:var(--muted-foreground)}
+.afoot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:12px;font-size:12px;color:var(--muted-foreground)}
 .spk{display:inline-flex;align-items:center;gap:6px;flex:none;margin-left:auto}
 .spk em{font-style:normal;font-size:10.5px}
+.prio{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted-foreground)}
 .afoot b{color:var(--foreground);font-weight:500}
 .empty{padding:22px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .empty p{margin:0;font-size:13px;color:var(--muted-foreground)}
@@ -230,15 +252,21 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .chart-note{padding-left:56px}
 @media (max-width:640px){.chart-note{padding-left:48px}}
 .chart{display:flex;gap:8px}
+#chartSvg .partial{fill:var(--foreground);opacity:.035}
+#plot:focus-visible{outline:2px solid var(--focus);outline-offset:4px;border-radius:6px}
 .ylabels{position:relative;width:48px;height:240px;flex:none}
-.ylabels span{position:absolute;right:0;transform:translateY(-50%);font-size:10px;color:var(--muted-foreground)}
+.ylabels span{position:absolute;right:0;white-space:nowrap;transform:translateY(-50%);font-size:12px;color:var(--muted-foreground)}
 .plot{position:relative;flex:1;height:240px;min-width:0}
 .plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .plot .grid{stroke:var(--border);stroke-width:1;opacity:.55}
 .plot .hover{position:absolute;top:8px;bottom:0;width:1px;background:var(--muted-foreground);opacity:0;pointer-events:none}
-.xlabels{display:flex;justify-content:space-between;padding-left:56px;font-size:10px;color:var(--muted-foreground);text-transform:uppercase}
+.xlabels{position:relative;height:16px;margin-left:56px;font-size:12px;color:var(--muted-foreground)}
+.xlabels span{position:absolute;top:0;white-space:nowrap}
 .plot .halo{fill:none;stroke:var(--card);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round}
 .plot .ln{fill:none;stroke:var(--c);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
+.plot .vpt{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--foreground);box-shadow:0 0 0 2px var(--card);pointer-events:none}
+.plot .vlab{position:absolute;font-size:11px;font-weight:600;color:var(--foreground);white-space:nowrap;pointer-events:none;font-variant-numeric:tabular-nums}
+.plot .vlab.part{top:6px;font-weight:500;color:var(--muted-foreground);padding-left:6px}
 .plot .dot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--card);pointer-events:none;display:none}
 /* one tooltip look for every chart and mark */
 .tip,.gtip{border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.45;color:var(--foreground);
@@ -252,7 +280,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tip .r.tot{margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
 .tip .r.tot span{color:var(--foreground)}
 .chart-legend{padding-left:56px}
-.chart-legend .lg i{width:12px;height:10px;border-radius:2px;background:linear-gradient(to bottom,color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 8%,transparent));border-top:2px solid var(--c)}
+.chart-legend .lg i{width:10px;height:10px;border-radius:2px;background:var(--c)}
 .heat-card{padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
 .heat-top{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
 .heat-top b{color:var(--foreground);font-weight:600}
@@ -261,35 +289,41 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .heat-key i:first-of-type{margin-left:6px}
 .heat-key i:last-of-type{margin-right:6px}
 .heat{display:grid;grid-template-columns:2rem repeat(24,minmax(0,1fr));gap:2px;align-items:center}
-.heat .hd{font-size:11px;color:var(--muted-foreground)}
-.heat .hh{display:flex;justify-content:center;height:16px;font-size:10px;color:var(--muted-foreground)}
+.heat .hd{font-size:12px;color:var(--muted-foreground)}
+.heat .hh{display:flex;justify-content:center;height:16px;font-size:12px;color:var(--muted-foreground)}
 .heat .hh span{flex:none;white-space:nowrap}
-.heat .hc{display:block;height:24px;border-radius:3px;background:var(--c)}
+.heat .hc{display:block;height:24px;border-radius:3px;background:var(--c);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--border) 70%,transparent)}
 .heat .hc:hover{outline:2px solid var(--foreground);outline-offset:-1px}
 .tip .logo{width:12px;height:12px}
 .empty-chart{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:var(--muted-foreground)}
-.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .cm{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .cm-h{font-size:12px;font-weight:500;color:var(--muted-foreground)}
-.cm-row{display:grid;grid-template-columns:minmax(0,1fr) 4.5rem 4.5rem 8rem 6rem;grid-template-areas:"n r t b c";align-items:center;column-gap:14px;font-size:12px;color:var(--muted-foreground);cursor:default}
+.cm-row{display:grid;grid-template-columns:minmax(9rem,14rem) 5rem 6rem minmax(4rem,1fr) 6rem;grid-template-areas:"n r t b c";align-items:center;column-gap:14px;font-size:12px;color:var(--muted-foreground);cursor:default}
 .cm-n{grid-area:n;font-size:13px;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cm-r{grid-area:r;text-align:right;white-space:nowrap}
 .cm-t{grid-area:t;text-align:right;white-space:nowrap}
 .cm-b{grid-area:b;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
-.cm-b i{display:block;height:100%;border-radius:999px;background:var(--claude)}
+.cm-b i{display:block;height:100%;border-radius:999px;background:color-mix(in srgb,var(--foreground) 55%,transparent)}
 .cm-c{grid-area:c;text-align:right;white-space:nowrap;font-size:13px;font-weight:600;color:var(--foreground)}
 .cm-c.mut{font-weight:400;font-size:12px;color:var(--muted-foreground)}
 @media (max-width:640px){.cm-row{grid-template-columns:auto auto minmax(0,1fr);grid-template-areas:"n n c" "r t t" "b b b";row-gap:4px;column-gap:10px}.cm-r,.cm-t{text-align:left}}
-.stat{padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.stat{padding:14px 16px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;font:inherit;color:inherit;cursor:pointer;position:relative;transition:border-color .15s,background-color .15s}
+.stat>span{display:block;max-width:100%}
+.stat:hover{border-color:color-mix(in srgb,var(--foreground) 25%,transparent)}
+.stat[aria-pressed="true"]{border-color:color-mix(in srgb,var(--foreground) 70%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--foreground) 70%,transparent);background:color-mix(in srgb,var(--foreground) 4%,var(--card))}
+.stat:not([aria-pressed="true"]):hover{background:color-mix(in srgb,var(--foreground) 3%,var(--card))}
+
+.stat[aria-pressed="true"] .k{color:var(--foreground);font-weight:600}
 .stat .k{font-size:12px;color:var(--muted-foreground)}
 .stat .v{font-size:22px;font-weight:600;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .stat .s{font-size:12px;color:var(--muted-foreground)}
-.stat .dl{font-size:11.5px;line-height:16px;min-height:16px;margin-top:2px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media (max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:12px 14px}.stat .v{font-size:20px}}
+.stat .dl:empty{display:none}
+.stat .dl{font-size:11.5px;line-height:16px;margin-top:2px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:640px){.stats{grid-template-columns:1fr;gap:8px}.stat{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"k v" "s dl";column-gap:12px;padding:10px 14px}.stat .k{grid-area:k}.stat .v{grid-area:v;font-size:19px;text-align:right}.stat .s{grid-area:s}.stat .dl{grid-area:dl;text-align:right;margin:0}}
 @media (max-width:640px){.mdl{grid-template-columns:4rem minmax(0,1fr) auto;column-gap:10px}.rb .rs{flex-wrap:wrap;justify-content:center}}
-@media (max-width:640px){.ylabels{width:40px}.xlabels,.chart-legend{padding-left:48px}.heat-card{padding:14px 12px 16px}.heat{grid-template-columns:1.8rem repeat(24,minmax(0,1fr));gap:2px}.heat .hc{height:20px}.chart-card{padding:16px 14px 12px}
-  .xlabels span:nth-child(2),.xlabels span:nth-child(4){display:none}}
+@media (max-width:640px){.ylabels{width:40px}.xlabels{margin-left:48px}.chart-legend{padding-left:48px}.heat-card{padding:14px 12px 16px}.heat{grid-template-columns:1.8rem repeat(24,minmax(0,1fr));gap:2px}.heat .hc{height:20px}.chart-card{padding:16px 14px 12px}
+  .xlabels span:nth-child(even):not(:last-child){display:none}}
 
 /* timeline: next 7 days */
 .tl-card{--g:56px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px}
@@ -299,58 +333,97 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tl-leg span{display:inline-flex;align-items:center;gap:6px;min-width:0}
 .tl-leg i{width:14px;height:2px;border-radius:2px;background:var(--claude);flex:none}
 .tl-chart{display:grid;grid-template-columns:var(--g) minmax(0,1fr)}
-.tl-y{position:relative;height:240px}
-.tl-y span{position:absolute;right:8px;transform:translateY(-50%);font-size:10px;color:var(--muted-foreground)}
-.tl-plot{position:relative;height:240px;min-width:0;touch-action:pan-y;cursor:crosshair;user-select:none;-webkit-user-select:none}
+.tl-y{position:relative;height:var(--ph,240px)}
+.tl-y span{position:absolute;right:8px;transform:translateY(-50%);font-size:12px;color:var(--muted-foreground)}
+.tl-plot{position:relative;height:var(--ph,240px);min-width:0;touch-action:pan-y;cursor:crosshair;user-select:none;-webkit-user-select:none}
 .tl-rt{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap}
 .tl-tools{display:flex;align-items:center;gap:10px}
 .tl-reset{border:0;background:none;padding:0;font:inherit;font-size:12px;color:var(--muted-foreground);text-decoration:underline;text-underline-offset:2px;cursor:pointer;white-space:nowrap}
 .tl-reset:hover{color:var(--foreground)}
-.tl-hint{font-size:11px;color:var(--muted-foreground);opacity:.8;white-space:nowrap}
-@media (max-width:640px){.tl-hint{display:none}}
+.tl-set{padding-top:2px}
+.tl-field{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.tl-field .tl-lab{margin-left:0}
+.tl-set .tl-field+.tl-field{padding-left:14px;border-left:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.tl-ctl .seg button{height:28px}
+.tl-ctl .sel{height:28px}
+.tl-accb{display:inline-flex;align-items:center;gap:4px;color:var(--foreground)}
+.tl-accb svg.i{width:14px;height:14px;opacity:.7}
+.tl-plot:focus-visible{outline:2px solid var(--focus);outline-offset:4px;border-radius:4px}
+.tl-st[tabindex]:focus-visible,.ag-chip:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+.tl-st.main .v{font-size:18px}
+.tl-st.lead .v{font-size:24px;letter-spacing:-.01em}
+.tl-st.lead.crit .v{color:var(--error-foreground)}.tl-st.lead.warn .v{color:var(--warning-foreground)}.tl-st.lead.good .v{color:var(--success-foreground)}
+.run-adv{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.run-adv:empty{display:none}.run-adv .tl-tip{font-size:12.5px}
+.tl-tips{order:-1;display:flex;flex-direction:column;gap:6px}
+.tl-tip{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.45;color:var(--foreground)}
+.tl-tip svg.i{width:15px;height:15px;flex:none;margin-top:2px}
+.tl-tip.crit svg{color:var(--error-foreground)}.tl-tip.good svg{color:var(--success-foreground)}
+.tl-tip .adot{margin:6px 3px 0}
+.tl-tip span{color:var(--muted-foreground)}.tl-tip b{color:var(--foreground);font-weight:600}
+.tl-plot .safel{stroke:var(--success-foreground);stroke-width:1.5;stroke-dasharray:2 4;opacity:.9}
+.tl-capl.safe{color:var(--success-foreground)}
+.tl-badge{display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--claude);color:#fff;font-size:10.5px;font-weight:600}
+.tl-card{--ph:280px}
+.tl-st .v small{font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.tl-lead{position:absolute;width:1px;transform:translateX(-50%);background:color-mix(in srgb,var(--c) 55%,transparent);pointer-events:none;z-index:1}
+.tl-chip span{display:inline-block;max-width:9.5em;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom}
+.tl-adv{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 12px;border:1px solid var(--input);border-radius:8px;background:none;color:var(--foreground);font-family:inherit;font-weight:500;font-size:13px;line-height:1;cursor:pointer}
+.tl-adv[aria-expanded="true"]{background:var(--accent)}.tl-zg{display:flex;align-items:center;gap:6px}
+.tl-adv svg.i{width:14px;height:14px}
+.tl-set:not(.open){display:none}
+.tl-set{padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--foreground) 3%,transparent)}
+.tl-zero:focus-visible{outline:2px solid var(--focus)}
+.tl-rt span[tabindex]{cursor:help}
+.tl-st.main.crit .v{color:var(--error-foreground)}
+.tl-st.main.warn .v{color:var(--warning-foreground)}
+.tl-st.main.good .v{color:var(--success-foreground,var(--foreground))}
+.tl-now small{font-weight:500;color:var(--muted-foreground);font-size:11px}
+.tl-chip span{font-weight:500;color:var(--muted-foreground)}
+.tl-rtick{position:absolute;bottom:6px;width:4px;height:14px;border-radius:2px;background:var(--c);transform:translateX(-50%);z-index:3;cursor:help}.tl-rtick::after{content:"";position:absolute;inset:-8px -8px -4px}
 .tl-plot.zoomed{cursor:grab}
 body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-brush{position:absolute;top:8px;bottom:6px;z-index:4;pointer-events:none;background:color-mix(in srgb,var(--claude) 16%,transparent);border:solid color-mix(in srgb,var(--claude) 55%,transparent);border-width:0 1px}
 .tl-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-.tl-plot .gl{stroke:var(--border);stroke-width:1}
+.tl-plot .gl{stroke:color-mix(in srgb,var(--foreground) 11%,transparent);stroke-width:1}
 .tl-plot .gv{stroke:var(--border);stroke-width:1;opacity:.6}
 .tl-plot .base{stroke:var(--input);stroke-width:1}
 .tl-plot .capl{stroke:var(--muted-foreground);stroke-width:1;stroke-dasharray:4 4;opacity:.6}
 .tl-line{fill:none;stroke:var(--claude);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
-.tl-line.proj{stroke-dasharray:6 5;stroke-opacity:.8}
+.tl-line.proj{stroke-dasharray:6 5}
 .tl-plot .gnow{stroke:var(--muted-foreground);stroke-width:1;opacity:.7}
-.tl-nowl{position:absolute;top:0;transform:translateX(-50%);z-index:1;font-size:10.5px;line-height:14px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;padding:0 4px;background:var(--card);border-radius:4px}
+.tl-nowl{position:absolute;top:0;transform:translateX(-50%);z-index:1;font-size:11.5px;line-height:15px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;padding:0 4px;background:var(--card);border-radius:4px}
 .tl-leg i.proj{height:0;background:none;border-top:2px dashed var(--claude);border-radius:0}
 .tl-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--c);transform:translate(-50%,-50%);box-shadow:0 0 0 2px var(--card);pointer-events:none;z-index:2}
 .tl-dot.now{width:10px;height:10px;background:var(--claude)}
 .tl-dot.min{width:6px;height:6px;background:var(--card);border:1.5px solid var(--muted-foreground);box-shadow:none}
 .tl-now{position:absolute;z-index:2;font-size:12px;font-weight:600;color:var(--foreground);pointer-events:none;white-space:nowrap;line-height:16px}
-.tl-min{position:absolute;transform:translateX(-50%);z-index:1;font-size:10.5px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;line-height:14px}
+.tl-min{position:absolute;transform:translateX(-50%);z-index:1;font-size:11.5px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;line-height:14px}
 .tl-hdot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--claude);transform:translate(-50%,-50%);box-shadow:0 0 0 2px var(--card);pointer-events:none;opacity:0;z-index:3}
-.tl-hover{position:absolute;top:8px;bottom:6px;width:1px;background:var(--muted-foreground);opacity:0;pointer-events:none}
-.tl-capl{position:absolute;font-size:11px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap}
+.tl-hover{position:absolute;top:8px;bottom:6px;width:0;border-left:1px dashed var(--foreground);opacity:0;pointer-events:none}
+.tl-capl{position:absolute;font-size:12px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap}
+.tl-capl[data-tip]{pointer-events:auto;cursor:help}
 .tl-capl{right:0}
-.tl-chip{position:absolute;transform:translateX(-50%);z-index:2;font-size:11px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;white-space:nowrap;pointer-events:none;
+.tl-chip{position:absolute;transform:translateX(-50%);z-index:2;font-size:12px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;white-space:nowrap;pointer-events:none;
   background:var(--card);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);color:var(--foreground)}
-.tl-zero{position:absolute;z-index:1;font-size:11px;line-height:1.35;color:var(--error-foreground);white-space:nowrap;padding:0 6px}
-.tl-zero b{font-weight:600;display:inline-flex;align-items:center;gap:4px}
-.tl-zero b svg.i{width:12px;height:12px}
+.tl-zero{position:absolute;z-index:1;font-size:11.5px;line-height:1.35;color:var(--error-foreground);white-space:nowrap;padding:2px 6px;background:color-mix(in srgb,var(--card) 85%,transparent);border-radius:4px}
+.tl-zero b{font-weight:600;display:inline-flex;align-items:center;gap:5px;line-height:16px}
+.tl-plot .tl-zero b svg.i{position:static;inset:auto;width:13px;height:13px;flex:none;display:block;overflow:visible}
 .tl-x{display:grid;grid-template-columns:var(--g) minmax(0,1fr)}
-.tl-xl{position:relative;height:18px;font-size:10.5px;color:var(--muted-foreground)}
+.tl-xl{position:relative;height:18px;font-size:12px;color:var(--muted-foreground)}
 .tl-xl span{position:absolute;top:4px;white-space:nowrap;padding-left:4px}
 .tl-xl span.first{padding-left:0}
 .tl-empty{font-size:13px;color:var(--muted-foreground)}
 .tl-ctl{display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
 .tl-ctl .spacer{flex:1}
 .tl-lab{margin-left:6px;white-space:nowrap}
-.tl-nav{display:flex;align-items:center;gap:2px;white-space:nowrap}
+.tl-nav{display:flex;align-items:center;gap:2px;white-space:nowrap}.tl-nav:empty{display:none}
 .tl-nav span{margin-right:6px}
 .tl-nav button{display:grid;place-items:center;width:26px;height:26px;border:0;border-radius:6px;background:none;color:var(--foreground);cursor:pointer}
 .tl-nav button:hover:not(:disabled){background:var(--accent)}
 .tl-nav button:disabled{opacity:.3;cursor:default}
 .tl-nav button[data-z="prev"] svg{transform:rotate(180deg)}
 .tl-accm{position:relative}
-.tl-accb{height:28px;padding:0 10px;border:0;border-radius:8px;background:color-mix(in srgb,var(--input) 40%,transparent);color:var(--muted-foreground);font:500 12px/1 inherit;cursor:pointer}
+.tl-accb{height:28px;padding:0 8px 0 10px;border:1px solid var(--input);border-radius:6px;background:var(--popover);color:var(--muted-foreground);font-family:inherit;font-weight:500;font-size:12px;line-height:1;cursor:pointer}
 .tl-accb b{font-weight:600;color:var(--foreground)}
 .tl-accb:hover,.tl-accb.on{color:var(--foreground)}
 .tl-accb.on{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--claude) 55%,transparent)}
@@ -359,50 +432,43 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-menu label:hover{background:var(--accent)}
 .tl-menu input{margin:0;accent-color:var(--claude)}
 .tl-menu-n{padding:4px 8px 2px;font-size:11px;color:var(--muted-foreground)}
-.tl-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:12px 0 14px;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.tl-stats.two{grid-template-columns:1fr 1fr}
+.tl-stats{order:-1;display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px 20px;align-items:start;padding:0 0 16px;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
 .tl-st{min-width:0}
-.tl-st .k{font-size:11.5px;color:var(--muted-foreground)}
+.tl-st .k{font-size:12px;color:var(--muted-foreground)}
 .tl-st .v{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tl-st .s{font-size:11.5px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-st .s{font-size:12px;color:var(--muted-foreground);line-height:1.35}
 .tl-scen{color:var(--warning-foreground)}
+.tl-capr{color:var(--muted-foreground)}
 .tl-chip.past{background:var(--card);border-style:dashed}
-@media (max-width:760px){.tl-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.tl-ctl .spacer{display:none}}
+@media (max-width:760px){.tl-stats{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.tl-st.lead{grid-column:1/-1;order:-1}.tl-ctl .spacer{display:none}}
 
 /* agenda de recargas */
 .ag{display:flex;flex-direction:column;gap:10px;margin-top:2px;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
-.ag-t{font-size:12px;font-weight:500}
-.ag-row{min-width:0;max-width:100%}
-.ag-cols{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr))}
-.ag-col{container-type:inline-size;min-width:0;min-height:84px;padding:6px 6px;display:flex;flex-direction:column;gap:6px;border-left:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
-.ag-col:first-child{border-left:0}
-.ag-col.today{background:color-mix(in srgb,var(--foreground) 4%,transparent);border-radius:8px}
-.ag-col.today .ag-d{color:var(--foreground);font-weight:600}
-.ag-d{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;padding-left:2px}
-.ag-chip{display:flex;align-items:center;gap:7px;min-width:0;padding:4px 7px 4px 4px;border-radius:7px;background:color-mix(in srgb,var(--foreground) 6%,transparent);overflow:hidden}
-.ag-chip .bar{align-self:stretch;flex:none;width:3px;min-height:26px;border-radius:3px;background:var(--c)}
-.ag-chip .tx{min-width:0;flex:1;font-size:11px;line-height:1.35}
-.ag-chip .r1,.ag-chip .r2{display:flex;gap:5px;white-space:nowrap;overflow:hidden}
-.ag-chip .r1 b{font-weight:600}
-.ag-chip .nm{color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono);font-size:10.5px}
-.ag-chip .r2 b{font-weight:600}
-.ag-chip .mut{color:var(--muted-foreground)}
-@container (max-width:100px){.ag-chip .nm,.ag-chip .r2 .mut{display:none}}
-@container (max-width:96px){.ag-d .wd{display:none}.ag-d{padding-left:0}}
-@container (max-width:58px){.ag-chip .tx{display:none}.ag-chip{padding:4px 0 4px 4px}}
-@container (max-width:30px){.ag-d{display:none}}
 @media (max-width:640px){
   .tl-card{--g:44px;padding:16px 14px 16px}
-  .ag-row{overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--input) transparent}
-  .ag-cols{grid-template-columns:repeat(var(--n),minmax(132px,1fr));min-width:calc(var(--n)*132px)}
+  .tl-set{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+  .tl-set .tl-field{display:flex;flex-direction:column;align-items:stretch;gap:6px;white-space:normal}
+  .tl-set .tl-field+.tl-field{padding-left:0;border-left:0}
+  .tl-set .seg{display:flex;width:100%}.tl-set .seg button{flex:1;padding:0 6px}.tl-set .sel{width:100%}.tl-set .tl-accm{align-self:flex-start}
+  .tl-ctl>.seg:first-child{flex:1}.tl-ctl>.seg:first-child button{flex:1}
+  .tl-adv{width:36px;padding:0;justify-content:center;position:relative}.tl-adv-l{display:none}.tl-adv .tl-badge{position:absolute;top:-5px;right:-5px}
+  .tl-zg{flex-basis:100%}.tl-zg>.seg{flex:1;display:flex}.tl-zg>.seg button{flex:1}
+  .tl-ctl .seg button,.tl-ctl .sel,.tl-accb{height:36px}
+  .tl-adv{height:36px}
+  .tl-card{--ph:240px}
+  .tl-ctl .spacer{display:none}
+  .tl-nav button{width:34px;height:34px}
 }
 
 /* account detail modal */
 .acct[data-acc]{cursor:pointer}
-.acct[data-acc]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-.acct-more{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:11.5px;color:var(--muted-foreground);opacity:0;transition:opacity .15s}
+
+.acct-more{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;height:32px;padding:0 6px 0 8px;border:0;border-radius:6px;background:none;font-family:inherit;font-weight:500;font-size:12px;line-height:1;color:var(--muted-foreground);cursor:pointer}
+.acct-more:hover,.acct:hover .acct-more{color:var(--foreground);background:var(--accent)}
+.acct-more:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
 .acct-more svg.i{width:13px;height:13px}
-.acct:hover .acct-more,.acct:focus-visible .acct-more{opacity:1}
-@media (hover:none){.acct-more{opacity:1}}
+
 body.modal-open{overflow:hidden}
 .modal{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:24px}
 .md-bg{position:absolute;inset:0;background:rgba(0,0,0,.38);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:mdfade .18s ease-out}
@@ -415,6 +481,8 @@ body.modal-open{overflow:hidden}
 .md-head .redact{flex:0 1 auto;font-size:15px;font-weight:600}
 .md-head .avatar{width:28px;height:28px;font-size:11px}
 .md-close{margin-left:auto;flex:none;display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:8px;background:none;color:var(--muted-foreground);cursor:pointer}
+.hc.fut{background:repeating-linear-gradient(45deg,var(--border) 0 1.5px,transparent 1.5px 5px)!important;box-shadow:inset 0 0 0 1px var(--border)}
+.md-close:focus:not(:focus-visible){outline:none}
 .md-close:hover{background:var(--accent);color:var(--foreground)}
 .md-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .md-stat{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--surf-a),var(--surf-b));display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -431,19 +499,24 @@ body.modal-open{overflow:hidden}
 .md-tl{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .md-leg i.thin{height:1px;opacity:.6}
 .md-leg i.proj{background:none;height:0;border-top:2px dashed;border-radius:0}
-.md-chart{--g:44px}
+.md-chart,.md-sec{--g:44px}
 .md-s{fill:none;stroke-width:1.2;stroke-opacity:.5;stroke-linejoin:round}
 .md-rl{stroke-width:1;stroke-dasharray:3 3;opacity:.7}
-.md-mk{position:absolute;top:-4px;transform:translateX(-50%);z-index:2;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;white-space:nowrap;
+.md-mk{position:absolute;top:22px;transform:translateX(-50%);z-index:2;display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;line-height:17px;padding:0 6px;border-radius:999px;white-space:nowrap;
   background:var(--popover);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);color:var(--foreground);cursor:help}
-.md-mk svg.i{width:11px;height:11px;color:var(--c)}
-.md-zero{position:absolute;transform:translateX(-50%);z-index:2;font-size:10.5px;font-weight:600;color:var(--error-foreground);white-space:nowrap;pointer-events:none;padding:0 4px;background:var(--popover);border-radius:4px}
+.md-mk svg.i,.tl-plot .md-mk svg.i{position:static;inset:auto;flex:none;width:11px;height:11px;color:var(--c)}
+.md-zero{position:absolute;transform:translateX(-50%);z-index:2;font-size:11.5px;font-weight:600;color:var(--error-foreground);white-space:nowrap;pointer-events:none;padding:0 4px;background:var(--popover);border-radius:4px}
 .md-nowl{color:var(--foreground);font-weight:500}
 .md-act{display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
-.md-bars{display:flex;align-items:flex-end;gap:3px;height:64px}
-.md-bars i{flex:1 1 0;min-width:2px;height:max(var(--h),2px);border-radius:3px 3px 1px 1px;background:var(--c);opacity:.85;transition:opacity .12s}
-.md-bars i.z{background:var(--track);opacity:1;height:2px}
-.md-bars i:hover{opacity:1;filter:brightness(1.08)}
+.md-bars{display:flex;align-items:flex-end;justify-content:space-around;gap:3px;height:72px;margin-top:20px;border-bottom:1px solid var(--border)}
+.md-bars i{position:relative}.md-bars em{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:3px;font-style:normal;font-size:11px;font-weight:500;color:var(--foreground);white-space:nowrap}
+.md-bars i{flex:1 1 0;max-width:40px;min-width:2px;height:max(var(--h),2px);border-radius:4px 4px 0 0;background:var(--c);transition:opacity .12s}
+.md-bars i.p{opacity:.5}
+.md-bx{display:flex;justify-content:space-around;gap:3px;margin-top:6px}
+.md-bx span{flex:1 1 0;max-width:40px;min-width:0;font-size:12px;color:var(--muted-foreground);text-align:center;white-space:nowrap;overflow:visible}
+.md-max{font-size:12px;color:var(--muted-foreground);text-align:right;margin-top:-2px}
+.md-bars i.z{background:none;height:0}
+.md-bars i:hover{filter:brightness(1.08)}
 @media (max-width:760px){.md-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){.modal{padding:0;place-items:end stretch}.md-card{width:100%;max-height:92vh;border-radius:16px 16px 0 0;padding:16px 16px 22px}.md-stat .v{font-size:19px}}
 
@@ -470,19 +543,14 @@ body.modal-open{overflow:hidden}
 body:not(.ready) .segbar>i:not(.track),body:not(.ready) .meter i,body:not(.ready) .rate .bar i{animation:grow .5s cubic-bezier(.2,.7,.2,1) both}
 body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.rs .pc.ok{color:var(--muted-foreground)}
 </style>
 </head>
 <body>
 <header class="topbar"><div class="tb">
+  <h1 class="tb-title">Uso do Claude</h1>
   <span class="live" id="live"><i></i><span id="liveTxt">carregando…</span></span>
   <div class="spacer"></div>
-  <div class="seg" id="period">
-    <button data-v="24h">24h</button><button data-v="7d">7 dias</button><button data-v="30d">30 dias</button>
-  </div>
-  <div class="seg" id="metric">
-    <button data-v="cost">Custo</button><button data-v="tokens">Tokens</button><button data-v="requests">Requisições</button>
-  </div>
-  <div class="menu-wrap"><button class="btn" data-menu="claude"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Claude</button></div>
 </div></header>
 <main>
   <div class="toast" id="toast"></div>
@@ -494,9 +562,8 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
   </div>
 
   <section class="hero" id="secHero">
-    <div class="card tile" id="tCap"></div>
-    <div class="card tile" id="tNow"></div>
     <div class="card tile" id="tRun"></div>
+    <div class="card tile" id="tCap"></div>
   </section>
 
   <section class="blk" id="emptyState" hidden>
@@ -506,29 +573,33 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
   </section>
 
   <section class="blk" id="secTl">
-    <div class="sec-head"><h2>Próximos 7 dias</h2><span class="sec-sub" id="tlSub">Projeção da capacidade somada, no ritmo atual e contando as recargas</span></div>
+    <div class="sec-head"><h2 id="tlTitle">Próximos 7 dias</h2><span class="sec-sub" id="tlSub">No ritmo atual, contando as recargas</span></div>
     <div class="card tl-card" id="tl"></div>
   </section>
 
   <section class="blk" id="secAcc">
-    <div class="sec-head"><h2>Contas</h2><span class="count" id="acctCount"></span></div>
+    <div class="acc-head"><div class="sec-head"><h2>Contas</h2><span class="count" id="acctCount"></span></div>
+      <div class="menu-wrap"><button class="btn sm" data-menu="claude" aria-label="Adicionar conta"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Adicionar conta</span></button></div></div>
     <div class="acc-grid" id="accts"></div>
   </section>
 
   <section class="blk" id="secAct">
-    <div class="sec-head"><h2>Atividade</h2><span class="range tabular" id="rangeLabel"></span></div>
+    <div class="act-head"><div class="sec-head"><h2>Atividade</h2><span class="range tabular" id="rangeLabel"></span></div>
+      <div class="act-ctl"><div class="seg" id="period" role="group" aria-label="Período">
+        <button data-v="24h">24h</button><button data-v="7d">7 dias</button><button data-v="30d">30 dias</button></div>
+</div></div>
+    <div class="stats" id="stats" role="group" aria-label="Escolha a métrica do gráfico"></div>
     <div class="card chart-card">
       <div class="chart-head"><h3 id="chartTitle"></h3>
-        <div class="seg" id="stack"><button data-v="account">Por conta</button><button data-v="model">Por modelo</button></div></div>
+        <div class="seg" id="stack" aria-label="Agrupar"><button data-v="account">Por conta</button><button data-v="model">Por modelo</button></div></div>
       <div class="chart">
         <div class="ylabels tabular" id="ylabels"></div>
-        <div class="plot" id="plot"><svg id="chartSvg" viewBox="0 0 960 260" preserveAspectRatio="none"></svg><div class="hover" id="hoverLine"></div><div class="tip" id="tip"></div></div>
+        <div class="plot" id="plot" tabindex="0" role="img"><svg id="chartSvg" viewBox="0 0 960 260" preserveAspectRatio="none"></svg><div class="hover" id="hoverLine"></div><div class="tip" id="tip"></div></div>
       </div>
       <div class="xlabels tabular" id="xlabels"></div>
       <div class="legend chart-legend" id="chartLegend"></div>
       <div class="sub chart-note" id="chartNote" hidden></div>
     </div>
-    <div class="stats" id="stats"></div>
     <div class="card cm" id="modelCost" hidden></div>
     <div class="sub" id="unpricedNote" hidden></div>
   </section>
@@ -554,23 +625,24 @@ const ICON_CHECK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="
 const ICON_X='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>';
 const ICON_CHEV='<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
 const ICON_CLOSE='<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+const ICON_SLIDERS='<svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
 const ICON_CLOCK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const store={get(k,d){try{return localStorage.getItem(k)??d}catch(_){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(_){}}};
 // Chart-only options of "Próximos 7 dias": view, future-use scenario, hidden accounts and the open menu.
-const SCEN={same:{l:"Igual a agora",m:1},half:{l:"Metade do ritmo",m:.5},double:{l:"Dobro do ritmo",m:2},none:{l:"Sem uso",m:0}};
+const SCEN={same:{l:"No ritmo atual",m:1},half:{l:"Na metade do ritmo",m:.5},double:{l:"No dobro do ritmo",m:2},none:{l:"Sem usar nada",m:0}};
 const tlo={view:store.get("usage.tlview","left")==="rate"?"rate":"left",scen:SCEN[store.get("usage.scen","same")]?store.get("usage.scen","same"):"same",
   hide:new Set((()=>{try{const v=JSON.parse(store.get("usage.tlhide","[]"));return Array.isArray(v)?v:[]}catch(_){return[]}})()),menu:false};
 const state={burn:(b=>["auto","1","3","6"].includes(b)?b:"auto")(store.get("usage.burn","auto")),period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
 $("#emptyLogo").innerHTML=LOGO.claude;
 
 /* formatting (after T3 Code usageFormat) */
-function fmtTokens(v){const a=Math.abs(v);for(const[u,d]of[["T",1e12],["B",1e9],["M",1e6],["K",1e3]]){if(a>=d){const x=v/d;
+function fmtTokens(v){const a=Math.abs(v);for(const[u,d]of[[" tri",1e12],[" bi",1e9],[" mi",1e6],[" mil",1e3]]){if(a>=d){const x=v/d;
   return String(Number(x.toFixed(Math.abs(x)>=100?0:Math.abs(x)>=10?1:2))).replace(".",",")+u}}return String(Math.round(v))}
 const fmtCount=v=>Math.round(v).toLocaleString("pt-BR");
 const USD=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"USD"}),USD0=new Intl.NumberFormat("pt-BR",{style:"currency",currency:"USD",maximumFractionDigits:0});
-function fmtUSD(v){v=Number(v)||0;if(Math.abs(v)<.005)return v>0?"< US$ 0,01":USD.format(0);return(Math.abs(v)>=999.5?USD0:USD).format(v)}
+function fmtUSD(v){v=Number(v)||0;if(Math.abs(v)<.005)return v>0?"< US$ 0,01":USD.format(0);return(Math.abs(v)>=99.5?USD0:USD).format(v)}
 // Short USD for chart axis ticks.
 function fmtUSDc(v){const tr=(x,d)=>String(Number(x.toFixed(d))).replace(".",","),a=Math.abs(v);
   if(a>=999950)return"US$ "+tr(v/1e6,1)+" mi";if(a>=999.5)return"US$ "+tr(v/1000,1)+" mil";
@@ -579,16 +651,17 @@ function fmtUSDc(v){const tr=(x,d)=>String(Number(x.toFixed(d))).replace(".",","
 const fmtMetric=v=>state.metric==="cost"?fmtUSD(v):state.metric==="tokens"?fmtTokens(v):fmtCount(v);
 const fmtAxis=v=>state.metric==="cost"?fmtUSDc(v):fmtMetric(v);
 const MODEL_NAMES={opus:"Opus",sonnet:"Sonnet",haiku:"Haiku",fable:"Fable"};
-function prettyModel(key){if(key==="legacy")return"Sem modelo (≈ Opus 5.5)";
+function prettyModel(key){if(key==="legacy")return"Sem modelo registrado";
   const parts=String(key).split("+"),m=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2}))?$/.exec(parts[0]);
   if(!m)return String(key);
   let s=(MODEL_NAMES[m[1]]||m[1][0].toUpperCase()+m[1].slice(1))+" "+m[2]+(m[3]!=null?"."+m[3]:"");
-  if(parts.includes("fast"))s+=" · fast";if(parts.includes("long"))s+=" · >100K";return s}
+  if(parts.includes("fast"))s+=" · fast";if(parts.includes("long"))s+=" · contexto >100K";return s}
 const fmtPct=s=>s>0&&s<.001?"<0,1%":(s*100).toFixed(1).replace(".",",")+"%";
 const fmtDay=d=>d.toLocaleDateString("pt-BR",{day:"numeric",month:"short"}).replace(".","");
 const fmtHour=d=>d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
 const fmtDate=d=>d.toLocaleString("pt-BR",{weekday:"short",day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
-const fmtShort=d=>d.toLocaleString("pt-BR",{weekday:"short",hour:"2-digit",minute:"2-digit"});
+const fmtShort=d=>{const t=new Date(),s=(a,b)=>a.toDateString()===b.toDateString(),tm=new Date(t.getTime()+864e5);
+  return (s(d,t)?"hoje":s(d,tm)?"amanhã":d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")+" "+d.getDate())+", "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})};
 const fmt1=v=>v.toFixed(1).replace(".",",");
 function fmtLeft(ms){if(ms<=0)return"agora";const m=Math.max(1,Math.round(ms/60000)),d=Math.floor(m/1440),h=Math.floor(m%1440/60),mm=m%60;
   return d?`${d}d ${h}h`:h?`${h}h ${mm}m`:`${mm}m`}
@@ -597,23 +670,32 @@ function toast(msg,err){const t=$("#toast");t.textContent=msg||"";t.className="t
 
 /* account identity: avatar + e-mail (shown in full) */
 function hue(v){let h=0;for(const c of v)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%360}
-function initials(v){const[l,d]=String(v).split("@");return(((l||"")[0]||"")+((d||"")[0]||"")).toUpperCase()||"?"}
+// Two letters from the local part: first letter + first consonant after it (lowbook→LW, loootus→LT), so
+// addresses on the same domain don't all collapse to the same pair.
+function initials(v){const l=String(v).split("@")[0].replace(/[^a-z]/gi,"");if(!l)return"?";
+  const b=[...l.slice(1)].find(c=>!/[aeiou]/i.test(c))||l[1]||"";return(l[0]+b).toUpperCase()}
 // With `c` (the account's identity colour) the avatar wears it, so one colour marks the account everywhere.
 function who(email,c){const h=hue(email);
-  const st=c?`background:color-mix(in srgb,${c} 18%,transparent);color:${c}`:`background:oklch(.85 .08 ${h});color:oklch(.35 .1 ${h})`;
+  const st=c?`background:color-mix(in srgb,${c} 22%,transparent);color:var(--foreground)`:`background:oklch(.85 .08 ${h});color:oklch(.35 .1 ${h})`;
   return `<span class="avatar" style="${st}">${esc(initials(email))}</span>
     <span class="redact" title="${esc(email)}">${esc(email)}</span>`}
-const legendName=email=>email;
+const legendName=email=>String(email).split("@")[0];
 
 /* global tooltip for every [data-tip] mark */
 const gtip=document.createElement("div");gtip.className="gtip";document.body.appendChild(gtip);
 function hideTip(){gtip.style.display="none"}
-document.addEventListener("mouseover",e=>{const t=e.target.closest&&e.target.closest("[data-tip]");if(!t){hideTip();return}
+function showTipFor(t){
   gtip.textContent=t.dataset.tip;gtip.style.display="block";
   const r=t.getBoundingClientRect(),w=gtip.offsetWidth,h=gtip.offsetHeight;
   let x=r.left+r.width/2-w/2;x=Math.max(8,Math.min(innerWidth-w-8,x));
   let y=r.top-h-8;if(y<8)y=r.bottom+8;
-  gtip.style.left=x+"px";gtip.style.top=y+"px"});
+  gtip.style.left=x+"px";gtip.style.top=y+"px"}
+gtip.id="gtip";gtip.setAttribute("role","tooltip");
+document.addEventListener("mouseover",e=>{const t=e.target.closest&&e.target.closest("[data-tip]");if(!t){hideTip();return}showTipFor(t)});
+// Keyboard and touch: focusing an element with a tip shows it, and it is read as its description.
+document.addEventListener("focusin",e=>{const t=e.target.closest&&e.target.closest("[data-tip]");if(t&&t.matches("button,[tabindex]")){t.setAttribute("aria-describedby","gtip");showTipFor(t)}});
+document.addEventListener("focusout",hideTip);
+document.addEventListener("keydown",e=>{if(e.key==="Escape")hideTip()});
 document.addEventListener("scroll",hideTip,true);
 
 /* chart helpers (after T3 Code UsageProviderChart) */
@@ -650,16 +732,16 @@ const quota7Of=id=>((state.quota7||{})[id]||[]);
 /* ring gauge: remaining % clockwise from 12 o'clock, optional even-pace tick */
 function ring(left,o){
   o=o||{};const size=o.size||88,sw=o.stroke||9,r=(size-sw)/2,c=size/2,C=2*Math.PI*r;
-  const has=left!=null,l=has?Math.max(0,Math.min(100,left)):0,col=gaugeColor(l,o.color);
+  const has=left!=null,l=has?Math.max(0,Math.min(100,left)):0,col=o.keep&&o.color?o.color:gaugeColor(l,o.color);
   let arc="",tick="";
   if(has&&l>0)arc=`<circle class="arc" cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${(C*l/100).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 ${c} ${c})" style="--circ:${C.toFixed(2)}"/>`;
-  if(has&&o.pace!=null){const th=o.pace/100*2*Math.PI,r1=r+sw/2+2,r2=r1+5,
+  if(has&&o.pace!=null){const th=o.pace/100*2*Math.PI,r1=r-sw/2-2,r2=r+sw/2+3,
     p=(rr)=>`${(c+rr*Math.sin(th)).toFixed(2)}`,q=(rr)=>`${(c-rr*Math.cos(th)).toFixed(2)}`;
-    tick=`<line class="tick" x1="${p(r1)}" y1="${q(r1)}" x2="${p(r2)}" y2="${q(r2)}" stroke-width="2"/>`}
+    tick=`<line class="tick" x1="${p(r1)}" y1="${q(r1)}" x2="${p(r2)}" y2="${q(r2)}" stroke-width="2.5"/>`}
   const txt=has?`${Math.round(l)}%`:"—";
-  return `<span class="ring${has?"":" empty"}"${o.tip?` data-tip="${esc(o.tip)}"`:""}><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  return `<span class="ring${has?"":" empty"}"${o.tip?` data-tip="${esc(o.tip)}" tabindex="0"`:""}><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     <circle class="trk" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${sw}"/>${arc}${tick}
-    <text x="${c}" y="${c}" text-anchor="middle" dominant-baseline="central" font-size="${(size*.25).toFixed(1)}"${has?` data-n="${l}" data-f="pct"`:""}>${txt}</text></svg></span>`;
+    <text x="${c}" y="${has&&size>=80?c-6:c}" text-anchor="middle" dominant-baseline="central" font-size="${(size*.25).toFixed(1)}"${has?` data-n="${l}" data-f="pct"`:""}>${txt}</text>${has&&size>=80?`<text class="rsub" x="${c}" y="${c+15}" text-anchor="middle" dominant-baseline="central" font-size="10.5">restante</text>`:""}</svg></span>`;
 }
 // Remaining %, even-pace position, hover text and pace icon of one window.
 function winInfo(w,now){
@@ -704,11 +786,12 @@ function accountForecast(a,now,pf){
   if(f.zero!=null){
     const ms=f.zero*1000-now;
     // Draining an account before its reset is the router's intended behaviour (the next
-    // account takes over), so this is informational; running out overall is shown in Fôlego.
+    // account takes over), so this is informational; running out overall is shown in "Até acabar".
     return out({cls:"wait",icon:ICON_CLOCK,text:ms<=60000?`esgotada · reseta em ${fmtLeft(f.at*1000-now)}`
-      :`nesse ritmo esgota em ${fmtLeft(ms)} · `+(((pf.br.ext||{})[a.auth_id]||0)>=.05?"contando o uso fora do proxy":"depois vai para a próxima")});
+      :(((pf.br.ext||{})[a.auth_id]||0)>=.05?"a projeção já conta o uso no app/site":"quando esgotar, o proxy passa para a próxima")});
   }
-  return out({cls:"ok",icon:ICON_CHECK,text:`nesse ritmo sobra ~${Math.round(f.before)}% no reset`});
+  return out(f.before>=5?{cls:"warn",icon:ICON_ALERT,text:`~${Math.round(f.before)}% deve sobrar sem uso: o proxy só chega nela depois das outras`}
+    :{cls:"ok",icon:ICON_CHECK,text:"no ritmo atual, usa quase tudo até o reset"});
 }
 // Order the router drains accounts in: normal-mode accounts first, "last"-mode ones only when every
 // normal one is empty; within each group the soonest weekly reset first. Used by the runway and the chart.
@@ -846,7 +929,9 @@ function paceTipFull(br){
   if(!ids.length)return paceTip(br);
   return `Pelo proxy: ${paceTip(br)}\nFora do proxy (apps do Claude na mesma conta):\n`+ids.map(id=>`· ${accName(id)}: ${fmt1(br.ext[id])}%/dia`).join("\n");
 }
-const paceTagHtml=(br,cls)=>br.ok?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}">${paceTag(br)}</span>`:"";
+// The pace source: a visible window ("últimas 3h") or just an info mark whose tip explains how it is measured.
+const paceTagHtml=(br,cls)=>br.ok?(br.source==="win"?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}" tabindex="0">${paceTag(br)}</span>`
+  :` <span class="info${cls?" "+cls:""}" data-tip="${esc(paceTip(br))}" tabindex="0" aria-label="Como o ritmo é medido">i</span>`):"";
 // Weekly-remaining drop (resets ignored) over the last `hours` and its hourly average over the time the samples cover.
 function recentUse(points,now,hours=3){
   const pts=points.filter(p=>p.w!=null&&p.t>=now-hours*3600);
@@ -858,8 +943,8 @@ function recentUse(points,now,hours=3){
 function recentUseHtml(a,now){
   const r=recentUse(quota7Of(a.auth_id),now/1000,3);
   const tip=`Média da queda do % semanal nas últimas 3 horas (${r.n} ${r.n===1?"amostra":"amostras"})`;
-  const body=r.n<2?"sem dados suficientes":r.drop<=0?"sem uso":`<b>−${fmt1(r.drop)}%</b> · <b>${fmt1(r.perHour)}%/h</b>`;
-  return `<div class="recent" data-tip="${esc(tip)}">Últimas 3h: ${body}</div>`;
+  const body=r.n<2?"ritmo: coletando":r.drop<=0?"sem uso nas últimas 3h":`semanal: <b>${fmt1(r.perHour)}%/h</b> nas últimas 3h`;
+  return `<div class="recent" data-tip="${esc(tip+(r.n>=2&&r.drop>0?`\nQueda: −${fmt1(r.drop)}%`:""))}">${ICON_GAUGE}<span>${body}</span></div>`;
 }
 // Accounts whose weekly window feeds the pool: in use, connected, with a reset time.
 const runwayAccs=()=>claudeAccs().filter(a=>a.mode!=="off"&&!a.needs_login&&weeklyOf(a)&&weeklyOf(a).reset_at);
@@ -869,6 +954,8 @@ function poolForecast(now,rec){
   if(accs.length)simulate(accs,br.ok?br.perDay/24:0,now,rec,info,extPerHour(br));
   return{accs,br,info};
 }
+// First weekly reset of any of the given accounts strictly after t (unix s).
+const resumeAfter=(accs,t)=>Math.min(...accs.map(a=>{const w=weeklyOf(a),d=w.duration_sec||7*DAY;let r=Date.parse(w.reset_at)/1000;if(!(r>0))return Infinity;while(r<=t)r+=d;return r}));
 // The 7-day chart's own run: only the accounts not hidden there, with the pace scaled by the scenario.
 function chartForecast(now,rec){
   // When every projectable account is hidden (the visible ones dropped out for now), show them all, keeping the choice.
@@ -877,13 +964,24 @@ function chartForecast(now,rec){
   if(accs.length)simulate(accs,br.ok?br.perDay*m/24:0,now,rec,info,ext);
   return{accs,br,info,m};
 }
+// Highest proxy pace (%/h) that keeps the pool above 0% for the next 7 days, with outside-the-proxy use
+// (scaled by the scenario m) unchanged. 0 when outside use alone empties it. Bisection over simulate().
+function safeRate(accs,br,m,now){
+  const ext=extPerHour(br);if(ext)for(const id in ext)ext[id]*=m;
+  const ok=p=>simulate(accs,p,now,null,null,ext)>=7*24;
+  if(!ok(0))return{p:0,ext:ext?Object.values(ext).reduce((a,b)=>a+b,0):0};
+  let lo=0,hi=Math.max(.5,refillPerDay(accs)/24*10);
+  if(ok(hi))lo=hi;else for(let i=0;i<18;i++){const mid=(lo+hi)/2;if(ok(mid))lo=mid;else hi=mid}
+  return{p:lo,ext:ext?Object.values(ext).reduce((a,b)=>a+b,0):0};
+}
 // Weekly % dropped per hour, hour by hour over [from,to]: past from the samples (a drop spread over its sample
 // pair, refills ignored), future from a simulated [[t,total]] series. Points at bucket centres.
 function burnBuckets(segs,from,to){
   const H=3600,nb=Math.max(0,Math.ceil((to-from)/H)),b=new Array(nb).fill(0);
   for(const[xs,xv,ys,yv]of segs){const d=xv-yv;if(!(d>0)||ys<=xs)continue;const s=Math.max(xs,from),e=Math.min(ys,to);if(e<=s)continue;
     const r=d/(ys-xs);for(let k=Math.floor((s-from)/H);k<nb&&from+k*H<e;k++){const bs=from+k*H,ov=Math.min(bs+H,e)-Math.max(bs,s);if(ov>0)b[k]+=r*ov}}
-  return b.map((v,k)=>{const bs=from+k*H,be=Math.min(to,bs+H);return[(bs+be)/2,v/Math.max(1e-6,(be-bs)/H)]});
+  // A trailing partial bucket shorter than 30 min is too noisy to show as a rate.
+  return b.map((v,k)=>{const bs=from+k*H,be=Math.min(to,bs+H);return[(bs+be)/2,v/Math.max(1e-6,(be-bs)/H),be-bs]}).filter(p=>p[2]>=1800).map(p=>[p[0],p[1]]);
 }
 // %/day the pool gets back from the weekly resets.
 const refillPerDay=accs=>accs.reduce((s,a)=>s+100/(((weeklyOf(a).duration_sec)||7*DAY)/DAY),0);
@@ -934,8 +1032,8 @@ function renderCapacity(now){
     const reason=a.needs_login?"desconectada":!w?"sem janela semanal":off?"sem projeção":!r?"sem horário de reset":"";
     if(a.needs_login||!w)return `<div class="cr dim">${name}<span class="cr-e2" style="grid-area:e">${reason}</span></div>`;
     const left=Math.round(rem(a)),l=lvl(left);
-    const meter=`<div class="cr-m" data-tip="${esc(`${legendName(email)}\n${left}% restante da janela semanal`)}"><div class="meter" style="--c:${gaugeColor(left,ACC[a.auth_id])}"><i style="width:${left}%"></i></div><b class="tabular ${l}">${left}%</b></div>`;
-    const rst=r?`<span class="cr-r tabular" data-tip="${esc("Reseta "+fmtDate(new Date(r)))}">reseta em ${fmtLeft(r-now)}</span>`:`<span class="cr-r">—</span>`;
+    const meter=`<div class="cr-m" data-tip="${esc(`${legendName(email)}\n${left}% restante da janela semanal`)}"><div class="meter" style="--c:${ACC[a.auth_id]}"><i style="width:${left}%"></i></div><b class="tabular ${l}">${left}%</b></div>`;
+    const rst=r?`<span class="cr-r tabular" data-tip="${esc("Reseta "+fmtDate(new Date(r)))}">${fmtLeft(r-now)}<span class="abs"> · ${esc(fmtShort(new Date(r)).replace(", "," "))}</span></span>`:`<span class="cr-r">—</span>`;
     let est;
     if(reason)est=`<span class="cr-e2">${reason}</span>`;
     else{
@@ -944,19 +1042,19 @@ function renderCapacity(now){
       else if(!f)est=`<span class="cr-e2" data-tip="${esc("Reset além de 8 dias: sem projeção.")}">—</span>`;
       else{
         const e=Math.round(f.before),zms=f.zero==null?0:f.zero*1000-now;
-        const tip=f.zero==null?`Nesse ritmo sobra ~${e}% no reset (${fmtDate(new Date(f.at*1000))})`
+        const tip=f.zero==null?`Nesse ritmo ~${e}% fica sem uso e se perde no reset (${fmtDate(new Date(f.at*1000))})`
           :zms<=60000?`Esgotada; reseta em ${fmtLeft(f.at*1000-now)}`:`Nesse ritmo esgota em ${fmtLeft(zms)}, ${fmtLeft((f.at-f.zero)*1000)} antes do reset; depois o proxy passa para a próxima conta`;
-        est=`<span class="cr-e2" data-tip="${esc(tip)}">→ ~${e}% no reset</span>`;
+        est=`<span class="cr-e2 pv tabular${f.zero==null&&e>=5?" waste":""}" data-tip="${esc(tip)}">~${e}%</span>`;
       }
     }
-    return `<div class="cr${off?" dim":""}" data-acc="${esc(a.auth_id)}">${name}${meter}${rst}${est}</div>`;
+    return `<div class="cr${off?" dim":""}" data-acc="${esc(a.auth_id)}" tabindex="0" role="button" aria-label="${esc("Detalhes de "+email)}">${name}${meter}${rst}${est}</div>`;
   };
-  const estTag=paceTagHtml(pf.br,"est");
-  const note=pf.br.ok?`Restante estimado no reset, no ritmo atual; a conta que reseta antes é usada primeiro${estTag}.`:"Coletando ritmo: as estimativas aparecem quando a janela semanal tiver 6h de uso ou o histórico, 1h.";
+  const estTag=pf.br.ok?` <span class="info" data-tip="${esc("Quanto deve sobrar quando cada conta resetar, no ritmo atual. A conta que reseta antes é usada primeiro.\n\n"+paceTip(pf.br))}" tabindex="0" aria-label="Como é estimado">i</span>`:"";
+  const head=`<div class="cr cr-h"><span style="grid-area:n"></span><span style="grid-area:m">restante</span><span style="grid-area:r">reseta em</span><span style="grid-area:e">sobra no reset${pf.br.ok?estTag:""}</span></div>`;
   el.innerHTML=`<div class="k">${title}</div>
-    <div class="hnum"><span id="capNum" data-n="${sum}" data-f="pct">${Math.round(sum)}%</span><small>de ${cap}% · ≈${fmt1(full)} ${Math.abs(full-1)<.05?"conta cheia":"contas cheias"}</small></div>
+    <div class="hnum"><span id="capNum" data-n="${sum}" data-f="pct">${Math.round(sum)}%</span><small>de ${cap}% · ${cap/100} conta${cap>100?"s":""}</small></div>
     <div class="segbar">${blocks}${track}</div>
-    <div class="caprows">${rows.map(row).join("")}</div><div class="sub capnote">${note}</div>`;
+    <div class="caprows">${head}${rows.map(row).join("")}</div>`;
 }
 // Pace of the active account's 5h window from its last ~2h of samples (`s` = remaining %).
 function paceInsight(a,si,now){
@@ -964,36 +1062,14 @@ function paceInsight(a,si,now){
   const since=Math.max(now/1000-2*3600,si.reset/1000-5*3600);
   const pts=quotaOf(a.auth_id).filter(p=>p.s!=null&&p.t>=since);
   const st=burnStats(pts,"s",since);
-  if(pts.length<3||st.span<600)return`<div class="insight">${ICON_GAUGE}<span>coletando ritmo</span></div>`;
+  if(pts.length<3||st.span<600)return`<div class="insight">${ICON_GAUGE}<span>ritmo da janela de 5h: coletando</span></div>`;
   const rate=st.drop/st.span,toReset=(si.reset-now)/1000;// %/s wall clock
   if(rate>0&&si.left/rate<toReset)
     return`<div class="insight crit">${ICON_ALERT}<span>nesse ritmo a janela de 5h acaba em ${fmtLeft(si.left/rate*1000)}</span></div>`;
-  return`<div class="insight good">${ICON_CHECK}<span>sobra ~${Math.round(Math.max(0,si.left-rate*toReset))}% no reset de 5h</span></div>`;
-}
-function renderNow(now){
-  const el=$("#tNow"),a=claudeAccs().find(x=>x.active&&!x.needs_login);
-  if(!a){
-    let free=0;
-    for(const x of claudeAccs()){if(x.mode==="off"||x.needs_login)continue;
-      let t=0;for(const w of x.windows||[]){if(w.kind==="model"||!w.reset_at)continue;if(w.used_percent>=100)t=Math.max(t,Date.parse(w.reset_at))}
-      if(t>now&&(!free||t<free))free=t}
-    el.innerHTML=`<div class="k">Agora</div><div class="muted-big">Nenhuma conta disponível</div>
-      <div class="sub">${free?`Uma conta volta em ${fmtLeft(free-now)} · ${esc(fmtShort(new Date(free)))}`:"Nenhuma conta ativa no momento."}</div>`;
-    return;
-  }
-  const s=shortOf(a),w=weeklyOf(a),email=a.email||a.auth_id,si=s?winInfo(s,now):null;
-  const wl=w?Math.round(100-clampPct(w.used_percent)):null,wi=w?winInfo(w,now):null;
-  el.innerHTML=`<div class="k">Agora</div>
-    <div class="agora-who">${who(email,ACC[a.auth_id])}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}</div>
-    <div class="agora-body">${ring(si?si.left:null,{size:96,stroke:10,pace:si?si.pace:null,tip:si?si.tip:"",color:ACC[a.auth_id]})}
-      <div class="agora-txt"><span class="s">${si&&si.reset?"5h reseta em":"Janela de 5h"}</span><span class="v tabular">${si&&si.reset?fmtLeft(si.reset-now):"—"}</span>
-      ${si&&lvl(si.left)?`<span class="chip ${lvl(si.left)}">${ICON_ALERT}${si.left<=0?"esgotada":lvl(si.left)==="crit"?"crítico":"baixo"}</span>`:""}</div></div>
-    ${paceInsight(a,si,now)}
-    ${w?`<div class="mrow" data-tip="${esc(wi.tip)}"><div class="l"><span>${esc(w.label)}</span><b class="tabular">${wl}% restante${lvl(wl)?` · ${wl<=0?"esgotada":lvl(wl)==="crit"?"crítico":"baixo"}`:""}</b></div>
-      <div class="meter" style="--c:${gaugeColor(wl,ACC[a.auth_id])}"><i style="width:${wl}%"></i>${wi.pace!=null?`<u style="left:${wi.pace}%"></u>`:""}</div></div>`:""}`;
+  return`<div class="insight">${ICON_CLOCK}<span>folga de ~${Math.round(Math.max(0,si.left-rate*toReset))}% até o reset de 5h</span></div>`;
 }
 function renderRunway(now){
-  const el=$("#tRun"),k=`<div class="k">Fôlego</div>`;
+  const el=$("#tRun"),k=`<div class="k">Até acabar</div>`;
   const accs=runwayAccs();state.runway=null;
   if(!accs.length){el.innerHTML=`${k}<span class="pill idle" style="align-self:flex-start">${ICON_CLOCK}sem contas ativas</span><div class="sub">Nenhuma conta com limite semanal para projetar.</div>`;return}
   const br=burnRate(accs),span=br.span;
@@ -1004,10 +1080,10 @@ function renderRunway(now){
     const tip=`Capacidade semanal somada\n${Math.round(cs.pts[0][1])}% → ${Math.round(cs.pts[cs.pts.length-1][1])}% em ${days} ${days===1?"dia":"dias"}`;
     return `<div data-tip="${esc(tip)}"><svg class="runway-spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><path d="${line} L${W},${H} L0,${H} Z" fill="var(--muted-foreground)" fill-opacity=".12"/>
       <path d="${line}" fill="none" stroke="var(--muted-foreground)" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></div>
-      <div class="sub" style="display:flex;justify-content:space-between;margin-top:-6px"><span>${days===1?"24 h":days+" dias"} atrás</span><span>agora</span></div>`})():"";
+      <div class="sub" style="display:flex;justify-content:space-between;margin-top:-6px"><span>capacidade total · ${days===1?"24 h":days+" dias"} atrás</span><span>agora</span></div>`})():"";
   if(!br.ok){
-    el.innerHTML=`<div class="k">Fôlego<span class="pill idle">${ICON_CLOCK}Coletando dados…</span></div><div class="hnum">—</div>
-      <div class="sub">Histórico de ${Math.round(span/3600)}h; as projeções aparecem quando a janela semanal tiver 6h de uso ou o histórico, 1h.</div>${spark}`;
+    el.innerHTML=`<div class="k">Até acabar<span class="pill idle">${ICON_CLOCK}Coletando dados…</span></div><div class="hnum">—</div>
+      <div class="sub">Histórico de ${Math.round(span/3600)}h; as projeções aparecem quando a janela semanal tiver 6h de uso ou o histórico, 1h.</div>`;
     return;
   }
   const perDay=br.total,perHour=br.perDay/24,hours=perDay>0||br.extPerDay>0?simulate(accs,perHour,now,null,null,extPerHour(br)):Infinity;
@@ -1016,22 +1092,24 @@ function renderRunway(now){
   if(hours===Infinity){pill=`<span class="pill ok">${ICON_CHECK}Sustentável</span>`;num="∞";state.runway="good"}
   else if(!isFinite(nextReset)){pill=`<span class="pill idle">${ICON_CLOCK}Aguardando atualização</span>`;num="—"}
   else if(hours*3600e3<nextReset-now){pill=`<span class="pill bad">${ICON_X}Acaba antes da recarga</span>`;num=fmtLeft(hours*3600e3);state.runway="crit"}
-  else{pill=`<span class="pill warn">${ICON_ALERT}Apertado</span>`;num=fmtLeft(hours*3600e3);state.runway="warn"}
-  const note=hours===Infinity?"os resets cobrem seu ritmo":!isFinite(nextReset)?"nenhuma recarga futura conhecida ainda":"até ficar sem limite, contando as recargas";
+  else{pill=`<span class="pill bad">${ICON_ALERT}Vai faltar</span>`;num=fmtLeft(hours*3600e3);state.runway="crit"}
+  const dd=d=>esc(fmtWd(d)+" "+d.getDate()+", "+fmtHour(d)),back=isFinite(hours)?resumeAfter(accs,now/1000+hours*3600):Infinity;
+  const note=hours===Infinity?"os resets cobrem seu ritmo":!isFinite(nextReset)?"nenhuma recarga futura conhecida ainda":`todas zeram <b>${dd(new Date(now+hours*3600e3))}</b>`+(isFinite(back)?`<br>voltam <b>${dd(new Date(back*1000))}</b> · ${fmtLeft(back*1000-now-hours*3600e3)} sem cota`:"");
   const refill=refillPerDay(accs),mx=Math.max(perDay,refill,1);
-  const rate=(name,v,c,tip)=>`<div class="rate" data-tip="${esc(tip)}"><span>${name}</span><div class="bar"><i style="width:${(v/mx*100).toFixed(1)}%;--c:${c}"></i></div><b class="tabular">${Math.round(v)}%/dia</b></div>`;
-  el.innerHTML=`<div class="k">Fôlego${pill}</div><div class="hnum">${num}</div>
+  const NA=Math.max(1,accs.length),rate=(name,v,c,tip)=>`<div class="rate" data-tip="${esc(tip+"\nCada conta vale 100%.")}"><span>${name}</span><div class="bar"><i style="width:${(v/mx*100).toFixed(1)}%;--c:${c}"></i></div><b class="tabular">${fmt1(v/24)}%/h</b></div>`;
+  el.innerHTML=`<div class="k">Até acabar${pill}</div><div class="hnum">${num}</div>
     <div class="sub" style="margin-top:-8px">${note}</div>
-    <div class="rates">${rate("Gasto",perDay,"var(--claude)",paceTipFull(br))
-      }${rate("Recarga",refill,"color-mix(in srgb,var(--foreground) 45%,transparent)","Recarga semanal: quanto as contas ativas devolvem por dia (100% a cada 7 dias por conta).")}</div>${spark}`;
+    <div class="rates">${rate("Consumo",perDay,"var(--claude)",paceTipFull(br))
+      }${rate("Recarga",refill,"color-mix(in srgb,var(--foreground) 45%,transparent)","Recarga semanal: quanto as contas ativas devolvem, em média (100% a cada 7 dias por conta).")}</div>
+    <div class="run-adv" id="runAdv">${state.runAdv||""}</div>`;
 }
-function renderHero(){const now=Date.now();renderCapacity(now);renderNow(now);renderRunway(now)}
+function renderHero(){const now=Date.now();renderCapacity(now);renderRunway(now)}
 // Tab title and favicon: remaining weekly capacity (same sum as the hero) as a ring coloured by the Fôlego status.
 const FAV_COLORS={good:"#0ca30c",warn:"#fab219",crit:"#d03b3b"};
 function updateBrand(){
   const c=state.cap;let link=document.querySelector('link[rel="icon"]');
   if(!c){document.title="Uso";if(link)link.remove();return}
-  document.title=`${Math.round(c.sum)}% · Uso`;
+  document.title=`${Math.round(c.sum)}% de ${c.cap}% · Uso`;
   const f=Math.max(0,Math.min(1,c.sum/c.cap)),R=13,L=2*Math.PI*R,col=FAV_COLORS[state.runway]||"#a3a3a3";
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="${R}" fill="none" stroke="#8a8a8a" stroke-opacity=".4" stroke-width="5"/>`
     +(f>0?`<circle cx="16" cy="16" r="${R}" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="${f>=1?"butt":"round"}" stroke-dasharray="${(L*f).toFixed(2)} ${L.toFixed(2)}" transform="rotate(-90 16 16)"/>`:"")+`</svg>`;
@@ -1103,7 +1181,7 @@ function xTicks(V0,V1){const span=V1-V0,out=[],d=new Date(V0*1000);
   if(span>=2*DAY){
     // Under 4 days, noons too.
     for(let k=0;;k++){const m=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k).getTime()/1000;if(m>V1)break;
-      if(m>=V0)out.push({t:m,l:fmtWd(new Date((m+12*3600)*1000))});
+      if(m>=V0){const nd=new Date((m+12*3600)*1000);out.push({t:m,l:fmtWd(nd)+" "+nd.getDate()})}
       const n=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k,12).getTime()/1000;
       if(span<4*DAY&&n>=V0&&n<=V1)out.push({t:n,l:"12h",minor:true})}
   }else{
@@ -1118,10 +1196,10 @@ function renderTimeline(){
   // Re-rendering would close an open <select>.
   if(el.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
   const rec={},cf=chartForecast(now,rec),accs=cf.accs,br=cf.br,sm=cf.m,perHour=br.ok?br.total*sm/24:0,rateMode=tlo.view==="rate";
-  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,state.burn,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
+  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,state.burn,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
-  const PH=240,TOP=44,BOT=PH-6,HZ=7*DAY,PAST=7*DAY,t0=now/1000,ts=rec.ts,tot=rec.tot,K=ts.length;
+  const PH=innerWidth<640?240:280,TOP=44,BOT=PH-6,HZ=7*DAY,PAST=7*DAY,t0=now/1000,ts=rec.ts,tot=rec.tot,K=ts.length;
   let cap=rec.cap;
   const past=pastSeries(accs,t0,tot[0],PAST),F0=past?past[0][0]:t0,F1=t0+HZ;
   // Visible range: the whole chart, a preset window (starts 2h before "agora") or a custom zoom.
@@ -1132,8 +1210,9 @@ function renderTimeline(){
   else if(TL_WIN[tlz.preset]){V0=Math.max(F0,t0-2*3600);V1=Math.min(F1,V0+TL_WIN[tlz.preset])}
   else if(tlz.preset==="week"){V0=Math.max(F0,t0-2*DAY);V1=F1}
   const VS=V1-V0,zoomed=VS<F1-F0-1,nowVis=t0>=V0-1e-6&&t0<=V1;
-  // "Gasto por hora": hourly weekly-% burn instead of the remaining total, on its own scale.
+  // "Consumo por hora": hourly weekly-% burn instead of the remaining total, on its own scale.
   let burnPast=[],burnFut=[],refH=0;
+  const sr=br.ok?safeRate(accs,br,sm,now):null,safeH=sr?sr.p+sr.ext:0;
   if(rateMode){
     const segs=[];
     for(const a of accs){const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);for(let k=1;k<q.length;k++)segs.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w])}
@@ -1142,10 +1221,13 @@ function renderTimeline(){
     burnFut=burnBuckets(fs,t0,F1);
     refH=refillPerDay(accs)/24;
     const vis=[...burnPast,...burnFut].filter(p=>p[0]>=V0-3600&&p[0]<=V1+3600).map(p=>p[1]);
-    cap=niceScale(Math.max(refH*1.15,.5,...vis),4).max}
+    cap=niceScale(Math.max(refH*1.15,safeH*1.1,.5,...vis),4).max}
   const X=t=>(t-V0)/VS*1000,P=t=>(t-V0)/VS*100,Y=v=>BOT-v/cap*(BOT-TOP);
   const nm=a=>legendName(a.email||a.auth_id);
   const d0=new Date(now),ticks=xTicks(V0,V1);
+  // One date style for the whole card: "hoje 21:59", "amanhã 04:00", "seg 9, 17:28".
+  const hm=t=>{const d=new Date(t*1000),dd=Math.round((new Date(d.getFullYear(),d.getMonth(),d.getDate())-new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()))/864e5);
+    return (dd===0?"hoje ":dd===1?"amanhã ":dd===-1?"ontem ":fmtWd(d)+" "+d.getDate()+", ")+fmtHour(d)};
 
   const prc=clipPts(ts.map((t,k)=>[t,tot[k]]),V0,V1),pastc=past?clipPts(past,V0,V1):[];
   const fx=p=>`${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`;
@@ -1160,7 +1242,8 @@ function renderTimeline(){
   for(let k=0;k<K;k++){const z=tot[k]<=.5;
     if(z&&zi===null)zi=ts[k];else if(!z&&zi!==null){zs.push([zi,ts[k]]);zi=null}}
   if(zi!==null)zs.push([zi,t0+HZ]);
-  const zv=zs.map(([s,e])=>({s,e,vs:Math.max(s,V0),ve:Math.min(e,V1)})).filter(z=>z.ve>z.vs);
+  const zv=zs.map(([s,e])=>({s,e,open:e>=t0+HZ-1,vs:Math.max(s,V0),ve:Math.min(e,V1)})).filter(z=>z.ve>z.vs);
+  for(const z of zv)if(z.open)z.e=resumeAfter(accs,z.e);
 
   // At most 4 ticks: 0, steps of whole accounts, and the full capacity.
   let yt=[];
@@ -1170,98 +1253,98 @@ function renderTimeline(){
     if(cap-yt[yt.length-1]>step*.4)yt.push(cap);else yt[yt.length-1]=cap}
   const grid=yt.filter(v=>v>0&&v!==cap).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")
     +ticks.map(k=>`<line class="gv" x1="${X(k.t).toFixed(1)}" x2="${X(k.t).toFixed(1)}" y1="8" y2="${BOT}" ${NS}/>`).join("");
-  const zrect=zv.map(z=>`<rect x="${X(z.vs).toFixed(1)}" y="8" width="${Math.max(2,X(z.ve)-X(z.vs)).toFixed(1)}" height="${BOT-8}" fill="var(--st-crit)" fill-opacity=".12"/>`).join("");
+  const zrect=zv.map(z=>`<rect x="${X(z.vs).toFixed(1)}" y="8" width="${Math.max(2,X(z.ve)-X(z.vs)).toFixed(1)}" height="${BOT-8}" fill="url(#tlHatch)"/>`).join("");
   const evs=rec.events.map(e=>({...e,x:Math.max(e.at,t0)})).sort((a,b)=>a.x-b.x);
-  let svg=`<defs><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
+  let svg=`<defs><pattern id="tlHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="var(--st-crit)" style="fill-opacity:var(--ht-a)"/><line x1="0" y1="0" x2="0" y2="8" stroke="var(--st-crit)" style="stroke-opacity:var(--ht-l)" stroke-width="2"/></pattern><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
       <stop offset="0" stop-color="var(--claude)" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="var(--claude)" stop-opacity="0"/></linearGradient></defs>
     ${grid}${zrect}${areaD?`<path d="${areaD}" fill="url(#tlGrad)" stroke="none"${past?` opacity=".45"`:""}/>`:""}${pastArea}
     <line class="capl" x1="0" x2="1000" y1="${Y(cap)}" y2="${Y(cap)}" ${NS}/>
     <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past&&nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}${lineD?`<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`:""}`;
-  const yfmt=v=>rateMode?(v>0&&v<1?fmt1(v):Math.round(v*10)/10).toString().replace(".",",")+"%/h":v+"%";
+  const yfmt=v=>rateMode?((v)>0&&(v)<1?fmt1((v)):Math.round((v)*10)/10).toString().replace(".",",")+"%/h":Math.round((v))+"%";
   const ylab=yt.map(v=>`<span style="top:${Y(v)}px">${yfmt(v)}</span>`).join("");
-  let capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${cap===100?"conta cheia":"todas cheias"}</div>`;
+  let capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${rec.cap===100?"conta cheia":`${rec.cap}% = ${rec.cap/100} contas cheias`}</div>`;
   if(rateMode){
     const pd=burnPast.length>1?clipPts(burnPast,V0,V1):[],fd=clipPts([[t0,burnPast.length?burnPast[burnPast.length-1][1]:burnFut.length?burnFut[0][1]:0],...burnFut],V0,V1);
     const dd=pts=>pts.map((p,k)=>(k?"L":"M")+fx(p)).join(""),ar=pts=>pts.length>1?`<path d="${dd(pts)}L${X(pts[pts.length-1][0]).toFixed(1)},${BOT}L${X(pts[0][0]).toFixed(1)},${BOT}Z" fill="url(#tlGrad)" stroke="none"/>`:"";
     const gridR=yt.filter(v=>v>0).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")+ticks.map(k=>`<line class="gv" x1="${X(k.t).toFixed(1)}" x2="${X(k.t).toFixed(1)}" y1="8" y2="${BOT}" ${NS}/>`).join("");
-    svg=`<defs><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
+    svg=`<defs><pattern id="tlHatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="8" height="8" fill="var(--st-crit)" style="fill-opacity:var(--ht-a)"/><line x1="0" y1="0" x2="0" y2="8" stroke="var(--st-crit)" style="stroke-opacity:var(--ht-l)" stroke-width="2"/></pattern><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
       <stop offset="0" stop-color="var(--claude)" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="var(--claude)" stop-opacity="0"/></linearGradient></defs>
       ${gridR}${zrect}${ar(pd)}${fd.length>1?ar(fd).replace("<path ",'<path opacity=".45" '):""}
-      <line class="capl" x1="0" x2="1000" y1="${Y(refH)}" y2="${Y(refH)}" ${NS}/>
+      <line class="capl" x1="0" x2="1000" y1="${Y(refH)}" y2="${Y(refH)}" ${NS}/>${sr?`<line class="safel" x1="0" x2="1000" y1="${Y(safeH)}" y2="${Y(safeH)}" ${NS}/>`:""}
       <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}
       ${pd.length>1?`<path class="tl-line" d="${dd(pd)}" ${NS}/>`:""}${fd.length>1?`<path class="tl-line proj" d="${dd(fd)}" ${NS}/>`:""}`;
-    capLabel=`<div class="tl-capl" style="top:${Math.max(0,Y(refH)-18)}px" data-tip="${esc("Quanto as recargas semanais devolvem por hora. Acima dessa linha o total restante cai.")}">recarga ${fmt1(refH)}%/h</div>`}
+    // Safe pace and refill are often a few tenths apart: one label when the lines are close.
+    const near=sr&&Math.abs(Y(safeH)-Y(refH))<22,refTip="Quanto as recargas semanais devolvem por hora. Acima dessa linha o total restante cai.";
+    capLabel=(sr?`<div class="tl-capl safe" style="top:${Math.max(0,Math.min(Y(safeH),near?Y(refH):Infinity)-18)}px;right:auto;left:6px" data-tip="${esc("Gastando abaixo desta linha, o total não chega a 0% nos próximos 7 dias."+(near?"\n"+refTip:""))}">limite seguro ${fmt1(safeH)}%/h${near?`<span class="tl-capr"> · recarga ${fmt1(refH)}%/h</span>`:""}</div>`:"")
+      +(near?"":`<div class="tl-capl" style="top:${Math.max(0,Y(refH)-18)}px" data-tip="${esc(refTip)}">recarga ${fmt1(refH)}%/h</div>`)}
+  const zNarrow=innerWidth<640,zDay=t=>(d=>fmtWd(d)+" "+d.getDate())(new Date(t*1000));
   const zlab=zv.map(z=>{const right=P(z.vs)>60;
-    return `<div class="tl-zero" style="top:${BOT-24}px;${right?`right:${(100-P(z.ve)).toFixed(2)}%`:`left:${P(z.vs).toFixed(2)}%`}" data-tip="${esc(`Sem limite de ${fmtDate(new Date(z.s*1000))} até ${z.e>=t0+HZ-1?"depois do fim da projeção":fmtDate(new Date(z.e*1000))}`)}">
-      <b>${ICON_X}sem limite · ${fmtSpan((z.e-z.s)/3600)}</b></div>`}).join("");
-  // Lowest point of the visible projection (skipped when it is its first point, or zero: the "sem limite" label covers that).
+    return `<div class="tl-zero" tabindex="0" style="top:${Y(cap)+8}px;${zNarrow?"right:4px":right?`right:${Math.max(0,100-P(z.ve)).toFixed(2)}%`:`left:calc(${P(z.vs).toFixed(2)}% + 8px)`}" data-tip="${esc(`Todas as contas sem cota de ${hm(z.s)} até ${hm(z.e)}${z.open?" (próximo reset, depois do fim do gráfico)":""}`)}">
+      <b>${ICON_X}sem cota: ${esc(zNarrow?zDay(z.s):hm(z.s))} → ${esc(zNarrow?zDay(z.e):hm(z.e))}</b></div>`}).join("");
+  // Lowest point of the visible projection (skipped when it is its first point, or zero: the "zerado" label covers that).
   let mk=0;for(let k=1;k<prc.length;k++)if(prc[k][1]<prc[mk][1]-.05)mk=k;
   const minOn=!rateMode&&prc.length>1&&mk>0&&prc[mk][1]>.5;
 
   const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?Math.round(pastH/24)+" dias":pastH+"h";
-  const legend=past?`<span><i></i>Real (${pastLbl})</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>${rateMode?"Gasto por hora":"Capacidade restante somada"}</span>`;
+  const legend=past?`<span><i></i>Real (últimas ${pastLbl})</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
   const rate=br.ok
-    ?`<span data-tip="${esc(paceTipFull(br))}">gasto <b>${Math.round(br.total*sm)}%/dia</b></span>${paceTagHtml(br)}${sm!==1?` <span class="tl-scen">${esc(SCEN[tlo.scen].l.toLowerCase())}</span>`:""} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
+    ?`<span data-tip="${esc(paceTipFull(br)+`\n≈ ${Math.round(br.total*sm)}%/dia`)}" tabindex="0">gastando <b>~${fmt1(br.total*sm/24)}%/h</b></span>${sm!==1?` <span class="tl-scen">${esc(SCEN[tlo.scen].l.toLowerCase())}</span>`:""}`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
   const hasAll=F0<t0-2*DAY-3600;
   const fmtRange=t=>new Date(t*1000).toLocaleDateString("pt-BR",{day:"numeric",month:"short"}).replace(".","");
-  const tools=`<div class="tl-tools">${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir zoom</button>`:""}<div class="seg">${
-    [["24h","24h"],["3d","3 dias"],["week","Semana"],["all","Tudo"]].filter(([v])=>v!=="all"||hasAll).map(([v,l])=>`<button type="button" data-z="${v}"${!custom&&(tlz.preset===v||(v==="week"&&tlz.preset==="all"&&!hasAll))?` class="on"`:""}>${l}</button>`).join("")}</div></div>`;
-  const nav=`<div class="tl-nav"><span class="tabular">${esc(fmtRange(V0))} – ${esc(fmtRange(V1))}</span><button type="button" data-z="prev" aria-label="Voltar"${V0<=F0+1?" disabled":""}>${ICON_CHEV}</button><button type="button" data-z="next" aria-label="Avançar"${V1>=F1-1?" disabled":""}>${ICON_CHEV}</button></div>`;
+  const zOn=v=>!custom&&(tlz.preset===v||(v==="week"&&tlz.preset==="all"&&!hasAll));
+  const tools=`<div class="seg" role="group" aria-label="Janela do gráfico" data-tip="Ctrl + roda (ou pinça): zoom\nArraste: selecionar um trecho para ampliar\nCom zoom: arraste para mover, shift + arraste seleciona\nDuplo clique: voltar à semana\nTeclado: ← → percorrem o gráfico">${
+    [["24h","24h"],["3d","3 dias"],["week","7 dias"],["all","Tudo"]].filter(([v])=>v!=="all"||hasAll).map(([v,l])=>`<button type="button" data-z="${v}" aria-pressed="${zOn(v)}"${zOn(v)?` class="on"`:""}>${l}</button>`).join("")}</div>`;
+  const nav=`<div class="tl-nav">${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir</button>`:""}${V0<=F0+1&&V1>=F1-1?"":`<button type="button" data-z="prev" aria-label="Período anterior"${V0<=F0+1?" disabled":""}>${ICON_CHEV}</button><button type="button" data-z="next" aria-label="Próximo período"${V1>=F1-1?" disabled":""}>${ICON_CHEV}</button>`}</div>`;
   // Controls row: view, pace window (global), scenario and accounts (this chart only).
-  const segOf=(attr,cur,opts)=>`<div class="seg">${opts.map(([v,l,tip])=>`<button type="button" data-${attr}="${v}"${cur===v?` class="on"`:""}${tip?` data-tip="${esc(tip)}"`:""}>${l}</button>`).join("")}</div>`;
-  const accMenu=`<div class="tl-accm"><button type="button" class="tl-accb${tlo.hide.size?" on":""}" data-accmenu="1" aria-expanded="${tlo.menu}">Contas <b>${accs.length}/${allAccs.length}</b></button>${tlo.menu?`<div class="tl-menu">${allAccs.map(a=>`<label><input type="checkbox" data-hide="${esc(a.auth_id)}"${tlo.hide.has(a.auth_id)?"":" checked"}${!tlo.hide.has(a.auth_id)&&accs.length===1?" disabled":""}><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span>${esc(nm(a))}</span></label>`).join("")}<div class="tl-menu-n">Só muda este gráfico.</div></div>`:""}</div>`;
-  const ctl=`<div class="tl-ctl">${segOf("view",tlo.view,[["left","Restante"],["rate","Gasto por hora"]])}
-    <span class="tl-lab">Ritmo</span>${segOf("burn",state.burn,[["auto","Auto","Ponderado: as últimas horas pesam mais (meia-vida 12h) e mistura com a média da semana enquanto há pouco histórico"],["1","1h","Ritmo das últimas 1h"],["3","3h","Ritmo das últimas 3h"],["6","6h","Ritmo das últimas 6h"]])}
-    <span class="tl-lab">Uso futuro</span><select class="sel" data-scen="1" aria-label="Uso futuro">${Object.entries(SCEN).map(([v,o])=>`<option value="${v}"${tlo.scen===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select>
-    ${accMenu}<div class="spacer"></div>${nav}</div>`;
+  const segOf=(attr,cur,opts,label)=>`<div class="seg" role="group" aria-label="${esc(label)}">${opts.map(([v,l,tip])=>`<button type="button" data-${attr}="${v}" aria-pressed="${cur===v}"${cur===v?` class="on"`:""}${tip?` data-tip="${esc(tip)}"`:""}>${l}</button>`).join("")}</div>`;
+  const accMenu=`<div class="tl-accm"><button type="button" class="tl-accb${tlo.hide.size?" on":""}" data-accmenu="1" aria-haspopup="true" aria-expanded="${tlo.menu}">${accs.length}/${allAccs.length} contas<svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>${tlo.menu?`<div class="tl-menu">${allAccs.map(a=>`<label><input type="checkbox" data-hide="${esc(a.auth_id)}"${tlo.hide.has(a.auth_id)?"":" checked"}${!tlo.hide.has(a.auth_id)&&accs.length===1?" disabled":""}><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span>${esc(nm(a))}</span></label>`).join("")}<div class="tl-menu-n">Só muda este gráfico e o resumo acima dele.</div></div>`:""}</div>`;
+  const nAdj=(state.burn!=="auto")+(tlo.scen!=="same")+(tlo.hide.size>0);
+  {const tt=$("#tlTitle");if(tt)tt.textContent=custom?"Projeção":tlz.preset==="24h"?"Próximas 24h":tlz.preset==="3d"?"Próximos 3 dias":tlz.preset==="all"?"Histórico e projeção":"Próximos 7 dias"}
+  const ctl=`<div class="tl-ctl">${segOf("view",tlo.view,[["left","Restante","Quanto resta, somando as contas"],["rate","Consumo","Quanto sai por hora (%/h)"]],"O que mostrar")}<button type="button" class="tl-adv" data-adv="1" aria-expanded="${!!tlo.adv}" aria-controls="tlSet" aria-label="Ajustes da projeção">${ICON_SLIDERS}<span class="tl-adv-l">Ajustes</span>${nAdj?`<span class="tl-badge">${nAdj}</span>`:""}</button><div class="spacer"></div><div class="tl-zg">${tools}${nav}</div></div>
+    <div class="tl-ctl tl-set${tlo.adv?" open":""}" id="tlSet">
+      <div class="tl-field"><span class="tl-lab" id="tlRitmo">Ritmo calculado com</span>${segOf("burn",state.burn,[["auto","Auto","Automático: as últimas horas pesam mais (meia-vida 12h), misturado com a média da semana enquanto há pouco histórico"],["1","1h","Só a última hora"],["3","3h","Só as últimas 3 horas"],["6","6h","Só as últimas 6 horas"]],"Ritmo calculado com")}</div>
+      <div class="tl-field"><label class="tl-lab" for="tlScen">Se eu continuar</label><select class="sel" id="tlScen" data-scen="1">${Object.entries(SCEN).map(([v,o])=>`<option value="${v}"${tlo.scen===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select></div>
+      <div class="tl-field">${accMenu}</div></div>`;
   // Summary strip (this chart's run).
-  const hm=t=>{const d=new Date(t*1000);return fmtWd(d)+" "+fmtHour(d)};
   const zf=zs.find(z=>z[0]>t0-60),firstEmpty=Object.entries(cf.info).filter(([,f])=>f.zero!=null).sort((a,b)=>a[1].zero-b[1].zero)[0];
   const nxt=evs.find(e=>e.gain>=1)||evs[0];
-  let d3=0,c3=0;for(const a of accs){const r=recentUse(quota7Of(a.auth_id),t0,3);if(r.n>1){d3+=r.drop;c3=Math.max(c3,r.coveredH)}}
-  const stItem=(k,v,sub,tip)=>`<div class="tl-st"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div>${sub?`<div class="s">${sub}</div>`:""}</div>`;
+  const wH=state.burn==="auto"?3:+state.burn;
+  let d3=0,c3=0;for(const a of accs){const r=recentUse(quota7Of(a.auth_id),t0,wH);if(r.n>1){d3+=r.drop;c3=Math.max(c3,r.coveredH)}}
+  const measured=` · <span data-tip="${esc(`Quanto as recargas semanais devolvem, em média (≈${Math.round(refillPerDay(accs))}%/dia)`+(c3>0?`\nMedido nas últimas ${wH}h: ${fmt1(d3/Math.max(c3,.5))}%/h`:""))}" tabindex="0">recargas devolvem <b>~${fmt1(refillPerDay(accs)/24)}%/h</b></span>`;
+  const stItem=(k,v,sub,tip,cls)=>`<div class="tl-st${cls?" "+cls:""}"${tip?` data-tip="${esc(tip)}" tabindex="0"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div>${sub?`<div class="s">${sub}</div>`:""}</div>`;
+  const zCls=!br.ok||!zf?"good":"crit";
   const faName=firstEmpty&&legendName((allAccs.find(a=>a.auth_id===firstEmpty[0])||{}).email||firstEmpty[0]).split("@")[0];
-  const stats=`<div class="tl-stats">${
-    stItem("Sem limite",!br.ok?"—":zf?esc(hm(zf[0])):"Não até "+esc(fmtWd(new Date(F1*1000))+" "+new Date(F1*1000).getDate()),zf?`em ${fmtLeft(zf[0]*1000-now)} · por ${fmtSpan((zf[1]-zf[0])/3600)}`:br.ok?"no ritmo e cenário escolhidos":"coletando ritmo",
-      "Quando o total de todas as contas do gráfico chega a 0%.")
-    +stItem("Primeira a esgotar",firstEmpty?esc(faName):"Nenhuma",firstEmpty?(firstEmpty[1].zero*1000<=now+60e3?"já esgotada":`${esc(hm(firstEmpty[1].zero))} · ${fmtLeft((firstEmpty[1].at-firstEmpty[1].zero)*1000)} antes do reset`):"antes do próprio reset",
-      "Primeira conta a chegar a 0% antes do próprio reset semanal. É o esperado com várias contas: o proxy passa para a próxima.")
-    +stItem("Próxima recarga",nxt?`<i class="adot" style="--c:${ACC[nxt.a.auth_id]}"></i>+${Math.round(nxt.gain)}%`:"—",nxt?`${esc(nm(nxt.a).split("@")[0])} · ${esc(hm(nxt.at))}`:"nenhuma nos próximos 7 dias")
-    +stItem("Gasto, últimas 3h",c3>0?`${fmt1(d3/Math.max(c3,.5))}%/h`:"—",c3>0?`−${fmt1(d3)}% em ${fmt1(c3)}h`:"sem amostras",
-      "Queda somada do % semanal das contas do gráfico nas últimas 3 horas, por hora.")}</div>`;
+  const zEnd=zf&&(zf[1]>=t0+HZ-1?resumeAfter(accs,zf[1]):zf[1]);
+  const fullStats=tlo.scen!=="same"||tlo.hide.size>0;
+  const stats=!fullStats?"":`<div class="tl-stats">${
+    (stItem("Fica sem cota",!br.ok?"—":zf?esc(hm(zf[0])):"Não nesta semana",zf?`em ${fmtLeft(zf[0]*1000-now)} · volta ${esc(hm(zEnd))}`:br.ok?`no ritmo atual, até ${esc(fmtWd(new Date(F1*1000))+" "+new Date(F1*1000).getDate())}`:"coletando ritmo",
+      "Quando o total de todas as contas do gráfico chega a 0%, no ritmo escolhido.","lead "+zCls))
+    +stItem("Primeira conta a zerar",firstEmpty?esc(faName):"Nenhuma",firstEmpty?(firstEmpty[1].zero*1000<=now+60e3?"já esgotada":`${esc(hm(firstEmpty[1].zero))} · ${fmtLeft((firstEmpty[1].at-firstEmpty[1].zero)*1000)} antes da recarga`):"nenhuma antes da própria recarga",
+      "Primeira conta a chegar a 0% antes da própria recarga semanal. É o esperado com várias contas: o proxy passa para a próxima.")
+    +stItem("Próxima recarga",nxt?`<i class="adot" style="--c:${ACC[nxt.a.auth_id]}"></i>+${Math.round((nxt.gain))}%`:"—",nxt?`${esc(nm(nxt.a).split("@")[0])} · ${esc(hm(nxt.at))}`:"nenhuma nos próximos 7 dias")
+}</div>`;
 
-  // Agenda: one equal column per calendar day, today through the day of now+7d. It does not follow the chart's zoom.
-  // The chip shows the same simulated gain as the chart marker; today's usage is secondary.
-  const dayAt=k=>new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()+k).getTime()/1000;
-  const days=[];for(let k=0;k<8;k++)days.push(dayAt(k));
-  const used=new Set(),items=evs.map(e=>{
-    const first=!used.has(e.a.auth_id);used.add(e.a.auth_id);
-    const amt=Math.round(e.gain),today=first?Math.round(clampPct(weeklyOf(e.a).used_percent)):null,d=new Date(e.at*1000);
-    return{e,d,amt,today,short:nm(e.a).split("@")[0],
-      tip:`${nm(e.a)}\nReseta ${fmtDate(d)} (em ${fmtLeft(e.at*1000-now)})\nNo ritmo atual recupera +${amt}% e volta a 100%`+(today!=null?`\nHoje faltam ${today}%`:"")}});
-  const chip=it=>`<div class="ag-chip" data-tip="${esc(it.tip)}" style="--c:${ACC[it.e.a.auth_id]}"><i class="bar"></i>
-    <div class="tx"><div class="r1"><b>${esc(fmtHour(it.d))}</b><span class="nm">${esc(it.short)}</span></div>
-    <div class="r2">${it.amt>=1?`<b>+${it.amt}%</b> `:""}<span class="mut">${it.today!=null?`usado ${it.today}%`:"volta a 100%"}</span></div></div></div>`;
-  const colOf=it=>{const x=Math.max(it.e.at,t0);let c=0;while(c+1<days.length&&days[c+1]<=x)c++;return c};
-  let agenda;
-  if(!items.length)agenda=`<div class="tl-empty">Nenhuma recarga semanal nos próximos 7 dias.</div>`;
-  else{
-    const cols=days.map((a,c)=>{const d=new Date(a*1000);
-      return `<div class="ag-col${c===0?" today":""}"><div class="ag-d"><span class="wd">${c===0?"hoje":esc(fmtWd(d))+" "+d.getDate()}</span></div>${items.filter(it=>colOf(it)===c).map(chip).join("")}</div>`}).join("");
-    agenda=`<div class="ag-row"><div class="ag-cols" style="--n:${days.length}">${cols}</div></div>`;
-  }
-
-  const agOld=el.querySelector(".ag-row"),agScroll=agOld?agOld.scrollLeft:0;
-  el.innerHTML=`${ctl}${stats}<div class="tl-cap"><div class="tl-leg">${legend}</div><div class="tl-rt"><span>${rate}</span>${zoomed?`<span class="tl-hint">arraste para mover · shift+arraste seleciona</span>`:""}${tools}</div></div>
-    <div class="tl-chart"><div class="tl-y">${ylab}</div>
-      <div class="tl-plot${zoomed?" zoomed":""}" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
-        <div class="tl-hover" id="tlHover"></div><i class="tl-hdot" id="tlHdot"></i><div class="tip" id="tlTip"></div></div></div>
-    <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>
-    <div class="ag"><div class="ag-t">Agenda de recargas</div>${agenda}</div>`;
-  const agNew=el.querySelector(".ag-row");if(agNew)agNew.scrollLeft=agScroll;
+  // Advice: the pace that lasts the week, and quota that a reset will throw away.
+  let advice="";
+  if(sr){const cur=br.total*sm/24;
+    const pa=zf&&safeH<cur-.05
+      ?`<div class="tl-tip crit">${ICON_ALERT}<span>Para durar a semana: até <b>~${fmt1(safeH)}%/h</b>, ~${Math.round((1-safeH/Math.max(cur,1e-6))*100)}% a menos que agora.</span></div>`
+      :`<div class="tl-tip good">${ICON_CHECK}<span>A cota dura a semana. Dá para subir até <b>~${fmt1((safeH))}%/h</b>.</span></div>`;
+    if(fullStats)advice=pa;else{state.runAdv=pa;const ra=$("#runAdv");if(ra)ra.innerHTML=pa}
+    const seen=new Set(),waste=evs.filter(e=>{if(seen.has(e.a.auth_id))return false;seen.add(e.a.auth_id);return e.before>=5&&e.at<=t0+2*DAY}).sort((a,b)=>b.before-a.before)[0];
+    if(waste&&fullStats)advice+=`<div class="tl-tip warn"><i class="adot" style="--c:${ACC[waste.a.auth_id]}"></i><span><b>${esc(nm(waste.a).split("@")[0])}</b> vai perder <b>~${Math.round(waste.before)}% da cota dela</b> no reset (${esc(hm(waste.at))}): use antes do reset, o que sobrar se perde.</span></div>`}
+  // Re-rendering replaces the focused control: remember it to focus its counterpart afterwards.
+  const ae=document.activeElement,fsel=ae&&el.contains(ae)?["z","view","burn","accmenu","hide","scen","adv"].map(k=>ae.dataset&&ae.dataset[k]!=null?`[data-${k}="${CSS.escape(ae.dataset[k])}"]`:null).find(Boolean)||(ae.id==="tlPlot"?"#tlPlot":null):null;
+  const summary=`${rateMode?"Consumo por hora":"Capacidade semanal restante"}, ${fmtRange(V0)} a ${fmtRange(V1)}. Agora ${Math.round(tot[0])}% de ${rec.cap}%. `+(zf?`Todas zeram ${hm(zf[0])}.`:"Não zeram nesta semana.")+(nxt?` Próxima recarga ${hm(nxt.at)}, +${Math.round((nxt.gain))}%.`:"");
+  el.innerHTML=`${ctl}${stats}${advice?`<div class="tl-tips">${advice}</div>`:""}<div class="tl-cap"><div class="tl-leg">${legend}</div></div>
+    <div class="tl-chart"><div class="tl-y" aria-hidden="true">${ylab}</div>
+      <div class="tl-plot${zoomed?" zoomed":""}" id="tlPlot" tabindex="0" role="img" aria-label="${esc(summary+" Use ← e → para percorrer.")}"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none" aria-hidden="true"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
+        <div class="tl-hover" id="tlHover"></div><i class="tl-hdot" id="tlHdot"></i><div class="tip" id="tlTip" role="status" aria-live="polite"></div></div></div>
+    <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>`;
+  if(fsel){const n=el.querySelector(fsel);if(n)n.focus({preventScroll:true})}
   el.onclick=ev=>{const t=ev.target.closest?ev.target:null;if(!t)return;
-    const z=t.closest("[data-z]"),vw=t.closest("[data-view]"),bu=t.closest("[data-burn]"),am=t.closest("[data-accmenu]"),hd=t.closest("[data-hide]");
+    const z=t.closest("[data-z]"),vw=t.closest("[data-view]"),bu=t.closest("[data-burn]"),am=t.closest("[data-accmenu]"),hd=t.closest("[data-hide]"),ad=t.closest("[data-adv]");
     if(z){const v=z.dataset.z;
       if(v==="prev"||v==="next"){const d=(v==="prev"?-1:1)*VS/2,a=Math.min(Math.max(F0,V0+d),F1-VS);tlz.rng=[a,a+VS];tlz.preset=null}
       else{tlz.rng=null;tlz.preset=v==="reset"?"week":v}
@@ -1269,6 +1352,7 @@ function renderTimeline(){
     else if(vw){tlo.view=vw.dataset.view;store.set("usage.tlview",tlo.view);renderTimeline()}
     else if(bu){state.burn=bu.dataset.burn;store.set("usage.burn",state.burn);el.dataset.key="";renderAll()}
     else if(am){tlo.menu=!tlo.menu;renderTimeline()}
+    else if(ad){tlo.adv=!tlo.adv;renderTimeline()}
     else if(hd){const id=hd.dataset.hide;if(hd.checked)tlo.hide.delete(id);else tlo.hide.add(id);
       store.set("usage.tlhide",JSON.stringify([...tlo.hide]));renderTimeline()}};
   const scSel=el.querySelector("[data-scen]");if(scSel)scSel.onchange=()=>{tlo.scen=scSel.value;store.set("usage.scen",tlo.scen);scSel.blur();renderTimeline()};
@@ -1277,7 +1361,7 @@ function renderTimeline(){
   // Axis labels by priority (agora, left edge, then ticks), dropping any that would touch an accepted one.
   const xn=P(t0)/100*W,xs=[],xlab=[];
   if(nowVis)xlab.push({x:xn,t:"agora",first:true});
-  if(past&&V0<=F0+1)xlab.push({x:0,t:"−"+pastLbl.replace(" dias","d"),first:true});
+  if(past&&V0<=F0+1)xlab.push({x:0,t:"há "+pastLbl.replace(" dias","d"),first:true});
   ticks.forEach(k=>xlab.push({x:P(k.t)/100*W,t:k.l,pct:P(k.t)}));
   let xl="";
   for(const l of xlab){
@@ -1290,32 +1374,40 @@ function renderTimeline(){
   // a second row when two would overlap ("agora" value label takes the first slot at the left).
   const CW=46,boxes=[];
   let ov="";
-  if(rateMode){if(nowVis)ov+=`<div class="tl-nowl" style="left:${xn.toFixed(1)}px">agora</div>`}
+  const narrow=W<560,cwOf=t=>Math.round(t.length*6.6+16),shortN=a=>nm(a).split("@")[0];
+  if(rateMode){
+    // Refills only change what is left, not the hourly rate: coloured ticks on the baseline, details on hover.
+    for(const e of evs){if(e.gain<1||e.x<V0||e.x>V1)continue;
+      ov+=`<i class="tl-rtick" tabindex="0" style="left:${P(e.x).toFixed(2)}%;--c:${ACC[e.a.auth_id]}" data-tip="${esc(`${shortN(e.a)} reseta ${hm(e.x)}\n+${Math.round(e.gain)}% de cota`)}"></i>`}}
   else{
-  if(nowVis){const nr=xn+58>W;
-    boxes.push({l:nr?xn-58:xn,r:nr?xn:xn+58,t:Y(tot[0])-24});
-    if(past)boxes.push({l:xn-20,r:xn+20,t:0});
-    ov+=`<i class="tl-dot now" style="left:${P(t0).toFixed(3)}%;top:${Y(tot[0]).toFixed(1)}px"></i><div class="tl-now" style="left:${(nr?xn-9:xn+9).toFixed(1)}px;top:${(Y(tot[0])-24).toFixed(1)}px${nr?";transform:translateX(-100%)":""}">${Math.round(tot[0])}%</div>`
-      +(past?`<div class="tl-nowl" style="left:${xn.toFixed(1)}px">agora</div>`:"")}
+  if(nowVis){const nr=xn+96>W;
+    boxes.push({l:nr?xn-96:xn,r:nr?xn:xn+96,t:Y(tot[0])-24});
+    ov+=`<i class="tl-dot now" style="left:${P(t0).toFixed(3)}%;top:${Y(tot[0]).toFixed(1)}px"></i>`+(W<560?"":`<div class="tl-now" style="left:${(nr?xn-9:xn+9).toFixed(1)}px;top:${(Y(tot[0])-24).toFixed(1)}px${nr?";transform:translateX(-100%)":""}">${Math.round((tot[0]))}%<small> agora</small></div>`)
+}
+  // Chips: name + gain, placed above their dot in the first free row (dots only on narrow screens).
+  const lead=(x,top,y,a)=>y-top-18>4?`<i class="tl-lead" style="left:${x.toFixed(1)}px;top:${(top+18).toFixed(1)}px;height:${(y-top-22).toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`:"";
+  const place=(x,yt2,txt)=>{const cw=cwOf(txt),l=Math.max(cw/2,Math.min(W-cw/2,x));let top=0;
+    // Above the point first, then below it, never across another label or the cap line.
+    const cand=[yt2-26,yt2-47,yt2+12,yt2+33,yt2-68].map(t=>Math.max(0,Math.min(BOT-20,t)));
+    top=cand.find(t=>!boxes.some(b=>l-cw/2<b.r+4&&l+cw/2>b.l-4&&Math.abs(t-b.t)<19));if(top==null)top=cand[0];
+    boxes.push({l:l-cw/2,r:l+cw/2,t:top});return{l,top}};
+  for(const e of evs)if(e.gain>=1&&e.x>=V0&&e.x<=V1){const x=P(e.x)/100*W;boxes.push({l:x-6,r:x+6,t:Y(e.top)-9})}
+  if(!rateMode)boxes.push({l:0,r:W,t:Y(cap)-9});
   for(const e of evs){if(e.gain<1||e.x<V0||e.x>V1)continue;
-    const x=P(e.x)/100*W,yt2=Y(e.top),l=Math.max(CW/2,Math.min(W-CW/2,x));
-    let top=0;
-    for(let row=0;row<4;row++){top=Math.max(0,yt2-24-row*20);
-      if(!boxes.some(b=>l-CW/2<b.r+4&&l+CW/2>b.l-4&&Math.abs(top-b.t)<18))break}
-    boxes.push({l:l-CW/2,r:l+CW/2,t:top});
-    ov+=`<i class="tl-dot" style="left:${P(e.x).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"></i>`
-      +`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[e.a.auth_id]}">+${Math.round(e.gain)}%</div>`}
+    const x=P(e.x)/100*W,yt2=Y(e.top),txt=`${narrow?initials(nm(e.a)):shortN(e.a)} +${Math.round((e.gain))}%`;
+    ov+=`<i class="tl-dot" style="left:${P(e.x).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"></i>`;
+    const{l,top}=place(x,yt2,txt);
+    ov+=lead(x,top,yt2,e.a)+`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"><span>${esc(narrow?initials(nm(e.a)):shortN(e.a))}</span> +${Math.round((e.gain))}%</div>`}
   // Refills already seen in the recorded part: a rise of the weekly remaining between two samples.
   if(past)for(const a of accs){const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);
     for(let k=1;k<q.length;k++){const g=q[k].w-q[k-1].w;if(g<3||q[k].t<Math.max(V0,F0)||q[k].t>Math.min(V1,t0))continue;
-      const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),l=Math.max(CW/2,Math.min(W-CW/2,x));
-      let top=0;for(let row=0;row<4;row++){top=Math.max(0,yt2-24-row*20);if(!boxes.some(b=>l-CW/2<b.r+4&&l+CW/2>b.l-4&&Math.abs(top-b.t)<18))break}
-      boxes.push({l:l-CW/2,r:l+CW/2,t:top});
-      ov+=`<i class="tl-dot" style="left:${P(q[k].t).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`
-        +`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}">+${Math.round(g)}%</div>`}}
+      const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),txt=`${narrow?initials(nm(a)):shortN(a)} +${Math.round(g)}%`;
+      ov+=`<i class="tl-dot" style="left:${P(q[k].t).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
+      const{l,top}=place(x,yt2,txt);
+      ov+=lead(x,top,yt2,a)+`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>${esc(narrow?initials(nm(a)):shortN(a))}</span> +${Math.round(g)}%</div>`}}
   if(minOn){const tm=prc[mk][0],vm=prc[mk][1],ym=Y(vm),l=Math.max(60,Math.min(W-60,P(tm)/100*W)),below=ym+26<=BOT;
     ov+=`<i class="tl-dot min" style="left:${P(tm).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
-      +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(fmtWd(new Date(tm*1000))+" "+(m=>m.getHours()+"h"+(m.getMinutes()?String(m.getMinutes()).padStart(2,"0"):""))(new Date(tm*1000)))}</div>`}
+      +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(hm(tm))}</div>`}
   }
   plot.insertAdjacentHTML("beforeend",ov);
 
@@ -1331,23 +1423,23 @@ function renderTimeline(){
     if(past&&t<t0){
       const v=lerp(pt,pv,t);
       hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
-      tip.innerHTML=`<div class="d">${esc(fmtDate(new Date(t*1000)))} · real</div>
+      tip.innerHTML=`<div class="d">${esc(hm(t))} · real</div>
         <div class="r tot"><span>Total real</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
         <div class="d" style="margin:6px 0 0">${esc(fmtLeft((t0-t)*1000))} atrás</div>`;
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
       let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
-      tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px";return}
+      tip.style.left=lx+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px";return}
     const v=valAt(t),next=evs.find(e=>e.at>t),us=rec.use.find(u=>t>=u.a&&t<u.b)||rec.use[rec.use.length-1],ua=us&&us.i>=0?accs[us.i]:null;
     hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
-    tip.innerHTML=`<div class="d">${Math.abs(x-xn)<2?"agora":esc(fmtDate(new Date(t*1000)))}${past?" · projeção":""}</div>
+    tip.innerHTML=`<div class="d">${Math.abs(x-xn)<2?"agora":esc(hm(t))}${past?" · projeção":""}</div>
       <div class="r tot"><span>Total projetado</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
-      <div class="d" style="margin:6px 0 2px">Em uso nesse momento</div>
-      <div class="r">${ua?`<span><i class="adot" style="--c:${ACC[ua.auth_id]}"></i>${esc(nm(ua))}</span><b>${ua.mode==="last"?"por último":"normal"}</b>`:`<span>nenhuma</span><b>sem limite</b>`}</div>
-      <div class="d" style="margin:6px 0 2px">${next?"Próxima recarga":"Nenhuma recarga até o fim"}</div>
-      ${next?`<div class="r"><span><i class="adot" style="--c:${ACC[next.a.auth_id]}"></i>${esc(nm(next.a))}</span><b class="tabular">${next.gain>=1?"+"+Math.round(next.gain)+"% · ":""}${esc(fmtShort(new Date(next.at*1000)))}</b></div>`:""}`;
+      <div class="d" style="margin:6px 0 2px">Usando nessa hora</div>
+      <div class="r">${ua?`<span><i class="adot" style="--c:${ACC[ua.auth_id]}"></i>${esc(nm(ua).split("@")[0])}</span><b>${ua.mode==="last"?"reserva":""}</b>`:`<span>Nenhuma conta disponível</span><b></b>`}</div>
+      <div class="d" style="margin:6px 0 2px">${next?"Próxima recarga":"Nenhuma recarga até o fim do gráfico"}</div>
+      ${next?`<div class="r"><span><i class="adot" style="--c:${ACC[next.a.auth_id]}"></i>${esc(nm(next.a).split("@")[0])}</span><b class="tabular">${next.gain>=1?"+"+Math.round(next.gain)+"% · ":""}${esc(hm(next.at))}</b></div>`:""}`;
     tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
     let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
-    tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"};
+    tip.style.left=lx+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"};
   if(rateMode){const fut=[[t0,burnPast.length?burnPast[burnPast.length-1][1]:burnFut.length?burnFut[0][1]:0],...burnFut];
     plot.onpointermove=plot.onpointerdown=ev=>{
       if((drag&&drag.on)||tlPan)return;
@@ -1355,14 +1447,23 @@ function renderTimeline(){
       const src=isPast?burnPast:fut;if(src.length<2||t<src[0][0]-1800){tip.style.display="none";hd.style.opacity=0;hl.style.opacity=0;return}
       const v=Math.max(0,atPts(src,t));
       hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
-      tip.innerHTML=`<div class="d">${esc(fmtDate(new Date(t*1000)))} · ${isPast?"real":"projeção"}</div>
+      tip.innerHTML=`<div class="d">${esc(hm(t))} · ${isPast?"real":"projeção"}</div>
         <div class="r tot"><span>Gasto</span><b class="tabular">${fmt1(v)}%/h</b></div>
         <div class="r"><span>Recarga</span><b class="tabular">${fmt1(refH)}%/h</b></div>
-        <div class="d" style="margin:6px 0 0">${v>refH?"o total restante está caindo":"as recargas cobrem esse ritmo"}</div>`;
+        <div class="d" style="margin:6px 0 0">${!isPast&&valAt(t)<=.5?"todas zeradas: sem cota para gastar":v>refH?"gasta mais do que recarrega: o total cai":"as recargas cobrem esse ritmo"}</div>`;
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
       let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
-      tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"}}
+      tip.style.left=lx+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"}}
   plot.onpointerleave=()=>{if((drag&&drag.on)||tlPan)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
+  // Keyboard: ←/→ move the cursor by 1h (shift: 6h), Home/End jump, Esc hides it.
+  let kt=null;
+  const kshow=()=>{const r=plot.getBoundingClientRect();plot.onpointermove({clientX:r.left+(kt-V0)/VS*r.width,clientY:r.top+20})};
+  plot.onfocus=()=>{if(plot.matches(":focus-visible")){kt=kt==null?Math.max(V0,Math.min(V1,t0)):kt;kshow()}};
+  plot.onblur=()=>{kt=null;plot.onpointerleave()};
+  plot.onkeydown=ev=>{const st=ev.shiftKey?6*3600:3600;
+    if(ev.key==="ArrowRight"||ev.key==="ArrowLeft"){ev.preventDefault();kt=Math.max(V0,Math.min(V1,(kt==null?t0:kt)+(ev.key==="ArrowRight"?st:-st)));kshow()}
+    else if(ev.key==="Home"||ev.key==="End"){ev.preventDefault();kt=ev.key==="Home"?V0:V1;kshow()}
+    else if(ev.key==="Escape"){kt=null;plot.onpointerleave()}};
 
   // Brush to zoom (mouse/pen; touch keeps scrolling the page and uses the presets).
   const band=document.createElement("div");band.className="tl-brush";
@@ -1395,6 +1496,7 @@ function renderTimeline(){
   let zacc=0,zx=0,zraf=0;
   plot.addEventListener("wheel",ev=>{
     const pan=ev.shiftKey||Math.abs(ev.deltaX)>Math.abs(ev.deltaY);
+    if(!pan&&!(ev.ctrlKey||ev.metaKey))return;
     if(!pan){
       const dy=ev.deltaY*(ev.deltaMode===1?16:ev.deltaMode===2?400:1);
       // Zooming out at the full range: let the page scroll.
@@ -1417,11 +1519,11 @@ function renderTimeline(){
 let tlResize=0;addEventListener("resize",()=>{clearTimeout(tlResize);tlResize=setTimeout(()=>{if(state.data.accounts.length)renderTimeline()},150)});
 
 /* ---- accounts ---- */
-function ringBlock(w,acc,now){
+function ringBlock(w,acc,now,st){
   const i=winInfo(w,now),l=lvl(i.left);
-  return `<div class="rb">${ring(i.left,{pace:i.pace,tip:i.tip,color:acc})}
+  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip,color:acc,keep:1})}
     <div class="rl">${esc(w.label)}${l?`<span class="chip ${l}">${ICON_ALERT}${i.left<=0?"esgotada":l==="crit"?"crítico":"baixo"}</span>`:""}</div>
-    <div class="rs tabular">${i.icon}<span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"—"}</span></div></div>`;
+    <div class="rs tabular"><span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"janela não iniciada"}</span>${st?`<span class="pc ${st.c}" tabindex="0" data-tip="${esc(st.tip)}">${st.t}</span>`:i.reset&&i.pace!=null&&i.left>0?(d=>`<span class="pc ${d<-5?"fast":""}" tabindex="0" data-tip="${esc("Comparado com o traço no anel: onde você estaria gastando por igual até o reset.")}">${d<-5?"acima do ritmo ideal":d>5?"abaixo do ritmo ideal":"no ritmo ideal"}</span>`)(i.left-i.pace):""}</div></div>`;
 }
 function modelRow(w,acc,now){
   const i=winInfo(w,now),l=lvl(i.left);
@@ -1431,7 +1533,7 @@ function modelRow(w,acc,now){
 }
 function renderAccounts(){
   const accs=claudeAccs(),now=Date.now(),pf=poolForecast(now);
-  $("#acctCount").textContent=`${accs.length} conta${accs.length===1?"":"s"} · janela de 5h, semanal e por modelo`;
+  $("#acctCount").innerHTML=`${accs.length} conta${accs.length===1?"":"s"} <span class="tick-key" data-tip="Onde o anel estaria se você gastasse por igual até o reset" tabindex="0">· <i></i>no anel = ritmo ideal</span>`;
   const box=$("#accts");
   // Replacing the markup would close an open mode <select>; the next poll renders instead.
   if(box.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
@@ -1439,19 +1541,22 @@ function renderAccounts(){
       const mode=a.mode||"normal",email=a.email||a.auth_id,limited=/429/.test(a.error||"");
       const exhausted=a.limit_reached||(a.windows||[]).some(w=>w.kind!=="model"&&w.used_percent>=100);
       const s=shortOf(a),wk=weeklyOf(a);
-      let h=`<div class="card acct${mode==="off"?" off":""}" data-acc="${esc(a.auth_id)}" tabindex="0" role="button" aria-label="${esc("Detalhes de "+email)}"><div class="acct-head"><div class="who">${who(email,ACC[a.auth_id])}<span class="acct-more">detalhes ${ICON_CHEV}</span></div><div class="acct-sub">`;
+      let h=`<div class="card acct${mode==="off"?" off":""}" data-acc="${esc(a.auth_id)}"><div class="acct-head"><div class="who">${who(email,ACC[a.auth_id])}<button type="button" class="acct-more" data-open="${esc(a.auth_id)}" aria-label="${esc("Detalhes de "+email)}">Detalhes${ICON_CHEV}</button></div><div class="acct-sub">`;
       if(a.plan)h+=`<span class="badge outline">${esc(a.plan)}</span>`;
       if(a.needs_login)h+=`<span class="badge err">desconectada</span><button class="btn sm" data-login="claude" data-auth="${esc(a.auth_id)}" data-keep="${esc(mode)}">Reconectar</button>`;
       else if(a.disabled)h+=`<span class="badge outline">desativada</span>`;
       else if(exhausted)h+=`<span class="badge err">no limite</span>`;
-      h+=`<select class="sel" data-mode="${esc(a.auth_id)}" title="Modo de uso">
+      h+=`<label class="prio"><span>Prioridade</span><select class="sel" data-mode="${esc(a.auth_id)}" aria-label="Prioridade de uso de ${esc(a.email||a.auth_id)}">
         <option value="normal"${mode==="normal"?" selected":""}>Normal</option>
-        <option value="last"${mode==="last"?" selected":""}>Por último</option>
-        <option value="off"${mode==="off"?" selected":""}>Não usar</option></select></div></div>`;
+        <option value="last"${mode==="last"?" selected":""}>Usar por último</option>
+        <option value="off"${mode==="off"?" selected":""}>Não usar</option></select></label></div></div>`;
       const noRing=(label,cap)=>`<div class="rb none">${ring(null)}<div class="rl">${label}</div><div class="rs">${cap}</div></div>`;
       const loading=!(a.windows||[]).length&&!a.error&&!a.needs_login;
-      if(s&&wk)h+=`<div class="rings">${ringBlock(s,ACC[a.auth_id],now)}${ringBlock(wk,ACC[a.auth_id],now)}</div>`;
-      else if(wk)h+=`<div class="rings solo">${ringBlock(wk,ACC[a.auth_id],now)}</div>`;
+      const sOn=s&&s.reset_at&&Date.parse(s.reset_at)>now,wf=pf.br.ok&&mode!=="off"&&pf.info[a.auth_id],wTip="Projeção da fila do proxy no ritmo atual (a mesma do topo e do gráfico).";
+      const wst=!wf?null:wf.zero!=null?{t:wf.zero*1000-now<=60000?"esgotada":`esgota em ${fmtLeft(wf.zero*1000-now)}`,c:"fast",tip:wTip+`\n${fmtLeft((wf.at-wf.zero)*1000)} antes do reset; depois o proxy passa para a próxima.`}
+        :wf.before>=5?{t:`sobra ~${Math.round(wf.before)}% no reset`,c:"fast",tip:wTip+"\nO proxy usa esta conta depois das outras, então parte da cota não chega a ser usada."}
+        :{t:"usa tudo até o reset",c:"ok",tip:wTip};
+      if(wk)h+=`<div class="rings">${ringBlock(wk,ACC[a.auth_id],now,wst)}${sOn?ringBlock(s,ACC[a.auth_id],now):noRing("5h","não iniciada")}</div>`;
       else if(s)h+=`<div class="rings solo">${ringBlock(s,ACC[a.auth_id],now)}</div>`;
       else if(loading)h+=`<div class="rings">${noRing("5h","carregando")}${noRing("Semanal","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
@@ -1459,8 +1564,8 @@ function renderAccounts(){
       const f=wk&&mode!=="off"?accountForecast(a,now,pf):null,sp="";
       if(wk&&!a.needs_login)h+=recentUseHtml(a,now);
       const xr=pf.br.ok&&(pf.br.ext||{})[a.auth_id];
-      if(xr>=.05)h+=`<div class="recent ext" data-tip="${esc("Quedas do % semanal sem requisições do proxy nesta conta: uso pelos apps do Claude (Desktop, web, celular) com o mesmo login. A projeção desconta esse ritmo da conta em paralelo, fora da fila do proxy.")}">${ICON_GAUGE}<span>Fora do proxy: <b>~${fmt1(xr)}%/dia</b></span></div>`;
-      if(f)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="est" data-tip="${esc(f.est)}">${f.tag}</span>`:""}</span></div>`;
+      if(xr>=.05)h+=`<div class="recent ext" tabindex="0" data-tip="${esc("Quedas do % semanal sem requisições do proxy nesta conta: uso pelos apps do Claude (Desktop, web, celular) com o mesmo login. A projeção desconta esse ritmo da conta em paralelo, fora da fila do proxy.")}">${ICON_GAUGE}<span>Uso no app/site: <b>~${fmt1(xr/24)}%/h</b></span></div>`;
+      if(f&&!wst)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="info" data-tip="${esc(f.est)}" tabindex="0" aria-label="Como o ritmo é medido">i</span>`:""}</span></div>`;
       if(!(a.windows||[]).length&&!a.error)h+=`<div class="note">Consultando uso…</div>`;
       if(limited&&!a.needs_login){
         const hasWin=(a.windows||[]).length>0,dataAt=Date.parse(a.data_at),retry=a.retry_at?Date.parse(a.retry_at):0;
@@ -1471,14 +1576,14 @@ function renderAccounts(){
       }else if(a.error&&!a.needs_login)h+=`<div class="note err">Erro ao consultar: ${esc(a.error)}</div>`;
       const t=state.hist&&state.hist.accounts&&state.hist.accounts[a.auth_id];
       h+=`<div class="afoot"><span>${t&&(t.requests||t.input||t.output||t.cached)
-        ?`No período: <b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`
+        ?`<span data-tip="${esc(`${PERIOD_LBL[state.period]||"No período"} pelo proxy\n${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`)}">${PERIOD_LBL[state.period]||"No período"}: <b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtCount(t.requests||0)} req</span>`
         :xr>=.05?"Sem uso pelo proxy no período":"Sem atividade no período"}</span>${sp}</div></div>`;
       return h;
   }).join("");
   if(box.dataset.key===markup)return;
-  const fc=document.activeElement&&box.contains(document.activeElement)&&document.activeElement.matches(".acct[data-acc]")?document.activeElement.dataset.acc:null;
+  const fc=document.activeElement&&box.contains(document.activeElement)&&document.activeElement.matches(".acct-more[data-open]")?document.activeElement.dataset.open:null;
   box.dataset.key=markup;box.innerHTML=markup;
-  if(fc){const c=[...box.querySelectorAll(".acct[data-acc]")].find(x=>x.dataset.acc===fc);if(c)c.focus({preventScroll:true})}
+  if(fc){const c=[...box.querySelectorAll(".acct-more[data-open]")].find(x=>x.dataset.open===fc);if(c)c.focus({preventScroll:true})}
   wireLogin();
   document.querySelectorAll("[data-mode]").forEach(s=>s.onchange=()=>{const v=s.value;s.blur();setMode(s.dataset.mode,v)});
 }
@@ -1491,22 +1596,24 @@ function openAccModal(id){
   const c=$("#accModal .md-close");if(c)c.focus({preventScroll:true})}
 function closeAccModal(){
   if(!modalId)return;const id=modalId;modalId=null;$("#accModal").hidden=true;document.body.classList.remove("modal-open");hideTip();
-  const card=[...document.querySelectorAll(".acct[data-acc]")].find(c=>c.dataset.acc===id);if(card)card.focus({preventScroll:true})}
+  const card=[...document.querySelectorAll(".acct-more[data-open]")].find(c=>c.dataset.open===id);if(card)card.focus({preventScroll:true})}
 addEventListener("keydown",e=>{if(!modalId)return;
   if(e.key==="Escape"){e.preventDefault();closeAccModal();return}
   // Keep Tab inside the dialog.
-  if(e.key==="Tab"){const f=[...$("#accModal").querySelectorAll("button")];if(!f.length)return;
+  if(e.key==="Tab"){const f=[...$("#accModal").querySelectorAll("button,select,[tabindex]:not([tabindex='-1'])")].filter(x=>x.offsetParent);if(!f.length)return;
     const i=f.indexOf(document.activeElement),n=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i===f.length-1?0:i+1);e.preventDefault();f[n].focus()}});
 $("#accModal").addEventListener("click",e=>{if(e.target.closest("[data-close]")){closeAccModal();return}
   const z=e.target.closest("[data-mdz]");if(z&&z.dataset.mdz!==mdRange){mdRange=z.dataset.mdz;renderModal()}});
-$("#accts").addEventListener("click",e=>{if(e.target.closest("select,button,a,input"))return;
+$("#accts").addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){openAccModal(o.dataset.open);return}
+  if(e.target.closest("select,button,a,input"))return;
   const c=e.target.closest(".acct[data-acc]");if(c)openAccModal(c.dataset.acc)});
 $("#tCap").addEventListener("click",e=>{const r=e.target.closest(".cr[data-acc]");if(r)openAccModal(r.dataset.acc)});
-$("#accts").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches(".acct[data-acc]")){e.preventDefault();openAccModal(e.target.dataset.acc)}});
+$("#tCap").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches(".cr[data-acc]")){e.preventDefault();openAccModal(e.target.dataset.acc)}});
+
 
 // Weekly remaining of one account: real samples of the last 3 days (5h window as a thin line), then the pool
 // simulation's share of this account for 7 days, with its refills and the point it runs dry.
-function accChart(a,i,rec,now){
+function accChart(a,i,rec,now,f){
   const t0=now/1000,PAST=3*DAY,HZ=7*DAY,c=ACC[a.auth_id],wk=weeklyOf(a),sh=shortOf(a);
   const q=quota7Of(a.auth_id).filter(p=>p.t>=t0-PAST&&p.t<=t0);
   const pw=q.filter(p=>p.w!=null).map(p=>[p.t,p.w]),ps=q.filter(p=>p.s!=null).map(p=>[p.t,p.s]);
@@ -1522,6 +1629,7 @@ function accChart(a,i,rec,now){
   const area=pts=>pts.length>1?`${d(pts)}L${X(pts[pts.length-1][0]).toFixed(1)},${BOT}L${X(pts[0][0]).toFixed(1)},${BOT}Z`:"";
   const evs=i>=0&&rec.events?rec.events.filter(e=>e.i===i&&e.at<=V1&&e.at>=V0):[];
   let zero=null;for(let k=1;k<proj.length;k++)if(proj[k][1]<=.5&&proj[k-1][1]>.5){zero=proj[k][0];break}
+  if(f&&f.zero!=null)zero=f.zero>t0?f.zero:null;
   if(zero!=null&&zero>V1)zero=null;
   const cpw=cw(pw),cps=cw(ps),cproj=cw(proj);
   const ticks=xTicks(V0,V1);
@@ -1532,15 +1640,14 @@ function accChart(a,i,rec,now){
     ${grid}<line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${rl}
     ${cproj.length>1?`<path d="${area(cproj)}" fill="url(#mdGrad)" opacity=".45"/>`:""}${cpw.length>1?`<path d="${area(cpw)}" fill="url(#mdGrad)"/>`:""}
     <line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="${TOP}" y2="${BOT}" ${NS}/>
-    ${cps.length>1?`<path class="md-s" d="${d(cps)}" style="stroke:${c}" ${NS}/>`:""}
     ${cproj.length>1?`<path class="tl-line proj" d="${d(cproj)}" style="stroke:${c}" ${NS}/>`:""}${cpw.length>1?`<path class="tl-line" d="${d(cpw)}" style="stroke:${c}" ${NS}/>`:""}`;
   const hm=t=>{const x=new Date(t*1000);return fmtWd(x)+" "+fmtHour(x)};
   let ov=evs.map((e,k)=>`<div class="md-mk" style="left:${P(e.at).toFixed(2)}%;--c:${c}" data-tip="${esc(`Reseta ${fmtDate(new Date(e.at*1000))} (em ${fmtLeft(e.at*1000-now)})\nNo ritmo atual chega com ~${Math.round(e.before)}% e volta a 100%`)}">${ICON_UP}${k?"":"reseta "}${esc(hm(e.at))}</div>`).join("");
   if(zero)ov+=`<i class="tl-dot" style="left:${P(zero).toFixed(2)}%;top:${Y(0)}px;--c:var(--st-crit)"></i><div class="md-zero" style="left:${P(zero).toFixed(2)}%;top:${Y(0)-22}px">esgota ~${esc(hm(zero))}</div>`;
   if(wk)ov+=`<i class="tl-dot now" style="left:${P(t0).toFixed(2)}%;top:${Y(pw[pw.length-1][1]).toFixed(1)}px;background:${c}"></i>`;
   const xl=[{t:t0,l:"agora",now:1},...ticks].reduce((o,k)=>{const x=P(k.t);if(!o.some(z=>Math.abs(z.x-x)<5.5)&&x>2&&x<97)o.push({...k,x});return o},[]);
-  const leg=`<span><i style="background:${c}"></i>Semanal real</span>${proj.length?`<span><i class="proj" style="border-color:${c}"></i>Projeção</span>`:""}${ps.length>1?`<span><i class="thin" style="background:${c}"></i>5h</span>`:""}`;
-  const seg=`<div class="seg md-z">${[["3d","3 dias"],["all","Tudo"]].map(([v,l])=>`<button type="button" data-mdz="${v}"${mdRange===v?` class="on"`:""}>${l}</button>`).join("")}</div>`;
+  const leg=`<span><i style="background:${c}"></i>Semanal real</span>${proj.length?`<span><i class="proj" style="border-color:${c}"></i>Projeção</span>`:""}`;
+  const seg=`<div class="seg md-z">${[["3d","3 dias"],["all","7 dias"]].map(([v,l])=>`<button type="button" data-mdz="${v}" aria-pressed="${mdRange===v}"${mdRange===v?` class="on"`:""}>${l}</button>`).join("")}</div>`;
   return{html:`<div class="md-tl"><div class="md-leg tl-leg">${leg}</div>${seg}</div>
     <div class="tl-chart md-chart"><div class="tl-y" style="height:${H}px">${[0,50,100].map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("")}</div>
       <div class="tl-plot" id="mdPlot" style="height:${H}px;cursor:crosshair"><svg viewBox="0 0 1000 ${H}" preserveAspectRatio="none">${svg}</svg>${ov}
@@ -1555,7 +1662,7 @@ function accChart(a,i,rec,now){
           <div class="r"><span>Semanal</span><b class="tabular">${Math.round(v)}%</b></div>${sv!=null?`<div class="r"><span>5h</span><b class="tabular">${Math.round(sv)}%</b></div>`:""}
           <div class="d" style="margin:6px 0 0">${past?fmtLeft((t0-t)*1000)+" atrás":"em "+fmtLeft((t-t0)*1000)}</div>`;
         tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;
-        tip.style.left=Math.max(0,lx)+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"};
+        tip.style.left=Math.max(0,lx)+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"};
       plot.onpointerleave=()=>{tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0}}};
 }
 function renderModal(){
@@ -1568,31 +1675,36 @@ function renderModal(){
   const stat=(k,v,sub,tip,cls)=>`<div class="md-stat${cls?" "+cls:""}"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div><div class="s">${sub}</div></div>`;
   const wl=wk?Math.round(100-clampPct(wk.used_percent)):null,sl=sh?Math.round(100-clampPct(sh.used_percent)):null;
   const rs=w=>w&&w.reset_at?`reseta em ${fmtLeft(Date.parse(w.reset_at)-now)} · ${esc(fmtShort(new Date(w.reset_at)))}`:"sem horário de reset";
-  let fv="—",fs=mode==="off"?"conta em \"não usar\"":a.needs_login?"desconectada":!pf.br.ok?"coletando ritmo":"reset além de 8 dias",fc="";
+  let fkey="Previsão",fv="—",fs=mode==="off"?"conta em \"não usar\"":a.needs_login?"desconectada":!pf.br.ok?"coletando ritmo":"reset além de 8 dias",fc="";
   if(f&&pf.br.ok){
-    if(f.zero!=null){const z=f.zero*1000-now;fv=z<=60000?"esgotada":`esgota em ${fmtLeft(z)}`;fs=z<=60000?`volta em ${fmtLeft(f.at*1000-now)}`:`${fmtLeft((f.at-f.zero)*1000)} antes do reset · `+(ext>=.05?"contando o uso fora do proxy":"depois o proxy passa para a próxima");fc=z<=60000?"":"warn"}
-    else{fv=`~${Math.round(f.before)}%`;fs="sobra no reset, no ritmo atual";fc="good"}}
-  const ownTxt=own.measured!=null?`${fmt1(own.measured)}%/dia`:"—";
+    if(f.zero!=null){const z=f.zero*1000-now;fv=z<=60000?"esgotada":fmtLeft(z);if(z>60000)fkey="Esgota em";fs=z<=60000?`volta em ${fmtLeft(f.at*1000-now)}`:`${fmtLeft((f.at-f.zero)*1000)} antes do reset · `+(ext>=.05?"contando o uso fora do proxy":"depois o proxy passa para a próxima");fc=z<=60000?"":"warn"}
+    else{fkey="Sobra no reset";fv=`~${Math.round(f.before)}%`;fs="no ritmo atual";fc="good"}}
+  const ownTxt=own.measured!=null?`${fmt1(own.measured/24)}%/h`:"—";
   const r3=recentUse(quota7Of(a.auth_id),now/1000,3);
   const stats=stat("Semanal",wl!=null?wl+"%":"—",rs(wk),wk?winInfo(wk,now).tip:"",wl!=null?lvl(wl):"")
     +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"sem janela de 5h ativa",sh?winInfo(sh,now).tip:"",sl!=null?lvl(sl):"")
-    +stat("Previsão",fv,fs,pf.br.ok?paceTipFull(pf.br):"",fc)
-    +stat("Ritmo desta conta",ext>=.05?`${fmt1((own.measured||0))}<small> + ${fmt1(ext)}</small>`:ownTxt,ext>=.05?"%/dia pelo proxy + fora do proxy":`últimas 3h: ${r3.n<2?"sem dados":r3.drop<=0?"sem uso":"−"+fmt1(r3.drop)+"%"}`,
+    +stat(fkey,fv,fs,pf.br.ok?paceTipFull(pf.br):"",fc)
+    +stat("Ritmo semanal",ext>=.05?`${fmt1((own.measured||0)/24)}<small> + ${fmt1(ext/24)}</small>`:r3.n>=2&&r3.drop>0?fmt1(r3.perHour)+"%/h":ownTxt,ext>=.05?"%/h pelo proxy + no app/site":r3.n>=2&&r3.drop>0?`últimas 3h · média de 24h: ${ownTxt}`:"média de 24h",
       `Queda do % semanal desta conta, ponderada pelas últimas ~24h (meia-vida ${PACE_HALF_LIFE_H}h).`+(ext>=.05?"\nFora do proxy: quedas sem requisições do proxy nesta conta (apps do Claude com o mesmo login).":""));
-  const chart=accChart(a,i,rec,now);
+  const chart=accChart(a,i,rec,now,f);
   // Activity of this account in the selected period and metric.
   const h=state.hist,acck=state.metric==="cost"?"cost_by_account":state.metric==="tokens"?"tokens_by_account":"by_account";
   let act="";
   if(h&&h.buckets&&h.buckets.length){
-    const vals=h.buckets.map(b=>((b[acck]||{})[a.auth_id])||0),mx=Math.max(...vals),hourly=h.step<86400;
+    let hb=h.buckets;if(h.step>=86400){const nz=hb.findIndex(b=>Object.values(b[acck]||{}).some(v=>v>0));if(nz>0)hb=hb.slice(Math.min(nz,hb.length-2))}
+    const vals=hb.map(b=>((b[acck]||{})[a.auth_id])||0),mx=Math.max(...vals),hourly=h.step<86400;
     const lbl={"24h":"24h","7d":"7 dias","30d":"30 dias"}[h.range||state.period]||"";
     const t=h.accounts&&h.accounts[a.auth_id];
     const foot=t&&(t.requests||t.input||t.output||t.cached)?`<b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`:ext>=.05?"sem uso pelo proxy":"sem atividade";
     act=`<div class="md-act"><div class="md-h"><span>${state.metric==="cost"?"Custo":state.metric==="tokens"?"Tokens":"Requisições"} pelo proxy · ${hourly?"por hora":"por dia"} · ${lbl}</span><span>${foot}</span></div>
-      <div class="md-bars">${vals.map((v,k)=>{const d=new Date(h.buckets[k].t*1000);
-        return `<i data-tip="${esc((hourly?fmtDate(d):fmtDay(d))+": "+fmtMetric(v))}" style="--h:${mx>0?(v/mx*100).toFixed(1):0}%;--c:${c}"${v>0?"":` class="z"`}></i>`}).join("")}</div></div>`}
+      <div class="md-bars">${vals.map((v,k)=>{const d=new Date(hb[k].t*1000);
+        const part=!hourly&&k===vals.length-1;
+        return `<i data-tip="${esc((hourly?fmtDate(d):fmtDay(d))+(part?" (parcial)":"")+": "+fmtMetric(v))}" style="--h:${mx>0?(v/mx*100).toFixed(1):0}%;--c:${c}"${v>0?part?` class="p"`:"":` class="z"`}>${v>0&&vals.length<=8?`<em>${esc(fmtMetric(v))}</em>`:""}</i>`}).join("")}</div>
+      <div class="md-bx">${vals.map((v,k)=>{const d=new Date(hb[k].t*1000),n=vals.length,every=n<=8?1:n<=16?2:hourly?6:7,show=k%every===0||k===n-1;
+        return `<span>${show?esc(hourly?d.getHours()+"h":k===n-1?"hoje":fmtWd(d)+" "+d.getDate()):""}</span>`}).join("")}</div>
+      ${mx>0&&vals.length>8?`<div class="md-max">máx. ${esc(fmtMetric(mx))}</div>`:""}</div>`}
   const modeTxt={normal:"Normal",last:"Por último",off:"Não usar"}[mode]||mode;
-  const markup=`<div class="md-head">${who(email,c)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">${esc(modeTxt)}</span>
+  const markup=`<div class="md-head">${who(email,c)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">Prioridade: ${esc(modeTxt)}</span>
       <button type="button" class="md-close" data-close aria-label="Fechar">${ICON_CLOSE}</button></div>
     <div class="md-stats">${stats}</div>
     <div class="md-sec"><div class="md-h"><span>Restante semanal · real e projeção</span>${ext>=.05?`<span>inclui ~${fmt1(ext)}%/dia fora do proxy</span>`:""}</div>${chart.html}</div>
@@ -1610,9 +1722,7 @@ function wireLogin(){document.querySelectorAll("main [data-login]").forEach(b=>b
 const sk=(w,h,cls)=>`<i class="sk${cls?" "+cls:""}" style="width:${w};height:${h}"></i>`;
 function renderSkeleton(){
   $("#tCap").innerHTML=`<div class="k">Capacidade semanal</div>${sk("9rem","44px")}${sk("100%","28px")}${sk("70%","12px")}`;
-  $("#tNow").innerHTML=`<div class="k">Agora</div><div class="skrow">${sk("22px","22px","round")}${sk("60%","12px")}</div>
-    <div class="skrow">${sk("96px","96px","round")}<div style="flex:1;display:flex;flex-direction:column;gap:8px">${sk("70%","12px")}${sk("50%","22px")}</div></div>${sk("100%","6px")}`;
-  $("#tRun").innerHTML=`<div class="k">Fôlego</div>${sk("6rem","44px")}${sk("80%","12px")}${sk("100%","44px")}`;
+  $("#tRun").innerHTML=`<div class="k">Até acabar</div>${sk("6rem","44px")}${sk("80%","12px")}${sk("100%","44px")}`;
   $("#tl").innerHTML=sk("100%","220px");
   const acct=`<div class="card acct"><div class="skrow">${sk("22px","22px","round")}${sk("45%","12px")}<span style="flex:1"></span>${sk("4.5rem","24px")}</div>
     <div class="skrow sp">${sk("88px","88px","round")}${sk("88px","88px","round")}</div>${sk("100%","6px")}${sk("100%","6px")}${sk("60%","12px")}</div>`;
@@ -1625,6 +1735,7 @@ function renderSkeleton(){
 
 /* ---- activity ---- */
 // Claude accounts present in the history, in the stable colour order (sorted by auth_id).
+const PERIOD_LBL={"24h":"Últimas 24h","7d":"Últimos 7 dias","30d":"Últimos 30 dias"};
 const LEGACY_TIP="Tokens de antes do registro por modelo, estimados como Opus 5.5 com cache de 1h.";
 const MODEL_FAMILIES=["fable","mythos","opus","sonnet","haiku"];
 // Pricing keys present in the by-model maps: family, then version descending, then plain before +fast/+long.
@@ -1657,7 +1768,11 @@ function deltaHtml(d,unit,label,tip){
   const txt=a<.5?`= vs ${label}`:`${d>0?"▲":"▼"} ${mag} vs ${label}`;
   return `<span data-tip="${esc(tip)}">${txt}</span>`}
 function renderActivity(){
-  const h=state.hist;if(!h||!h.buckets||!h.buckets.length)return;
+  let h=state.hist;if(!h||!h.buckets||!h.buckets.length)return;
+  // Daily view starts at the first recorded day: days before the history began are not "zero use".
+  let since=null;
+  if(h.step>=86400){const mk0=state.metric==="cost"?"cost_by_account":state.metric==="tokens"?"tokens_by_account":"by_account",nz=h.buckets.findIndex(b=>Object.values(b[mk0]||{}).some(v=>v>0));
+    if(nz>0){const k=Math.min(nz,h.buckets.length-2);since=h.buckets[nz].t;if(k>0)h={...h,buckets:h.buckets.slice(k)}}}
   const hourly=h.step<86400,cost=state.metric==="cost",byModel=state.stack==="model",mlabel=cost?"Custo":state.metric==="tokens"?"Tokens":"Requisições";
   const mk=(byModel?cost?"cost_by_model":state.metric==="tokens"?"tokens_by_model":"requests_by_model"
     :cost?"cost_by_account":state.metric==="tokens"?"tokens_by_account":"by_account");
@@ -1669,14 +1784,14 @@ function renderActivity(){
   if(byModel){
     const all=modelOrder(h),colorOf={};all.forEach((k,i)=>{colorOf[k]=k==="legacy"?"color-mix(in srgb,var(--muted-foreground) 55%,transparent)":`var(--acc-${i%6+1})`});
     ids=all.filter(k=>h.buckets.some(b=>val(b,k)>0));color=k=>colorOf[k];sname=prettyModel;
-  }else{ids=seriesIds(h);color=accColor;sname=accName}
+  }else{ids=seriesIds(h).filter(id=>h.buckets.some(b=>val(b,id)>0));color=accColor;sname=accName}
   // cum[j][i]: stacked total of accounts 0..j in bucket i.
   const cum=ids.map(()=>new Array(n).fill(0));
   h.buckets.forEach((b,i)=>{let s=0;ids.forEach((id,j)=>{s+=val(b,id);cum[j][i]=s})});
   const totals=ids.length?cum[ids.length-1]:new Array(n).fill(0),total=totals.reduce((a,b)=>a+b,0);
   const first=new Date(h.buckets[0].t*1000),last=new Date(h.buckets[n-1].t*1000);
-  $("#rangeLabel").textContent="Consumo ao longo do tempo · "+(hourly?`${fmtHour(first)} até agora`:`${fmtDay(first)} até ${fmtDay(last)}`);
-  $("#chartTitle").textContent=(cost?"Custo estimado":state.metric==="tokens"?"Tokens processados":"Requisições")+(hourly?" por hora":" por dia")+(byModel?" · por modelo":" · por conta");
+  $("#rangeLabel").textContent=hourly?`${fmtHour(first)} até agora`:since?`registros desde ${fmtDay(new Date(since*1000))}`:`${fmtDay(first)} até ${fmtDay(last)}`;
+  $("#chartTitle").textContent=(cost?"Custo em preço de API":state.metric==="tokens"?"Tokens processados":"Requisições")+(hourly?" por hora":" por dia");
   // Every layer is interpolated on its own (monotone, so never below 0) and then stacked, so a layer
   // can neither dip below the one under it nor below the baseline.
   const SUB=12,N=n<2?n:(n-1)*SUB+1,per=ids.map(id=>monoSamples(h.buckets.map(b=>val(b,id)),SUB));
@@ -1686,6 +1801,7 @@ function renderActivity(){
   const pathOf=a=>a.map((v,k)=>`${k?"L":"M"}${X(k).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
   const NS='vector-effect="non-scaling-stroke"';
   let svg=sc.ticks.map(t=>`<line class="grid" x1="0" x2="960" y1="${Y(t)}" y2="${Y(t)}" ${NS}/>`).join("");
+  const pos=i=>n<2?50:i/(n-1)*100;
   if(total&&n>1){
     const tops=cs.map(pathOf),st=id=>`style="--c:${color(id)}"`;
     svg+=`<defs>${ids.map((id,j)=>`<linearGradient id="ag${j}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${color(id)};stop-opacity:var(--lg-top)"/><stop offset="1" style="stop-color:${color(id)};stop-opacity:var(--lg-bot)"/></linearGradient>`).join("")}</defs>`;
@@ -1696,7 +1812,7 @@ function renderActivity(){
       +ids.map((id,j)=>`<path class="ln" ${st(id)} d="${tops[j]}" ${NS}/>`).join("")}
   $("#chartSvg").innerHTML=svg;
   const plot=$("#plot"),tip=$("#tip"),hl=$("#hoverLine");
-  plot.querySelectorAll(".empty-chart,.dot").forEach(e=>e.remove());
+  plot.querySelectorAll(".empty-chart,.dot,.vlab,.vpt").forEach(e=>e.remove());
   if(!total){
     // Cost is zero when the range only has tokens recorded before per-model tracking (or unknown models).
     const anyReq=h.buckets.some(b=>Object.values(b.by_account||{}).some(v=>v>0));
@@ -1704,8 +1820,10 @@ function renderActivity(){
     plot.insertAdjacentHTML("beforeend",`<div class="empty-chart">${msg}</div>`)}
   const dots=ids.map(id=>{const d=document.createElement("i");d.className="dot";d.style.setProperty("--c",color(id));plot.appendChild(d);return d});
   $("#ylabels").innerHTML=sc.ticks.map(t=>`<span style="top:${Y(t)/260*100}%">${t?fmtAxis(t):"0"}</span>`).join("");
-  const lab=i=>{const d=new Date(h.buckets[i].t*1000);return hourly?fmtHour(d):fmtDay(d)};
-  $("#xlabels").innerHTML=[0,1,2,3,4].map(k=>`<span>${lab(Math.round(k*(n-1)/4))}</span>`).join("");
+  const lab=i=>{const d=new Date(h.buckets[i].t*1000);return hourly?fmtHour(d):i===n-1?"hoje":d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")+" "+d.getDate()};
+  // Labels sit exactly over their bucket: every day when there are few, else ~5 evenly picked buckets.
+  const xi=n<=8?[...Array(n).keys()]:[...new Set([0,1,2,3,4].map(k=>Math.round(k*(n-1)/4)))];
+  $("#xlabels").innerHTML=xi.map(i=>{const p=pos(i);return `<span style="left:${p.toFixed(2)}%;transform:translateX(${i===0?0:i===n-1?-100:-50}%)">${lab(i)}</span>`}).join("");
   // By-model sums miss tokens recorded before per-model tracking.
   const accTotal=h.buckets.reduce((s,b)=>s+Object.values(b[acck]||{}).reduce((x,v)=>x+v,0),0);
   const note=$("#chartNote");note.hidden=!(byModel&&total<accTotal*(1-1e-6));
@@ -1713,7 +1831,7 @@ function renderActivity(){
   $("#chartLegend").innerHTML=ids.map(id=>`<span class="lg"><i style="--c:${color(id)}"></i>${esc(sname(id))}</span>`).join("");
 
   plot.onmousemove=e=>{const r=plot.getBoundingClientRect(),x=e.clientX-r.left,i=Math.max(0,Math.min(n-1,Math.round(x/r.width*(n-1))));
-    const d=new Date(h.buckets[i].t*1000);hl.style.left=(n<2?50:i/(n-1)*100)+"%";hl.style.opacity=.6;
+    const d=new Date(h.buckets[i].t*1000);hl.style.left=pos(i)+"%";hl.style.opacity=.6;
     const k=n<2?0:i*SUB;
     dots.forEach((dt,j)=>{const shown=total>0&&val(h.buckets[i],ids[j])>0;dt.style.display=shown?"block":"none";
       if(shown){dt.style.left=(X(k)/960*100)+"%";dt.style.top=(Y(cs[j][k])/260*r.height)+"px"}});
@@ -1724,6 +1842,17 @@ function renderActivity(){
     let lx=x+12;if(lx+tw>r.width)lx=x-12-tw;const ly=Math.max(-8,Math.min(r.height-th+8,e.clientY-r.top-th/2));
     tip.style.left=lx+"px";tip.style.top=ly+"px"};
   plot.onmouseleave=()=>{tip.style.display="none";hl.style.opacity=0;dots.forEach(d=>d.style.display="none")};
+  const pk=totals.indexOf(Math.max(...totals));
+  plot.setAttribute("aria-label",`${$("#chartTitle").textContent}. Total ${fmtMetric(total)}`+(total?`, maior valor ${fmtMetric(totals[pk])} em ${lab(pk)}`:"")+". Use ← e → para ver cada "+(hourly?"hora":"dia")+".");
+  let ki=n-1;const kshow=()=>{const r=plot.getBoundingClientRect();plot.onmousemove({clientX:r.left+pos(ki)/100*r.width,clientY:r.top+r.height/2})};
+  plot.onkeydown=e=>{if(e.key==="ArrowLeft"||e.key==="ArrowRight"){e.preventDefault();ki=Math.max(0,Math.min(n-1,ki+(e.key==="ArrowLeft"?-1:1)));kshow()}else if(e.key==="Escape")plot.onmouseleave()};
+  plot.onfocus=()=>{if(total)kshow()};plot.onblur=plot.onmouseleave;
+  // Today is still filling up: a light band over its last half-step says so.
+  if(!hourly&&n>1&&total){$("#chartSvg").insertAdjacentHTML("beforeend",`<rect class="partial" x="${X((n-1.25)*SUB).toFixed(1)}" y="0" width="${(960-X((n-1.25)*SUB)).toFixed(1)}" height="260"/>`);
+    plot.insertAdjacentHTML("beforeend",`<span class="vlab part" style="left:${(X((n-1.25)*SUB)/960*100).toFixed(2)}%">hoje, parcial</span>`)}
+  // Few days: mark each real data point with its total, so the curve never hides what was measured.
+  if(!hourly&&total&&n>1&&n<=10)plot.insertAdjacentHTML("beforeend",totals.map((v,i)=>{if(!(v>0))return"";const x=X(i*SUB)/960*100,y=Y(v)/260*100;
+    return `<i class="vpt" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%"></i><span class="vlab" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;transform:translate(${i===0?"0":i===n-1?"-100%":"-50%"},-150%)">${fmtMetric(v)}</span>`}).join(""));
 
   const cur=sumTotals(h.accounts,h.providers),{inp,out,cache,cw,req,fail,unpriced,cs:cs$,saved,tok,hit}=cur;
   const pc=v=>tok>0?fmtPct(v/tok):"0,0%";
@@ -1737,16 +1866,11 @@ function renderActivity(){
     return deltaHtml(d,"%",plab,tip)};
   const ratePP=(c,p)=>{if(!prev||!(p>0))return"";return deltaHtml((c-p)*100,"p.p.",plab,`Taxa de cache anterior: ${Math.floor(p*100)}%`)};
   const lgCost=(h.models&&h.models.legacy&&h.models.legacy.cost&&h.models.legacy.cost.total)||0;
-  const stat=(k,v,s,tip,n,f,dl)=>`<div class="card stat"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular"${f?` data-n="${n}" data-f="${f}"`:""}>${v}</div><div class="s">${s}</div><div class="dl">${dl||""}</div></div>`;
-  $("#stats").innerHTML=stat("Custo estimado",fmtUSD(cs$.total),lgCost>0?`inclui ≈${fmtUSD(lgCost)} estimado`:"preço de API · com cache","Quanto esses tokens custariam na API da Anthropic, por modelo e com preços de cache. Não é o que a assinatura cobra."+(lgCost>0?" Parte é estimada: tokens de antes do registro por modelo foram precificados como Opus 5.5 com cache de 1h.":""),cs$.total,"usd",delta(cs$.total,prev&&prev.cs.total,fmtUSD,true))
-    +stat("Economia com cache",fmtUSD(saved),saved<0?"escritas custaram mais do que poupou":`sem cache: ${fmtUSD(cs$.no_cache)}`,
-      "Diferença entre cobrar toda leitura e escrita de cache como input normal e o custo real com os preços de cache. Negativo significa que as escritas de cache custaram mais do que as leituras economizaram.",saved,"usd",delta(saved,prev&&prev.saved,fmtUSD,true))
-    +stat("Tokens processados",fmtTokens(tok),"input + cache + output","Tudo que o modelo processou: input novo, cache lido, cache escrito e output",tok,"tok",delta(tok,prev&&prev.tok,fmtTokens))
-    +stat("Input novo",fmtTokens(inp),`${fmtUSD(cs$.input)} · ${pc(inp)} dos tokens`,"Input que não veio do cache nem foi gravado nele",inp,"tok",delta(inp,prev&&prev.inp,fmtTokens))
-    +stat("Cache lido",fmtTokens(cache),`${fmtUSD(cs$.cache_read)} · cache ${Math.floor(hit*100)}%`,"Taxa de cache = lido / (input novo + cache lido + cache escrito)",cache,"tok",ratePP(hit,prev&&prev.hit))
-    +stat("Cache escrito",fmtTokens(cw),`${fmtUSD(cs$.cache_write)} · ${pc(cw)} dos tokens`,"Tokens gravados no cache de prompt",cw,"tok",delta(cw,prev&&prev.cw,fmtTokens))
-    +stat("Output",fmtTokens(out),`${fmtUSD(cs$.output)} · ${pc(out)} dos tokens`,"",out,"tok",delta(out,prev&&prev.out,fmtTokens))
-    +stat("Requisições",fmtCount(req),fail?`${fmtCount(fail)} falha${fail===1?"":"s"}`:"sem falhas","",req,"cnt",delta(req,prev&&prev.req,fmtCount));
+  const stat=(m,k,v,s,tip,n,f,dl)=>`<button type="button" class="card stat" data-metric="${m}" aria-pressed="${state.metric===m}"${tip?` data-tip="${esc(tip)}"`:""}><span class="k">${k}</span><span class="v tabular"${f?` data-n="${n}" data-f="${f}"`:""}>${v}</span><span class="s">${s}</span><span class="dl">${dl||""}</span></button>`;
+  $("#stats").innerHTML=stat("cost","Custo em preço de API",fmtUSD(cs$.total),saved>0?`cache poupou ${fmtUSD(saved)}`+(lgCost>0?` · ${fmtUSD(lgCost)} estimado`:""):"com preços de cache","Quanto esses tokens custariam na API da Anthropic, por modelo e com preços de cache. Não é o que a assinatura cobra."+`\nSem cache seria ${fmtUSD(cs$.no_cache)}: o cache poupou ${fmtUSD(saved)}.`+(lgCost>0?`\n${fmtUSD(lgCost)} são estimados: tokens de antes do registro por modelo, precificados como Opus 5.5 com cache de 1h.`:""),cs$.total,"usd",delta(cs$.total,prev&&prev.cs.total,fmtUSD,true))
+    +stat("tokens","Tokens processados",fmtTokens(tok),`cache ${Math.floor(hit*100)}% · saída ${fmtTokens(out)}`,
+      `Cache lido: ${fmtTokens(cache)} (${fmtUSD(cs$.cache_read)})\nGravação em cache: ${fmtTokens(cw)} (${fmtUSD(cs$.cache_write)})\nEntrada sem cache: ${fmtTokens(inp)} (${fmtUSD(cs$.input)})\nSaída: ${fmtTokens(out)} (${fmtUSD(cs$.output)})\n\nTaxa de cache = lido / (entrada + lido + gravado)`,tok,"tok",delta(tok,prev&&prev.tok,fmtTokens))
+    +stat("requests","Requisições",fmtCount(req),fail?`${fmtCount(fail)} falha${fail===1?"":"s"}`:"sem falhas","",req,"cnt",delta(req,prev&&prev.req,fmtCount));
   const un=$("#unpricedNote");un.hidden=!(unpriced>0);
   if(unpriced>0)un.textContent=`${fmtCount(unpriced)} tokens sem preço (registrados antes do rastreio por modelo ou de modelo desconhecido) não entram no custo.`;
   renderModels(h);
@@ -1760,11 +1884,11 @@ function renderModels(h){
   el.hidden=!rows.length;if(!rows.length){el.innerHTML="";return}
   const top=rows.reduce((s,r)=>s+r.c,0);
   el.innerHTML=`<div class="cm-h">Custo por modelo</div>`+rows.map(({k,m,tok,c})=>{
-    const b=m.cost||{},tip=m.priced?`Input novo: ${fmtUSD(b.input)}\nCache lido: ${fmtUSD(b.cache_read)}\nCache escrito: ${fmtUSD(b.cache_write)}\nOutput: ${fmtUSD(b.output)}\nTotal: ${fmtUSD(b.total)}\nSem cache: ${fmtUSD(b.no_cache)}`:"Modelo sem preço conhecido: não entra no custo.";
+    const b=m.cost||{},tip=m.priced?`Entrada sem cache: ${fmtUSD(b.input)}\nCache lido: ${fmtUSD(b.cache_read)}\nGravação em cache: ${fmtUSD(b.cache_write)}\nSaída: ${fmtUSD(b.output)}\nTotal: ${fmtUSD(b.total)}\nSem cache: ${fmtUSD(b.no_cache)}`:"Modelo sem preço conhecido: não entra no custo.";
     const tipFull=k==="legacy"?LEGACY_TIP+"\n\n"+tip:tip;
     const w=m.priced&&top>0?Math.max(c>0?2:0,c/top*100):0;
-    return `<div class="cm-row" data-tip="${esc(tipFull)}"><span class="cm-n">${esc(prettyModel(k))}</span><span class="cm-r">${fmtCount(m.requests||0)} req</span><span class="cm-t">${fmtTokens(tok)} tokens</span>`
-      +`<span class="cm-b"><i style="width:${w.toFixed(1)}%"></i></span><span class="cm-c${m.priced?"":" mut"}">${m.priced?fmtUSD(c):"sem preço"}</span></div>`}).join("");
+    return `<div class="cm-row" tabindex="0" data-tip="${esc(tipFull)}"><span class="cm-n">${esc(prettyModel(k))}</span><span class="cm-r">${fmtCount(m.requests||0)} req</span><span class="cm-t">${fmtTokens(tok)} tokens</span>`
+      +`<span class="cm-b"><i style="width:${w.toFixed(1)}%${k==="legacy"?";background:color-mix(in srgb,var(--muted-foreground) 55%,transparent)":""}"></i></span><span class="cm-c${m.priced?"":" mut"}">${m.priced?fmtUSD(c):"sem preço"}</span></div>`}).join("");
 }
 
 /* ---- when you work: weekday x hour heatmap of the last 4 weeks ---- */
@@ -1773,7 +1897,7 @@ function renderHeat(){
   const h=state.hist,el=$("#heat"),sub=$("#heatSub");
   if(!h||!h.heat_tokens||!h.heat_requests){el.innerHTML="";return}
   const days=h.heat_days||0,tokens=state.metric!=="requests";
-  sub.textContent=(days>=28?"últimas 4 semanas":days===1?"último dia":`últimos ${days} dias`)+" · média por dia da semana, hora local";
+  sub.textContent=`${tokens?"Tokens":"Requisições"} por hora do dia, `+(days>=28?"média das últimas 4 semanas":days>=14?`média dos últimos ${days} dias`:`últimos ${days} ${days===1?"dia":"dias"}`)+" · hora local"+(days<7?" · só os dias com uso":"");
   if(!days){el.innerHTML=`<div class="sub">Sem atividade nas últimas 4 semanas.</div>`;return}
   // How many times each weekday occurred in the covered days, to turn totals into per-day averages.
   // The server counts them in the zone it binned the heatmap in.
@@ -1788,16 +1912,19 @@ function renderHeat(){
   grid.forEach((row,r)=>{for(let c=0;c<23;c++){const s=pick(row[c])+pick(row[c+1]);if(s>best){best=s;bi=r;bh=c}}});
   const insight=bi>=0?`pico: <b>${WD_NAMES[WD_ROWS[bi]]} ${bh}–${bh+2}h</b>`:"sem pico definido";
   let html=`<div class="heat-top"><span class="heat-ins">${insight}</span>
-    <span class="heat-key">menos<i style="--c:color-mix(in srgb,var(--track) 60%,transparent)"></i><i style="--c:color-mix(in srgb,var(--claude) 30%,var(--track))"></i><i style="--c:color-mix(in srgb,var(--claude) 60%,var(--track))"></i><i style="--c:var(--claude)"></i>mais</span></div>
-    <div class="heat"><span></span>`;
+    <span class="heat-key" title="Escala do mais claro (0) ao mais forte (${esc(tokens?fmtTokens(max)+" tokens":fmtReq(max)+" req")} por hora)">0<i style="--c:color-mix(in srgb,var(--track) 60%,transparent)"></i><i style="--c:color-mix(in srgb,var(--claude) 40%,var(--track))"></i><i style="--c:color-mix(in srgb,var(--claude) 60%,var(--track))"></i><i style="--c:var(--claude)"></i>${esc(tokens?fmtTokens(max):fmtReq(max))}${tokens?" tokens":" req"}/h</span></div>
+    <div class="heat" role="img" aria-label="${esc(`Mapa de calor de ${tokens?"tokens":"requisições"} por hora do dia. ${bi>=0?`Pico ${WD_NAMES[WD_ROWS[bi]]} das ${bh} às ${bh+2}h.`:""}`)}"><span></span>`;
   for(let hr=0;hr<24;hr++)html+=`<span class="hh">${hr%3===0?`<span>${hr}h</span>`:""}</span>`;
-  grid.forEach((row,r)=>{
+  const showRow=r=>days>=7||grid[r].some(c=>pick(c)>0);
+  if(days<7){const k=grid.filter((_,r)=>showRow(r)).length;sub.textContent=`${tokens?"Tokens":"Requisições"} por hora do dia · ${k} ${k===1?"dia":"dias"} com uso · hora local · hachurado = ainda não chegou`}
+  grid.forEach((row,r)=>{if(!showRow(r))return;
     html+=`<span class="hd">${WD_NAMES[WD_ROWS[r]]}</span>`;
     row.forEach((c,hr)=>{
-      const v=pick(c),p=v>0&&max>0?14+86*Math.pow(v/max,.75):0;
+      const v=pick(c),p=v>0&&max>0?30+70*Math.pow(v/max,.75):0;
       const col=p>0?`color-mix(in srgb,var(--claude) ${p.toFixed(1)}%,var(--track))`:"color-mix(in srgb,var(--track) 60%,transparent)";
       const tip=`${WD_NAMES[WD_ROWS[r]]} ${hr}h · ${fmtTokens(c.tok)} tokens · ${fmtReq(c.req)} req (média por dia)`;
-      html+=`<i class="hc" data-tip="${esc(tip)}" style="--c:${col}"></i>`});
+      const fut=days<7&&WD_ROWS[r]===new Date().getDay()&&hr>new Date().getHours();
+      html+=fut?`<i class="hc fut" data-tip="${esc(WD_NAMES[WD_ROWS[r]]+" "+hr+"h · ainda não chegou")}"></i>`:`<i class="hc" data-tip="${esc(tip)}" style="--c:${col}"></i>`});
   });
   el.innerHTML=html+`</div>`;
 }
@@ -1854,10 +1981,12 @@ async function load(refresh){
     renderAll();
   }catch(e){if(seq===loadSeq)toast("Falha ao carregar: "+e.message,true)}
 }
-function setupSeg(id,key){const el=$("#"+id);const sync=()=>el.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.v===state[key]));
+function setupSeg(id,key){const el=$("#"+id);el.setAttribute("role","group");
+  const sync=()=>el.querySelectorAll("button").forEach(b=>{b.type="button";const on=b.dataset.v===state[key];b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)});
   el.querySelectorAll("button").forEach(b=>b.onclick=()=>{state[key]=b.dataset.v;store.set("usage."+key,b.dataset.v);sync();
     key==="period"?load(false):renderActivity()});sync()}
-setupSeg("period","period");setupSeg("metric","metric");setupSeg("stack","stack");
+setupSeg("period","period");setupSeg("stack","stack");
+$("#stats").onclick=e=>{const b=e.target.closest("[data-metric]");if(!b||b.dataset.metric===state.metric)return;state.metric=b.dataset.metric;store.set("usage.metric",state.metric);renderActivity();const nb=$(`#stats [data-metric="${state.metric}"]`);if(nb)nb.focus()};
 
 async function setMode(authId,mode){
   if(DEMO){const a=state.data.accounts.find(x=>x.auth_id===authId);if(a)a.mode=mode;renderAll();return}
