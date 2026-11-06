@@ -120,6 +120,10 @@ type quotaPoint struct {
 	T      int64    `json:"t"`
 	Short  *float64 `json:"s,omitempty"`
 	Weekly *float64 `json:"w,omitempty"`
+	// Proxy is set only in views: the proxy routed requests to the credential between the previous
+	// sample and this one (hour resolution, see markProxied). A weekly drop without it was spent
+	// outside the proxy, e.g. in the Claude apps signed in to the same account.
+	Proxy bool `json:"p,omitempty"`
 }
 
 type historyData struct {
@@ -663,8 +667,30 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 	for id, points := range h.data.Quota {
 		i := sort.Search(len(points), func(i int) bool { return points[i].T >= minQuota })
 		if i < len(points) {
-			view.Quota[id] = append([]quotaPoint(nil), points[i:]...)
+			view.Quota[id] = markProxied(append([]quotaPoint(nil), points[i:]...), h.data.Hours[id])
 		}
 	}
 	return view
+}
+
+// proxyLag is how far before an interval markProxied still looks for proxied requests, since
+// the usage endpoint reflects a request a few minutes after it.
+const proxyLag = 15 * 60
+
+// markProxied sets Proxy on every point after the first when the hours overlapping
+// [previous sample - proxyLag, sample] hold proxied requests.
+func markProxied(points []quotaPoint, hours map[int64]*hourStat) []quotaPoint {
+	if len(hours) == 0 {
+		return points
+	}
+	for k := 1; k < len(points); k++ {
+		from := (points[k-1].T - proxyLag) / 3600 * 3600
+		for hour := from; hour <= points[k].T; hour += 3600 {
+			if st := hours[hour]; st != nil && st.Requests > 0 {
+				points[k].Proxy = true
+				break
+			}
+		}
+	}
+	return points
 }

@@ -220,3 +220,16 @@ func TestRecordQuotaGapsAndSlowPolls(t *testing.T) {
 		t.Errorf("point before the gap = %d, want the provisional point kept", got)
 	}
 }
+
+func TestMarkProxied(t *testing.T) {
+	base := int64(1_800_000_000) / 3600 * 3600
+	hours := map[int64]*hourStat{base: {Requests: 3}, base + 7200: {}}
+	pts := []quotaPoint{{T: base - 1200}, {T: base + 600}, {T: base + 3600 + 1200}, {T: base + 3600 + 2400}, {T: base + 7200 + 600}}
+	got := markProxied(pts, hours)
+	want := []bool{false, true, true, false, false}
+	for k, p := range got {
+		if p.Proxy != want[k] {
+			t.Errorf("point %d proxy = %v, want %v", k, p.Proxy, want[k])
+		}
+	}
+}

@@ -104,8 +104,10 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .segbar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--c);transform-origin:left}
 .segbar>i.track{background:var(--track);min-width:0}
 .caprows{container-type:inline-size;display:flex;flex-direction:column;gap:10px}
-.cr{display:grid;grid-template-columns:minmax(0,1fr) 5.4rem 6rem 7.9rem;align-items:center;column-gap:10px;row-gap:6px;font-size:12px;color:var(--muted-foreground)}
+.cr{display:grid;grid-template-columns:minmax(0,1fr) 5.4rem 7rem 7.6rem;align-items:center;column-gap:10px;row-gap:6px;font-size:12px;color:var(--muted-foreground)}
 .cr.dim{opacity:.6}
+.cr[data-acc]{cursor:pointer;border-radius:6px;margin:-3px -6px;padding:3px 6px;transition:background .12s}
+.cr[data-acc]:hover{background:color-mix(in srgb,var(--foreground) 4%,transparent)}
 .cr-n{grid-area:n;display:flex;align-items:center;gap:8px;min-width:0}
 .cr-e{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--foreground)}
 .cr-n em{flex:none;font-style:normal;font-size:11px;color:var(--muted-foreground)}
@@ -208,6 +210,8 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .forecast .est{cursor:help;text-decoration:underline dotted;text-underline-offset:2px}
 .recent{font-size:12px;color:var(--muted-foreground);cursor:help}
 .recent b{color:var(--foreground);font-weight:500}
+.recent.ext{display:flex;align-items:center;gap:6px;margin-top:-8px}
+.recent.ext svg.i{width:13px;height:13px}
 .forecast.bad{color:var(--error-foreground)}.forecast.ok{color:var(--success-foreground)}
 .spark{width:96px;height:24px;flex:none;display:block}
 .note{font-size:12px;color:var(--muted-foreground)}
@@ -231,8 +235,11 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .plot{position:relative;flex:1;height:240px;min-width:0}
 .plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .plot .grid{stroke:var(--border);stroke-width:1;opacity:.55}
-.plot .hover{position:absolute;top:8px;bottom:0;width:1px;background:var(--muted-foreground);opacity:0;pointer-events:none}
-.xlabels{display:flex;justify-content:space-between;padding-left:56px;font-size:10px;color:var(--muted-foreground);text-transform:uppercase}
+.plot .hover{position:absolute;top:0;bottom:0;transform:translateX(-50%);border-radius:6px;background:color-mix(in srgb,var(--foreground) 5%,transparent);opacity:0;pointer-events:none}
+.plot .bar{transition:opacity .12s}
+.plot .bar.dim{opacity:.45}
+.xlabels{position:relative;height:14px;margin-left:56px;font-size:10px;color:var(--muted-foreground);text-transform:uppercase}
+.xlabels span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
 .plot .halo{fill:none;stroke:var(--card);stroke-width:3.5;stroke-linejoin:round;stroke-linecap:round}
 .plot .ln{fill:none;stroke:var(--c);stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round}
 .plot .dot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--card);pointer-events:none;display:none}
@@ -248,7 +255,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tip .r.tot{margin-top:4px;padding-top:4px;border-top:1px solid var(--border)}
 .tip .r.tot span{color:var(--foreground)}
 .chart-legend{padding-left:56px}
-.chart-legend .lg i{width:12px;height:10px;border-radius:2px;background:linear-gradient(to bottom,color-mix(in srgb,var(--c) 45%,transparent),color-mix(in srgb,var(--c) 8%,transparent));border-top:2px solid var(--c)}
+.chart-legend .lg i{width:10px;height:10px;border-radius:3px;background:var(--c)}
 .heat-card{padding:16px 20px 18px;display:flex;flex-direction:column;gap:12px}
 .heat-top{display:flex;justify-content:space-between;align-items:center;gap:8px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
 .heat-top b{color:var(--foreground);font-weight:600}
@@ -284,8 +291,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 @media (max-width:900px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat{padding:12px 14px}.stat .v{font-size:20px}}
 @media (max-width:640px){.mdl{grid-template-columns:4rem minmax(0,1fr) auto;column-gap:10px}.rb .rs{flex-wrap:wrap;justify-content:center}}
-@media (max-width:640px){.ylabels{width:40px}.xlabels,.chart-legend{padding-left:48px}.heat-card{padding:14px 12px 16px}.heat{grid-template-columns:1.8rem repeat(24,minmax(0,1fr));gap:2px}.heat .hc{height:20px}.chart-card{padding:16px 14px 12px}
-  .xlabels span:nth-child(2),.xlabels span:nth-child(4){display:none}}
+@media (max-width:640px){.ylabels{width:40px}.xlabels{margin-left:48px}.chart-legend{padding-left:48px}.heat-card{padding:14px 12px 16px}.heat{grid-template-columns:1.8rem repeat(24,minmax(0,1fr));gap:2px}.heat .hc{height:20px}.chart-card{padding:16px 14px 12px}}
 
 /* timeline: next 7 days */
 .tl-card{--g:56px;padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px}
@@ -302,6 +308,10 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tl-tools{display:flex;align-items:center;gap:10px}
 .tl-reset{border:0;background:none;padding:0;font:inherit;font-size:12px;color:var(--muted-foreground);text-decoration:underline;text-underline-offset:2px;cursor:pointer;white-space:nowrap}
 .tl-reset:hover{color:var(--foreground)}
+.tl-hint{font-size:11px;color:var(--muted-foreground);opacity:.8;white-space:nowrap}
+@media (max-width:640px){.tl-hint{display:none}}
+.tl-plot.zoomed{cursor:grab}
+body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-brush{position:absolute;top:8px;bottom:6px;z-index:4;pointer-events:none;background:color-mix(in srgb,var(--claude) 16%,transparent);border:solid color-mix(in srgb,var(--claude) 55%,transparent);border-width:0 1px}
 .tl-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .tl-plot .gl{stroke:var(--border);stroke-width:1}
@@ -359,6 +369,57 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
   .ag-row{overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--input) transparent}
   .ag-cols{grid-template-columns:repeat(var(--n),minmax(132px,1fr));min-width:calc(var(--n)*132px)}
 }
+
+/* account detail modal */
+.acct[data-acc]{cursor:pointer}
+.acct[data-acc]:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.acct-more{margin-left:auto;flex:none;display:inline-flex;align-items:center;gap:2px;font-size:11.5px;color:var(--muted-foreground);opacity:0;transition:opacity .15s}
+.acct-more svg.i{width:13px;height:13px}
+.acct:hover .acct-more,.acct:focus-visible .acct-more{opacity:1}
+@media (hover:none){.acct-more{opacity:1}}
+body.modal-open{overflow:hidden}
+.modal{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:24px}
+.md-bg{position:absolute;inset:0;background:rgba(0,0,0,.38);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);animation:mdfade .18s ease-out}
+.md-card{position:relative;width:min(58rem,100%);max-height:calc(100vh - 48px);overflow:auto;overscroll-behavior:contain;padding:20px 22px 22px;
+  display:flex;flex-direction:column;gap:18px;border:1px solid var(--border);border-radius:16px;background:var(--popover);box-shadow:0 24px 64px rgba(0,0,0,.28);animation:mdin .2s cubic-bezier(.2,.7,.2,1)}
+@keyframes mdfade{from{opacity:0}}
+@keyframes mdin{from{opacity:0;transform:translateY(8px) scale(.985)}}
+#mdBody{display:contents}
+.md-head{display:flex;align-items:center;gap:8px;min-width:0}
+.md-head .redact{flex:0 1 auto;font-size:15px;font-weight:600}
+.md-head .avatar{width:28px;height:28px;font-size:11px}
+.md-close{margin-left:auto;flex:none;display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:8px;background:none;color:var(--muted-foreground);cursor:pointer}
+.md-close:hover{background:var(--accent);color:var(--foreground)}
+.md-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.md-stat{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--surf-a),var(--surf-b));display:flex;flex-direction:column;gap:2px;min-width:0}
+.md-stat .k{font-size:12px;color:var(--muted-foreground)}
+.md-stat .v{font-size:20px;font-weight:600;line-height:1.25;letter-spacing:-.02em;text-wrap:balance}
+.md-stat .v small{font-size:13px;font-weight:500;color:var(--muted-foreground);letter-spacing:0}
+.md-stat .s{font-size:11.5px;line-height:1.4;color:var(--muted-foreground)}
+.md-stat.crit .v{color:var(--error-foreground)}.md-stat.low .v,.md-stat.warn .v{color:var(--warning-foreground)}.md-stat.good .v{color:var(--success-foreground)}
+.md-sec{display:flex;flex-direction:column;gap:10px}
+.md-h{display:flex;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
+.md-h>span:first-child{font-weight:500;color:var(--foreground)}
+.md-h b{color:var(--foreground);font-weight:600}
+.md-leg{font-size:12px;color:var(--muted-foreground)}
+.md-tl{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.md-leg i.thin{height:1px;opacity:.6}
+.md-leg i.proj{background:none;height:0;border-top:2px dashed;border-radius:0}
+.md-chart{--g:44px}
+.md-s{fill:none;stroke-width:1.2;stroke-opacity:.5;stroke-linejoin:round}
+.md-rl{stroke-width:1;stroke-dasharray:3 3;opacity:.7}
+.md-mk{position:absolute;top:-4px;transform:translateX(-50%);z-index:2;display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;white-space:nowrap;
+  background:var(--popover);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);color:var(--foreground);cursor:help}
+.md-mk svg.i{width:11px;height:11px;color:var(--c)}
+.md-zero{position:absolute;transform:translateX(-50%);z-index:2;font-size:10.5px;font-weight:600;color:var(--error-foreground);white-space:nowrap;pointer-events:none;padding:0 4px;background:var(--popover);border-radius:4px}
+.md-nowl{color:var(--foreground);font-weight:500}
+.md-act{display:flex;flex-direction:column;gap:10px;padding-top:16px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.md-bars{display:flex;align-items:flex-end;gap:3px;height:64px}
+.md-bars i{flex:1 1 0;min-width:2px;height:max(var(--h),2px);border-radius:3px 3px 1px 1px;background:var(--c);opacity:.85;transition:opacity .12s}
+.md-bars i.z{background:var(--track);opacity:1;height:2px}
+.md-bars i:hover{opacity:1;filter:brightness(1.08)}
+@media (max-width:760px){.md-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.modal{padding:0;place-items:end stretch}.md-card{width:100%;max-height:92vh;border-radius:16px 16px 0 0;padding:16px 16px 22px}.md-stat .v{font-size:19px}}
 
 /* global tooltip */
 .gtip{position:fixed;z-index:100;max-width:min(18rem,calc(100vw - 16px));white-space:pre-line;text-align:left}
@@ -451,6 +512,8 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
     <div class="card heat-card" id="heat"></div>
   </section>
 </main>
+<div class="modal" id="accModal" hidden><div class="md-bg" data-close></div>
+  <div class="md-card" role="dialog" aria-modal="true" aria-label="Detalhes da conta"><div id="mdBody"></div></div></div>
 <script>
 const LOGO={
   claude:'<svg class="logo claude" viewBox="0 0 256 257" preserveAspectRatio="xMidYMid"><path d="m50.228 170.321 50.357-28.257.843-2.463-.843-1.361h-2.462l-8.426-.518-28.775-.778-24.952-1.037-24.175-1.296-6.092-1.297L0 125.796l.583-3.759 5.12-3.434 7.324.648 16.202 1.101 24.304 1.685 17.629 1.037 26.118 2.722h4.148l.583-1.685-1.426-1.037-1.101-1.037-25.147-17.045-27.22-18.017-14.258-10.37-7.713-5.25-3.888-4.925-1.685-10.758 7-7.713 9.397.649 2.398.648 9.527 7.323 20.35 15.75L94.817 91.9l3.889 3.24 1.555-1.102.195-.777-1.75-2.917-14.453-26.118-15.425-26.572-6.87-11.018-1.814-6.61c-.648-2.723-1.102-4.991-1.102-7.778l7.972-10.823L71.42 0 82.05 1.426l4.472 3.888 6.61 15.101 10.694 23.786 16.591 32.34 4.861 9.592 2.592 8.879.973 2.722h1.685v-1.556l1.36-18.211 2.528-22.36 2.463-28.776.843-8.1 4.018-9.722 7.971-5.25 6.222 2.981 5.12 7.324-.713 4.73-3.046 19.768-5.962 30.98-3.889 20.739h2.268l2.593-2.593 10.499-13.934 17.628-22.036 7.778-8.749 9.073-9.657 5.833-4.601h11.018l8.1 12.055-3.628 12.443-11.342 14.388-9.398 12.184-13.48 18.147-8.426 14.518.778 1.166 2.01-.194 30.46-6.481 16.462-2.982 19.637-3.37 8.88 4.148.971 4.213-3.5 8.62-20.998 5.184-24.628 4.926-36.682 8.685-.454.324.519.648 16.526 1.555 7.065.389h17.304l32.21 2.398 8.426 5.574 5.055 6.805-.843 5.184-12.962 6.611-17.498-4.148-40.83-9.721-14-3.5h-1.944v1.167l11.666 11.406 21.387 19.314 26.767 24.887 1.36 6.157-3.434 4.86-3.63-.518-23.526-17.693-9.073-7.972-20.545-17.304h-1.36v1.814l4.73 6.935 25.017 37.59 1.296 11.536-1.814 3.76-6.481 2.268-7.13-1.297-14.647-20.544-15.1-23.138-12.185-20.739-1.49.843-7.194 77.448-3.37 3.953-7.778 2.981-6.48-4.925-3.436-7.972 3.435-15.749 4.148-20.544 3.37-16.333 3.046-20.285 1.815-6.74-.13-.454-1.49.194-15.295 20.999-23.267 31.433-18.406 19.702-4.407 1.75-7.648-3.954.713-7.064 4.277-6.286 25.47-32.405 15.36-20.092 9.917-11.6-.065-1.686h-.583L44.07 198.125l-12.055 1.555-5.185-4.86.648-7.972 2.463-2.593 20.35-13.999-.064.065Z"/></svg>'
@@ -463,6 +526,8 @@ const ICON_GAUGE='<svg class="i" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path
 const ICON_ALERT='<svg class="i" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg>';
 const ICON_CHECK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>';
 const ICON_X='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>';
+const ICON_CHEV='<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
+const ICON_CLOSE='<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 const ICON_CLOCK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -503,8 +568,10 @@ function toast(msg,err){const t=$("#toast");t.textContent=msg||"";t.className="t
 /* account identity: avatar + e-mail (shown in full) */
 function hue(v){let h=0;for(const c of v)h=(h*31+c.charCodeAt(0))|0;return Math.abs(h)%360}
 function initials(v){const[l,d]=String(v).split("@");return(((l||"")[0]||"")+((d||"")[0]||"")).toUpperCase()||"?"}
-function who(email){const h=hue(email);
-  return `<span class="avatar" style="background:oklch(.85 .08 ${h});color:oklch(.35 .1 ${h})">${esc(initials(email))}</span>
+// With `c` (the account's identity colour) the avatar wears it, so one colour marks the account everywhere.
+function who(email,c){const h=hue(email);
+  const st=c?`background:color-mix(in srgb,${c} 18%,transparent);color:${c}`:`background:oklch(.85 .08 ${h});color:oklch(.35 .1 ${h})`;
+  return `<span class="avatar" style="${st}">${esc(initials(email))}</span>
     <span class="redact" title="${esc(email)}">${esc(email)}</span>`}
 const legendName=email=>email;
 
@@ -523,17 +590,6 @@ document.addEventListener("scroll",hideTip,true);
 function niceScale(peak,n){if(!(peak>0))return{max:1,ticks:[0,1]};const raw=peak/n,mag=Math.pow(10,Math.floor(Math.log10(raw))),norm=raw/mag;
   const step=(norm>5?10:norm>2?5:norm>1?2:1)*mag,cnt=Math.max(1,Math.round(Math.ceil(peak/step-1e-9))),max=cnt*step,ticks=[];for(let i=0;i<=cnt;i++)ticks.push(i*step);return{max,ticks}}
 
-
-// Monotone cubic (Fritsch-Carlson) samples of ys: SUB points per segment, never outside the neighbouring values.
-function monoSamples(ys,sub){
-  const n=ys.length;if(n<2)return ys.slice();
-  const m=[],t=[];for(let i=0;i<n-1;i++)m.push(ys[i+1]-ys[i]);
-  t[0]=m[0];for(let i=1;i<n-1;i++)t[i]=m[i-1]*m[i]<=0?0:(m[i-1]+m[i])/2;t[n-1]=m[n-2];
-  for(let i=0;i<n-1;i++){if(m[i]===0){t[i]=0;t[i+1]=0;continue}const a=t[i]/m[i],b=t[i+1]/m[i],q=a*a+b*b;if(q>9){const k=3/Math.sqrt(q);t[i]=k*a*m[i];t[i+1]=k*b*m[i]}}
-  const out=[];
-  for(let i=0;i<n-1;i++)for(let k=0;k<sub;k++){const u=k/sub,u2=u*u,u3=u2*u;
-    out.push(Math.max(0,(2*u3-3*u2+1)*ys[i]+(u3-2*u2+u)*t[i]+(-2*u3+3*u2)*ys[i+1]+(u3-u2)*t[i+1]))}
-  out.push(ys[n-1]);return out}
 
 const DAY=86400;
 function weeklyOf(a){return(a.windows||[]).find(w=>w.kind==="weekly"||w.kind==="monthly")}
@@ -603,13 +659,13 @@ function accountForecast(a,now,pf){
   const f=pf.info[a.auth_id];if(!f)return null;
   if(!pf.br.ok)return{cls:"wait",text:"coletando ritmo",icon:ICON_CLOCK};
   const out=o=>(o.est=paceTip(pf.br),o.tag=PACE_TAG[pf.br.source],o);
-  if(pf.br.perDay<=0)return out({text:pf.br.source==="week"?"sem gasto nesta janela":"sem gasto no período medido",cls:"ok",icon:ICON_CHECK});
+  if(pf.br.total<=0)return out({text:pf.br.source==="week"?"sem gasto nesta janela":"sem gasto no período medido",cls:"ok",icon:ICON_CHECK});
   if(f.zero!=null){
     const ms=f.zero*1000-now;
     // Draining an account before its reset is the router's intended behaviour (the next
     // account takes over), so this is informational; running out overall is shown in Fôlego.
     return out({cls:"wait",icon:ICON_CLOCK,text:ms<=60000?`esgotada · reseta em ${fmtLeft(f.at*1000-now)}`
-      :`nesse ritmo esgota em ${fmtLeft(ms)} · depois vai para a próxima`});
+      :`nesse ritmo esgota em ${fmtLeft(ms)} · `+(((pf.br.ext||{})[a.auth_id]||0)>=.05?"contando o uso fora do proxy":"depois vai para a próxima")});
   }
   return out({cls:"ok",icon:ICON_CHECK,text:`nesse ritmo sobra ~${Math.round(f.before)}% no reset`});
 }
@@ -625,30 +681,39 @@ const useOrder=(x,y)=>(x.last-y.last)||(x.reset-y.reset);
 // With `info`, also fills info[auth_id] = {before, at, zero} for every account whose first reset falls within
 // 8 days: before = % left just before that reset, at = reset time (unix s), zero = when it first hits 0 before
 // the reset (unix s, null if it never does). The loop runs until all of them are known.
-function simulate(accs,perHour,now,rec,info){
+// `ext` maps auth_id -> %/hour spent outside the proxy (Claude apps on the same account): it drains that account
+// in parallel, before the router's share, and an account it empties does not end the runway by itself.
+// rec.lefts[k] = every account's % left at rec.ts[k], indexed like `accs`.
+function simulate(accs,perHour,now,rec,info,ext){
   const pool=accs.map((a,i)=>{const w=weeklyOf(a);return{a,i,last:a.mode==="last"?1:0,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY}});
   const cap=60*24,hz=7*24,total=()=>pool.reduce((s,p)=>s+p.left,0),t0=now/1000;
   let t=t0,first=Infinity;
   const IH=8*24,infoDone=h=>!info||h>=IH||pool.every(p=>p.fr);
   if(info)for(const p of pool)if(p.left<=1e-9)p.zero=t0;
-  const push=(tt,v)=>{rec.ts.push(tt);rec.tot.push(v)},lastT=()=>rec.ts[rec.ts.length-1];
+  const lefts=()=>{const o=new Array(accs.length).fill(0);for(const p of pool)o[p.i]=p.left;return o};
+  const push=(tt,v,l)=>{rec.ts.push(tt);rec.tot.push(v);rec.lefts.push(l||lefts())},lastT=()=>rec.ts[rec.ts.length-1];
   pool.sort(useOrder);
-  if(rec){rec.ts=[];rec.tot=[];rec.events=[];rec.use=[];rec.cap=pool.length*100;rec.hz=hz;push(t,total())}
+  if(rec){rec.ts=[];rec.tot=[];rec.lefts=[];rec.events=[];rec.use=[];rec.cap=pool.length*100;rec.hz=hz;push(t,total())}
   for(let h=0;h<cap;h++){
     if(first<Infinity&&(!rec||h>=hz)&&infoDone(h))break;
     t+=3600;let need=perHour;const evs=[];
     for(const p of pool)while(p.reset<=t){
       if(info&&!p.fr&&h<IH){p.fr=true;info[p.a.auth_id]={before:p.left,at:p.reset,zero:p.zero==null?null:p.zero}}
-      evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left});p.left=100;p.reset+=p.period}
+      evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left,before:p.left});p.left=100;p.reset+=p.period}
     if(rec&&h<hz&&evs.length){
-      evs.sort((x,y)=>x.at-y.at);let cur=rec.tot[rec.tot.length-1];
-      for(const e of evs){const ta=Math.min(t-2,Math.max(e.at,lastT()+2));push(ta-1,cur);cur+=e.gain;push(ta,cur);e.top=cur}
+      evs.sort((x,y)=>x.at-y.at);let cur=rec.tot[rec.tot.length-1];const l=lefts();for(const e of evs)l[e.i]=e.before;
+      for(const e of evs){const ta=Math.min(t-2,Math.max(e.at,lastT()+2));push(ta-1,cur,l.slice());cur+=e.gain;l[e.i]=100;push(ta,cur,l.slice());e.top=cur}
     }
     pool.sort(useOrder);
+    if(ext)for(const p of pool){const e=ext[p.a.auth_id];if(!(e>0)||p.left<=1e-9)continue;const take=Math.min(p.left,e);
+      if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+take/e*3600;
+      p.left-=take}
     if(rec&&h<hz){const u=pool.find(p=>p.left>1e-9);rec.use.push({a:t-3600,b:t,i:u?u.i:-1})}
     for(const p of pool){if(need<=0)break;const take=Math.min(p.left,need);
       if(info&&!p.fr&&p.zero==null&&take>0&&take>=p.left-1e-9)p.zero=t-3600+(perHour-need+take)/perHour*3600;
       p.left-=take;need-=take}
+    // Outside-the-proxy use alone can also empty the pool (the router's share may be 0).
+    if(first===Infinity&&need<=1e-9&&ext&&total()<=1e-9)first=h+1;
     if(need>1e-9&&first===Infinity){
       first=h+(perHour-need)/perHour;
       if(rec&&h<hz)push(Math.min(t-1,Math.max(lastT()+1,t0+first*3600)),0);
@@ -665,32 +730,44 @@ function simulate(accs,perHour,now,rec,info){
 // auth_id -> [{t,w,s}] sorted by t, `now` is in seconds.
 const PACE_HALF_LIFE_H=12,PACE_TRUST_H=8;
 function paceFrom(accs,quota,now){
-  const k=Math.LN2/(PACE_HALF_LIFE_H*3600),since=now-7*DAY;
+  const k=Math.LN2/(PACE_HALF_LIFE_H*3600),since=now-7*DAY,Q=quota||{};
+  // The server marks (p) samples whose interval had proxied requests on that account; a weekly drop without it
+  // was spent outside the proxy. Without any mark (older server) every drop counts as proxied.
+  const flagged=Object.values(Q).some(pts=>pts.some(p=>p.p));
+  const ext={},extWin={};
   let N=0,tStart=Infinity;
   for(const a of accs){
-    const pts=((quota||{})[a.auth_id]||[]).filter(p=>p.w!=null&&p.t>=since);
+    const pts=(Q[a.auth_id]||[]).filter(p=>p.w!=null&&p.t>=since);
+    const w=weeklyOf(a),r=w&&Date.parse(w.reset_at)/1000,ws=r?r-(w.duration_sec||7*DAY):Infinity;
+    let NE=0,winE=0;
     for(let i=1;i<pts.length;i++){
-      const x=pts[i-1],y=pts[i],drop=Math.max(0,x.w-y.w);
-      N+=Math.exp(-k*(now-(x.t+y.t)/2))*drop;
+      const x=pts[i-1],y=pts[i],drop=Math.max(0,x.w-y.w),wt=Math.exp(-k*(now-(x.t+y.t)/2))*drop;
+      if(flagged&&!y.p){NE+=wt;if(x.t>=ws)winE+=drop}else N+=wt;
       if(x.t<tStart)tStart=x.t;
     }
+    // Outside-the-proxy pace of this account, measured like the pool's over its own coverage (at least 1h).
+    if(NE>0&&now-pts[0].t>=3600){ext[a.auth_id]=NE/((1-Math.exp(-k*(now-pts[0].t)))/k)*DAY;extWin[a.auth_id]=winE}
   }
   const W=isFinite(tStart)?(1-Math.exp(-k*(now-tStart)))/k:0;
   const measured=W>0?N/W*DAY:null,spanH=isFinite(tStart)?(now-tStart)/3600:0;
   let used=0,elapsed=0;
   for(const a of accs){const w=weeklyOf(a),r=w&&Date.parse(w.reset_at)/1000;if(!r)continue;
     const dur=w.duration_sec||7*DAY,el=Math.max(0,Math.min(dur,now-(r-dur)));
-    used+=clampPct(w.used_percent);elapsed=Math.max(elapsed,el)}
+    used+=Math.max(0,clampPct(w.used_percent)-(extWin[a.auth_id]||0));elapsed=Math.max(elapsed,el)}
   const weekEst=elapsed>=6*3600?used/elapsed*DAY:null;
   // The measured pace takes over from the weekly average within PACE_TRUST_H of history.
   const alpha=Math.max(0,Math.min(1,spanH/PACE_TRUST_H));
-  const out={perDay:0,ok:false,source:"",measured,weekEst,alpha,spanH,halfLifeH:PACE_HALF_LIFE_H};
+  const extPerDay=Object.values(ext).reduce((a,b)=>a+b,0);
+  const out={perDay:0,ok:false,source:"",measured,weekEst,alpha,spanH,halfLifeH:PACE_HALF_LIFE_H,ext,extPerDay};
   if(measured!=null&&weekEst!=null){
     out.perDay=alpha*measured+(1-alpha)*weekEst;out.ok=true;out.source=alpha>=1?"hist":"blend";
   }else if(weekEst!=null){out.perDay=weekEst;out.ok=true;out.source="week"}
   else if(measured!=null&&spanH>=1){out.perDay=measured;out.ok=true;out.source="hist-short"}
+  out.total=out.perDay+extPerDay;
   return out;
 }
+// %/hour per account spent outside the proxy, for simulate().
+const extPerHour=br=>{if(!br.ok)return null;const o={};for(const[id,v]of Object.entries(br.ext||{}))o[id]=v/24;return o};
 // The one pace every forecast on the page uses; `span` (seconds) is the history behind the measured part.
 function burnRate(accs){
   const r=paceFrom(accs,state.quota7,Date.now()/1000);
@@ -703,6 +780,12 @@ function paceTip(br){
     :br.source==="blend"?`mistura: ${Math.round(br.alpha*100)}% do ritmo medido (${h}h de histórico) + estimativa da semana · ${v}%/dia`
     :br.source==="week"?`estimado pela semana (% já usado ÷ tempo da janela) · ${v}%/dia`
     :br.source==="hist-short"?`ritmo medido em ${h}h de histórico · ${v}%/dia`:"";
+}
+// The pace tip plus the outside-the-proxy part, per account.
+function paceTipFull(br){
+  const ids=Object.keys(br.ext||{}).filter(id=>br.ext[id]>=.05);
+  if(!ids.length)return paceTip(br);
+  return `Pelo proxy: ${paceTip(br)}\nFora do proxy (apps do Claude na mesma conta):\n`+ids.map(id=>`· ${accName(id)}: ${fmt1(br.ext[id])}%/dia`).join("\n");
 }
 const paceTagHtml=(br,cls)=>br.ok?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}">${PACE_TAG[br.source]}</span>`:"";
 // Weekly-remaining drop (resets ignored) over the last `hours` and its hourly average over the time the samples cover.
@@ -724,7 +807,7 @@ const runwayAccs=()=>claudeAccs().filter(a=>a.mode!=="off"&&!a.needs_login&&week
 // The one simulation behind every forecast on the page: burn rate, pool run and per-account info.
 function poolForecast(now,rec){
   const accs=runwayAccs(),br=burnRate(accs),info={};
-  if(accs.length)simulate(accs,br.ok?br.perDay/24:0,now,rec,info);
+  if(accs.length)simulate(accs,br.ok?br.perDay/24:0,now,rec,info,extPerHour(br));
   return{accs,br,info};
 }
 // %/day the pool gets back from the weekly resets.
@@ -791,7 +874,7 @@ function renderCapacity(now){
         est=`<span class="cr-e2" data-tip="${esc(tip)}">→ ~${e}% no reset</span>`;
       }
     }
-    return `<div class="cr${off?" dim":""}">${name}${meter}${rst}${est}</div>`;
+    return `<div class="cr${off?" dim":""}" data-acc="${esc(a.auth_id)}">${name}${meter}${rst}${est}</div>`;
   };
   const estTag=paceTagHtml(pf.br,"est");
   const note=pf.br.ok?`Restante estimado no reset, no ritmo atual; a conta que reseta antes é usada primeiro${estTag}.`:"Coletando ritmo: as estimativas aparecem quando a janela semanal tiver 6h de uso ou o histórico, 1h.";
@@ -826,7 +909,7 @@ function renderNow(now){
   const s=shortOf(a),w=weeklyOf(a),email=a.email||a.auth_id,si=s?winInfo(s,now):null;
   const wl=w?Math.round(100-clampPct(w.used_percent)):null,wi=w?winInfo(w,now):null;
   el.innerHTML=`<div class="k">Agora</div>
-    <div class="agora-who">${who(email)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}</div>
+    <div class="agora-who">${who(email,ACC[a.auth_id])}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}</div>
     <div class="agora-body">${ring(si?si.left:null,{size:96,stroke:10,pace:si?si.pace:null,tip:si?si.tip:"",color:ACC[a.auth_id]})}
       <div class="agora-txt"><span class="s">${si&&si.reset?"5h reseta em":"Janela de 5h"}</span><span class="v tabular">${si&&si.reset?fmtLeft(si.reset-now):"—"}</span>
       ${si&&lvl(si.left)?`<span class="chip ${lvl(si.left)}">${ICON_ALERT}${si.left<=0?"esgotada":lvl(si.left)==="crit"?"crítico":"baixo"}</span>`:""}</div></div>
@@ -852,7 +935,7 @@ function renderRunway(now){
       <div class="sub">Histórico de ${Math.round(span/3600)}h; as projeções aparecem quando a janela semanal tiver 6h de uso ou o histórico, 1h.</div>${spark}`;
     return;
   }
-  const perDay=br.perDay,perHour=perDay/24,hours=perDay>0?simulate(accs,perHour,now):Infinity;
+  const perDay=br.total,perHour=br.perDay/24,hours=perDay>0||br.extPerDay>0?simulate(accs,perHour,now,null,null,extPerHour(br)):Infinity;
   const nextReset=Math.min(...accs.map(a=>Date.parse(weeklyOf(a).reset_at)).filter(t=>t>now));
   let pill,num;
   if(hours===Infinity){pill=`<span class="pill ok">${ICON_CHECK}Sustentável</span>`;num="∞";state.runway="good"}
@@ -864,7 +947,7 @@ function renderRunway(now){
   const rate=(name,v,c,tip)=>`<div class="rate" data-tip="${esc(tip)}"><span>${name}</span><div class="bar"><i style="width:${(v/mx*100).toFixed(1)}%;--c:${c}"></i></div><b class="tabular">${Math.round(v)}%/dia</b></div>`;
   el.innerHTML=`<div class="k">Fôlego${pill}</div><div class="hnum">${num}</div>
     <div class="sub" style="margin-top:-8px">${note}</div>
-    <div class="rates">${rate("Gasto",perDay,"var(--claude)",paceTip(br))
+    <div class="rates">${rate("Gasto",perDay,"var(--claude)",paceTipFull(br))
       }${rate("Recarga",refill,"color-mix(in srgb,var(--foreground) 45%,transparent)","Recarga semanal: quanto as contas ativas devolvem por dia (100% a cada 7 dias por conta).")}</div>${spark}`;
 }
 function renderHero(){const now=Date.now();renderCapacity(now);renderNow(now);renderRunway(now)}
@@ -914,6 +997,19 @@ function pastSeries(accs,t0,nowTotal,span){
 // Zoom of the 7-day chart: `rng` is a custom [from,to] (unix s) from a brush or panning, else `preset` is
 // "all" | "24h" | "3d". Kept in memory only, so the 15s data refresh keeps the view.
 const tlz={rng:null,preset:"all"};
+// Drag-to-pan while zoomed. The chart is re-rendered while dragging (replacing the plot), so the drag lives
+// here and follows the window's pointer events.
+let tlPan=null,tlPanRaf=0;
+addEventListener("pointermove",ev=>{if(!tlPan||ev.pointerId!==tlPan.id)return;
+  // The release was lost (alt-tab, a context menu): stop instead of panning on hover.
+  if(!ev.buttons&&ev.pointerType==="mouse"){tlPanEnd();return}
+  const dx=ev.clientX-tlPan.x0;if(!tlPan.moved&&Math.abs(dx)<3)return;
+  if(!tlPan.moved){tlPan.moved=true;document.body.classList.add("tl-panning");hideTip()}
+  const a=Math.min(Math.max(tlPan.F0,tlPan.v0-dx/tlPan.W*tlPan.vs),tlPan.F1-tlPan.vs);
+  tlz.rng=[a,a+tlPan.vs];tlz.preset=null;
+  if(!tlPanRaf)tlPanRaf=requestAnimationFrame(()=>{tlPanRaf=0;renderTimeline()})});
+const tlPanEnd=ev=>{if(!tlPan||(ev&&ev.pointerId!==tlPan.id))return;tlPan=null;document.body.classList.remove("tl-panning")};
+addEventListener("pointerup",tlPanEnd);addEventListener("pointercancel",tlPanEnd);
 const TL_WIN={"24h":86400,"3d":3*86400},TL_MIN=2*3600;
 // Linear value of a [[t,v]…] series at t (clamped to its ends).
 function atPts(p,t){if(t<=p[0][0])return p[0][1];
@@ -927,8 +1023,11 @@ function clipPts(p,a,b){const s=Math.max(a,p[0][0]),e=Math.min(b,p[p.length-1][0
 // Axis ticks for the visible range: local midnights (weekday labels) from 2 days up, else round hours.
 function xTicks(V0,V1){const span=V1-V0,out=[],d=new Date(V0*1000);
   if(span>=2*DAY){
+    // Under 4 days, noons too.
     for(let k=0;;k++){const m=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k).getTime()/1000;if(m>V1)break;
-      if(m>=V0)out.push({t:m,l:fmtWd(new Date((m+12*3600)*1000))})}
+      if(m>=V0)out.push({t:m,l:fmtWd(new Date((m+12*3600)*1000))});
+      const n=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k,12).getTime()/1000;
+      if(span<4*DAY&&n>=V0&&n<=V1)out.push({t:n,l:"12h",minor:true})}
   }else{
     const sh=span<=6*3600?1:span<=12*3600?2:span<=27*3600?3:6;
     for(let k=0;;k++){const dt=new Date(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours()+k),m=dt.getTime()/1000;if(m>V1)break;
@@ -938,7 +1037,7 @@ function xTicks(V0,V1){const span=V1-V0,out=[],d=new Date(V0*1000);
 function renderTimeline(){
   const el=$("#tl"),now=Date.now(),accs=runwayAccs();
   if(!accs.length){el.dataset.key="";el.innerHTML=`<div class="tl-empty">Nenhuma conta com limite semanal para projetar.</div>`;return}
-  const rec={},br=poolForecast(now,rec).br,perHour=br.ok?br.perDay/24:0;
+  const rec={},br=poolForecast(now,rec).br,perHour=br.ok?br.total/24:0;
   const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),Object.values(ACC).join(","),accs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
@@ -995,9 +1094,9 @@ function renderTimeline(){
   const pastH=past?Math.round((t0-F0)/3600):0;
   const legend=past?`<span><i></i>Real (${pastH}h)</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>Capacidade restante somada</span>`;
   const rate=br.ok
-    ?`gasto <b>${Math.round(br.perDay)}%/dia</b>${paceTagHtml(br)} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
+    ?`<span data-tip="${esc(paceTipFull(br))}">gasto <b>${Math.round(br.total)}%/dia</b></span>${paceTagHtml(br)} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
-  const tools=`<div class="tl-tools">${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir zoom</button>`:""}<div class="seg">${
+  const tools=`<div class="tl-tools">${zoomed?`<span class="tl-hint">arraste para mover · shift+arraste seleciona</span>`:""}${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir zoom</button>`:""}<div class="seg">${
     [["24h","24h"],["3d","3 dias"],["all","Tudo"]].map(([v,l])=>`<button type="button" data-z="${v}"${!custom&&tlz.preset===v?` class="on"`:""}>${l}</button>`).join("")}</div></div>`;
 
   // Agenda: one equal column per calendar day, today through the day of now+7d. It does not follow the chart's zoom.
@@ -1024,7 +1123,7 @@ function renderTimeline(){
   const agOld=el.querySelector(".ag-row"),agScroll=agOld?agOld.scrollLeft:0;
   el.innerHTML=`<div class="tl-cap"><div class="tl-leg">${legend}</div><div class="tl-rt"><span>${rate}</span>${tools}</div></div>
     <div class="tl-chart"><div class="tl-y">${ylab}</div>
-      <div class="tl-plot" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
+      <div class="tl-plot${zoomed?" zoomed":""}" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
         <div class="tl-hover" id="tlHover"></div><i class="tl-hdot" id="tlHdot"></i><div class="tip" id="tlTip"></div></div></div>
     <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>
     <div class="ag"><div class="ag-t">Agenda de recargas</div>${agenda}</div>`;
@@ -1074,7 +1173,7 @@ function renderTimeline(){
     return va[k-1]+(va[k]-va[k-1])*u};
   const valAt=t=>lerp(ts,tot,t),pt=past&&past.map(p=>p[0]),pv=past&&past.map(p=>p[1]);
   plot.onpointermove=plot.onpointerdown=ev=>{
-    if(drag&&drag.on)return;
+    if((drag&&drag.on)||tlPan)return;
     const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=V0+x/r.width*VS;
     if(past&&t<t0){
       const v=lerp(pt,pv,t);
@@ -1096,11 +1195,15 @@ function renderTimeline(){
     tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
     let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
     tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"};
-  plot.onpointerleave=()=>{if(drag&&drag.on)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
+  plot.onpointerleave=()=>{if((drag&&drag.on)||tlPan)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
 
   // Brush to zoom (mouse/pen; touch keeps scrolling the page and uses the presets).
   const band=document.createElement("div");band.className="tl-brush";
-  plot.addEventListener("pointerdown",ev=>{if(ev.pointerType==="touch"||ev.button!==0)return;
+  plot.addEventListener("pointerdown",ev=>{if(ev.button!==0)return;
+    // Zoomed: drag pans (mouse, pen or a horizontal touch drag); shift+drag still draws a brush.
+    if(zoomed&&!ev.shiftKey){tlPan={id:ev.pointerId,x0:ev.clientX,v0:V0,vs:VS,F0,F1,W:plot.clientWidth||1,moved:false};
+      tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0;return}
+    if(ev.pointerType==="touch")return;
     drag={x0:Math.max(0,Math.min(plot.clientWidth,ev.clientX-plot.getBoundingClientRect().left)),x:0,on:false,id:ev.pointerId}});
   plot.addEventListener("pointermove",ev=>{if(!drag)return;
     // The button was released outside the plot before the brush started.
@@ -1164,12 +1267,12 @@ function renderAccounts(){
   $("#acctCount").textContent=`${accs.length} conta${accs.length===1?"":"s"} · janela de 5h, semanal e por modelo`;
   const box=$("#accts");
   // Replacing the markup would close an open mode <select>; the next poll renders instead.
-  if(box.contains(document.activeElement)&&document.activeElement!==box)return;
+  if(box.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
   const markup=accs.map(a=>{
       const mode=a.mode||"normal",email=a.email||a.auth_id,limited=/429/.test(a.error||"");
       const exhausted=a.limit_reached||(a.windows||[]).some(w=>w.kind!=="model"&&w.used_percent>=100);
       const s=shortOf(a),wk=weeklyOf(a);
-      let h=`<div class="card acct${mode==="off"?" off":""}"><div class="acct-head"><div class="who"><i class="adot" style="--c:${ACC[a.auth_id]}"></i>${who(email)}</div><div class="acct-sub">`;
+      let h=`<div class="card acct${mode==="off"?" off":""}" data-acc="${esc(a.auth_id)}" tabindex="0" role="button" aria-label="${esc("Detalhes de "+email)}"><div class="acct-head"><div class="who">${who(email,ACC[a.auth_id])}<span class="acct-more">detalhes ${ICON_CHEV}</span></div><div class="acct-sub">`;
       if(a.plan)h+=`<span class="badge outline">${esc(a.plan)}</span>`;
       if(a.needs_login)h+=`<span class="badge err">desconectada</span><button class="btn sm" data-login="claude" data-auth="${esc(a.auth_id)}" data-keep="${esc(mode)}">Reconectar</button>`;
       else if(a.disabled)h+=`<span class="badge outline">desativada</span>`;
@@ -1188,6 +1291,8 @@ function renderAccounts(){
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
       const f=wk&&mode!=="off"?accountForecast(a,now,pf):null,sp="";
       if(wk&&!a.needs_login)h+=recentUseHtml(a,now);
+      const xr=pf.br.ok&&(pf.br.ext||{})[a.auth_id];
+      if(xr>=.05)h+=`<div class="recent ext" data-tip="${esc("Quedas do % semanal sem requisições do proxy nesta conta: uso pelos apps do Claude (Desktop, web, celular) com o mesmo login. A projeção desconta esse ritmo da conta em paralelo, fora da fila do proxy.")}">${ICON_GAUGE}<span>Fora do proxy: <b>~${fmt1(xr)}%/dia</b></span></div>`;
       if(f)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="est" data-tip="${esc(f.est)}">${f.tag}</span>`:""}</span></div>`;
       if(!(a.windows||[]).length&&!a.error)h+=`<div class="note">Consultando uso…</div>`;
       if(limited&&!a.needs_login){
@@ -1200,13 +1305,136 @@ function renderAccounts(){
       const t=state.hist&&state.hist.accounts&&state.hist.accounts[a.auth_id];
       h+=`<div class="afoot"><span>${t&&(t.requests||t.input||t.output||t.cached)
         ?`No período: <b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`
-        :"Sem atividade no período"}</span>${sp}</div></div>`;
+        :xr>=.05?"Sem uso pelo proxy no período":"Sem atividade no período"}</span>${sp}</div></div>`;
       return h;
   }).join("");
   if(box.dataset.key===markup)return;
+  const fc=document.activeElement&&box.contains(document.activeElement)&&document.activeElement.matches(".acct[data-acc]")?document.activeElement.dataset.acc:null;
   box.dataset.key=markup;box.innerHTML=markup;
+  if(fc){const c=[...box.querySelectorAll(".acct[data-acc]")].find(x=>x.dataset.acc===fc);if(c)c.focus({preventScroll:true})}
   wireLogin();
   document.querySelectorAll("[data-mode]").forEach(s=>s.onchange=()=>{const v=s.value;s.blur();setMode(s.dataset.mode,v)});
+}
+
+/* ---- account detail modal ---- */
+let modalId=null,mdRange="all";
+function openAccModal(id){
+  modalId=id;$("#accModal").hidden=false;document.body.classList.add("modal-open");hideTip();
+  $("#mdBody").dataset.key="";renderModal();
+  const c=$("#accModal .md-close");if(c)c.focus({preventScroll:true})}
+function closeAccModal(){
+  if(!modalId)return;const id=modalId;modalId=null;$("#accModal").hidden=true;document.body.classList.remove("modal-open");hideTip();
+  const card=[...document.querySelectorAll(".acct[data-acc]")].find(c=>c.dataset.acc===id);if(card)card.focus({preventScroll:true})}
+addEventListener("keydown",e=>{if(!modalId)return;
+  if(e.key==="Escape"){e.preventDefault();closeAccModal();return}
+  // Keep Tab inside the dialog.
+  if(e.key==="Tab"){const f=[...$("#accModal").querySelectorAll("button")];if(!f.length)return;
+    const i=f.indexOf(document.activeElement),n=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i===f.length-1?0:i+1);e.preventDefault();f[n].focus()}});
+$("#accModal").addEventListener("click",e=>{if(e.target.closest("[data-close]")){closeAccModal();return}
+  const z=e.target.closest("[data-mdz]");if(z&&z.dataset.mdz!==mdRange){mdRange=z.dataset.mdz;renderModal()}});
+$("#accts").addEventListener("click",e=>{if(e.target.closest("select,button,a,input"))return;
+  const c=e.target.closest(".acct[data-acc]");if(c)openAccModal(c.dataset.acc)});
+$("#tCap").addEventListener("click",e=>{const r=e.target.closest(".cr[data-acc]");if(r)openAccModal(r.dataset.acc)});
+$("#accts").addEventListener("keydown",e=>{if((e.key==="Enter"||e.key===" ")&&e.target.matches(".acct[data-acc]")){e.preventDefault();openAccModal(e.target.dataset.acc)}});
+
+// Weekly remaining of one account: real samples of the last 3 days (5h window as a thin line), then the pool
+// simulation's share of this account for 7 days, with its refills and the point it runs dry.
+function accChart(a,i,rec,now){
+  const t0=now/1000,PAST=3*DAY,HZ=7*DAY,c=ACC[a.auth_id],wk=weeklyOf(a),sh=shortOf(a);
+  const q=quota7Of(a.auth_id).filter(p=>p.t>=t0-PAST&&p.t<=t0);
+  const pw=q.filter(p=>p.w!=null).map(p=>[p.t,p.w]),ps=q.filter(p=>p.s!=null).map(p=>[p.t,p.s]);
+  if(wk)pw.push([t0,100-clampPct(wk.used_percent)]);
+  if(sh&&ps.length)ps.push([t0,100-clampPct(sh.used_percent)]);
+  const proj=i>=0&&rec.ts?rec.ts.map((t,k)=>[t,rec.lefts[k][i]]).filter(p=>p[0]<=t0+HZ):[];
+  // "all": every sample of the last 3 days through 7 days ahead; "3d": a day back and two ahead.
+  let V0=Math.min(t0-6*3600,...pw.map(p=>p[0]),...ps.map(p=>p[0])),V1=proj.length?t0+HZ:t0+6*3600;
+  if(mdRange==="3d"){V0=Math.max(V0,t0-DAY);V1=Math.min(V1,t0+2*DAY)}
+  const VS=V1-V0,cw=pts=>pts.length>1?clipPts(pts,V0,V1):pts.filter(p=>p[0]>=V0&&p[0]<=V1);
+  const H=200,TOP=14,BOT=H-4,X=t=>(t-V0)/VS*1000,P=t=>(t-V0)/VS*100,Y=v=>BOT-v/100*(BOT-TOP);
+  const NS='vector-effect="non-scaling-stroke"',d=pts=>pts.map((p,k)=>(k?"L":"M")+X(p[0]).toFixed(1)+","+Y(p[1]).toFixed(1)).join("");
+  const area=pts=>pts.length>1?`${d(pts)}L${X(pts[pts.length-1][0]).toFixed(1)},${BOT}L${X(pts[0][0]).toFixed(1)},${BOT}Z`:"";
+  const evs=i>=0&&rec.events?rec.events.filter(e=>e.i===i&&e.at<=V1&&e.at>=V0):[];
+  let zero=null;for(let k=1;k<proj.length;k++)if(proj[k][1]<=.5&&proj[k-1][1]>.5){zero=proj[k][0];break}
+  if(zero!=null&&zero>V1)zero=null;
+  const cpw=cw(pw),cps=cw(ps),cproj=cw(proj);
+  const ticks=xTicks(V0,V1);
+  const grid=[50,100].map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")
+    +ticks.map(k=>`<line class="gv" x1="${X(k.t).toFixed(1)}" x2="${X(k.t).toFixed(1)}" y1="${TOP}" y2="${BOT}" ${NS}/>`).join("");
+  const rl=evs.map(e=>`<line class="md-rl" x1="${X(e.at).toFixed(1)}" x2="${X(e.at).toFixed(1)}" y1="${TOP}" y2="${BOT}" style="stroke:${c}" ${NS}/>`).join("");
+  const svg=`<defs><linearGradient id="mdGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(100)}" y2="${BOT}"><stop offset="0" stop-color="${c}" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></linearGradient></defs>
+    ${grid}<line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${rl}
+    ${cproj.length>1?`<path d="${area(cproj)}" fill="url(#mdGrad)" opacity=".45"/>`:""}${cpw.length>1?`<path d="${area(cpw)}" fill="url(#mdGrad)"/>`:""}
+    <line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="${TOP}" y2="${BOT}" ${NS}/>
+    ${cps.length>1?`<path class="md-s" d="${d(cps)}" style="stroke:${c}" ${NS}/>`:""}
+    ${cproj.length>1?`<path class="tl-line proj" d="${d(cproj)}" style="stroke:${c}" ${NS}/>`:""}${cpw.length>1?`<path class="tl-line" d="${d(cpw)}" style="stroke:${c}" ${NS}/>`:""}`;
+  const hm=t=>{const x=new Date(t*1000);return fmtWd(x)+" "+fmtHour(x)};
+  let ov=evs.map((e,k)=>`<div class="md-mk" style="left:${P(e.at).toFixed(2)}%;--c:${c}" data-tip="${esc(`Reseta ${fmtDate(new Date(e.at*1000))} (em ${fmtLeft(e.at*1000-now)})\nNo ritmo atual chega com ~${Math.round(e.before)}% e volta a 100%`)}">${ICON_UP}${k?"":"reseta "}${esc(hm(e.at))}</div>`).join("");
+  if(zero)ov+=`<i class="tl-dot" style="left:${P(zero).toFixed(2)}%;top:${Y(0)}px;--c:var(--st-crit)"></i><div class="md-zero" style="left:${P(zero).toFixed(2)}%;top:${Y(0)-22}px">esgota ~${esc(hm(zero))}</div>`;
+  if(wk)ov+=`<i class="tl-dot now" style="left:${P(t0).toFixed(2)}%;top:${Y(pw[pw.length-1][1]).toFixed(1)}px;background:${c}"></i>`;
+  const xl=[{t:t0,l:"agora",now:1},...ticks].reduce((o,k)=>{const x=P(k.t);if(!o.some(z=>Math.abs(z.x-x)<5.5)&&x>2&&x<97)o.push({...k,x});return o},[]);
+  const leg=`<span><i style="background:${c}"></i>Semanal real</span>${proj.length?`<span><i class="proj" style="border-color:${c}"></i>Projeção</span>`:""}${ps.length>1?`<span><i class="thin" style="background:${c}"></i>5h</span>`:""}`;
+  const seg=`<div class="seg md-z">${[["3d","3 dias"],["all","Tudo"]].map(([v,l])=>`<button type="button" data-mdz="${v}"${mdRange===v?` class="on"`:""}>${l}</button>`).join("")}</div>`;
+  return{html:`<div class="md-tl"><div class="md-leg tl-leg">${leg}</div>${seg}</div>
+    <div class="tl-chart md-chart"><div class="tl-y" style="height:${H}px">${[0,50,100].map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("")}</div>
+      <div class="tl-plot" id="mdPlot" style="height:${H}px;cursor:crosshair"><svg viewBox="0 0 1000 ${H}" preserveAspectRatio="none">${svg}</svg>${ov}
+        <div class="tl-hover" id="mdHover"></div><i class="tl-hdot" id="mdHdot" style="background:${c}"></i><div class="tip" id="mdTip"></div></div></div>
+    <div class="tl-x"><div></div><div class="tl-xl">${xl.map(k=>`<span style="left:${k.x.toFixed(2)}%;transform:translateX(-50%)"${k.now?` class="md-nowl"`:""}>${esc(k.l)}</span>`).join("")}</div></div>`,
+    wire(){const plot=$("#mdPlot");if(!plot)return;const tip=$("#mdTip"),hl=$("#mdHover"),hd=$("#mdHdot");
+      plot.onpointermove=ev=>{const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=V0+x/r.width*VS;
+        const past=t<=t0,src=past?pw:proj;if(src.length<1||t<src[0][0]){tip.style.display="none";hd.style.opacity=0;hl.style.opacity=0;return}
+        const v=atPts(src,t),sv=past&&ps.length>1&&t>=ps[0][0]?atPts(ps,t):null;
+        hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
+        tip.innerHTML=`<div class="d">${esc(fmtDate(new Date(t*1000)))} · ${past?"real":"projeção"}</div>
+          <div class="r"><span>Semanal</span><b class="tabular">${Math.round(v)}%</b></div>${sv!=null?`<div class="r"><span>5h</span><b class="tabular">${Math.round(sv)}%</b></div>`:""}
+          <div class="d" style="margin:6px 0 0">${past?fmtLeft((t0-t)*1000)+" atrás":"em "+fmtLeft((t-t0)*1000)}</div>`;
+        tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;
+        tip.style.left=Math.max(0,lx)+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"};
+      plot.onpointerleave=()=>{tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0}}};
+}
+function renderModal(){
+  if(!modalId)return;
+  const a=claudeAccs().find(x=>x.auth_id===modalId),body=$("#mdBody");
+  if(!a){closeAccModal();return}
+  const now=Date.now(),email=a.email||a.auth_id,c=ACC[a.auth_id],mode=a.mode||"normal",wk=weeklyOf(a),sh=shortOf(a);
+  const rec={},pf=poolForecast(now,rec),i=pf.accs.indexOf(a),f=pf.info[a.auth_id];
+  const own=paceFrom([a],state.quota7,now/1000),ext=pf.br.ok?(pf.br.ext||{})[a.auth_id]||0:0;
+  const stat=(k,v,sub,tip,cls)=>`<div class="md-stat${cls?" "+cls:""}"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div><div class="s">${sub}</div></div>`;
+  const wl=wk?Math.round(100-clampPct(wk.used_percent)):null,sl=sh?Math.round(100-clampPct(sh.used_percent)):null;
+  const rs=w=>w&&w.reset_at?`reseta em ${fmtLeft(Date.parse(w.reset_at)-now)} · ${esc(fmtShort(new Date(w.reset_at)))}`:"sem horário de reset";
+  let fv="—",fs=mode==="off"?"conta em \"não usar\"":a.needs_login?"desconectada":!pf.br.ok?"coletando ritmo":"reset além de 8 dias",fc="";
+  if(f&&pf.br.ok){
+    if(f.zero!=null){const z=f.zero*1000-now;fv=z<=60000?"esgotada":`esgota em ${fmtLeft(z)}`;fs=z<=60000?`volta em ${fmtLeft(f.at*1000-now)}`:`${fmtLeft((f.at-f.zero)*1000)} antes do reset · `+(ext>=.05?"contando o uso fora do proxy":"depois o proxy passa para a próxima");fc=z<=60000?"":"warn"}
+    else{fv=`~${Math.round(f.before)}%`;fs="sobra no reset, no ritmo atual";fc="good"}}
+  const ownTxt=own.measured!=null?`${fmt1(own.measured)}%/dia`:"—";
+  const r3=recentUse(quota7Of(a.auth_id),now/1000,3);
+  const stats=stat("Semanal",wl!=null?wl+"%":"—",rs(wk),wk?winInfo(wk,now).tip:"",wl!=null?lvl(wl):"")
+    +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"sem janela de 5h ativa",sh?winInfo(sh,now).tip:"",sl!=null?lvl(sl):"")
+    +stat("Previsão",fv,fs,pf.br.ok?paceTipFull(pf.br):"",fc)
+    +stat("Ritmo desta conta",ext>=.05?`${fmt1((own.measured||0))}<small> + ${fmt1(ext)}</small>`:ownTxt,ext>=.05?"%/dia pelo proxy + fora do proxy":`últimas 3h: ${r3.n<2?"sem dados":r3.drop<=0?"sem uso":"−"+fmt1(r3.drop)+"%"}`,
+      `Queda do % semanal desta conta, ponderada pelas últimas ~24h (meia-vida ${PACE_HALF_LIFE_H}h).`+(ext>=.05?"\nFora do proxy: quedas sem requisições do proxy nesta conta (apps do Claude com o mesmo login).":""));
+  const chart=accChart(a,i,rec,now);
+  // Activity of this account in the selected period and metric.
+  const h=state.hist,acck=state.metric==="cost"?"cost_by_account":state.metric==="tokens"?"tokens_by_account":"by_account";
+  let act="";
+  if(h&&h.buckets&&h.buckets.length){
+    const vals=h.buckets.map(b=>((b[acck]||{})[a.auth_id])||0),mx=Math.max(...vals),hourly=h.step<86400;
+    const lbl={"24h":"24h","7d":"7 dias","30d":"30 dias"}[h.range||state.period]||"";
+    const t=h.accounts&&h.accounts[a.auth_id];
+    const foot=t&&(t.requests||t.input||t.output||t.cached)?`<b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`:ext>=.05?"sem uso pelo proxy":"sem atividade";
+    act=`<div class="md-act"><div class="md-h"><span>${state.metric==="cost"?"Custo":state.metric==="tokens"?"Tokens":"Requisições"} pelo proxy · ${hourly?"por hora":"por dia"} · ${lbl}</span><span>${foot}</span></div>
+      <div class="md-bars">${vals.map((v,k)=>{const d=new Date(h.buckets[k].t*1000);
+        return `<i data-tip="${esc((hourly?fmtDate(d):fmtDay(d))+": "+fmtMetric(v))}" style="--h:${mx>0?(v/mx*100).toFixed(1):0}%;--c:${c}"${v>0?"":` class="z"`}></i>`}).join("")}</div></div>`}
+  const modeTxt={normal:"Normal",last:"Por último",off:"Não usar"}[mode]||mode;
+  const markup=`<div class="md-head">${who(email,c)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">${esc(modeTxt)}</span>
+      <button type="button" class="md-close" data-close aria-label="Fechar">${ICON_CLOSE}</button></div>
+    <div class="md-stats">${stats}</div>
+    <div class="md-sec"><div class="md-h"><span>Restante semanal · real e projeção</span>${ext>=.05?`<span>inclui ~${fmt1(ext)}%/dia fora do proxy</span>`:""}</div>${chart.html}</div>
+    ${act}`;
+  if(body.dataset.key===markup)return;
+  // Re-rendering replaces the focused control: put the focus back on its counterpart.
+  const ae=document.activeElement,fk=ae&&body.contains(ae)?(ae.dataset.mdz?`[data-mdz="${ae.dataset.mdz}"]`:ae.matches(".md-close")?".md-close":null):null;
+  body.dataset.key=markup;body.innerHTML=markup;chart.wire();
+  if(fk){const n=body.querySelector(fk);if(n)n.focus({preventScroll:true})}
 }
 
 function wireLogin(){document.querySelectorAll("main [data-login]").forEach(b=>b.onclick=()=>login(b.dataset.login,b,b.dataset.keep||"normal",b.dataset.auth))}
@@ -1282,23 +1510,20 @@ function renderActivity(){
   const first=new Date(h.buckets[0].t*1000),last=new Date(h.buckets[n-1].t*1000);
   $("#rangeLabel").textContent="Consumo ao longo do tempo · "+(hourly?`${fmtHour(first)} até agora`:`${fmtDay(first)} até ${fmtDay(last)}`);
   $("#chartTitle").textContent=(cost?"Custo estimado":state.metric==="tokens"?"Tokens processados":"Requisições")+(hourly?" por hora":" por dia")+(byModel?" · por modelo":" · por conta");
-  // Every layer is interpolated on its own (monotone, so never below 0) and then stacked, so a layer
-  // can neither dip below the one under it nor below the baseline.
-  const SUB=12,N=n<2?n:(n-1)*SUB+1,per=ids.map(id=>monoSamples(h.buckets.map(b=>val(b,id)),SUB));
-  const cs=[];let run=new Array(N).fill(0);per.forEach(p=>{run=run.map((v,k)=>v+p[k]);cs.push(run)});
-  const peak=Math.max(0,...(cs.length?cs[cs.length-1]:[0])),sc=niceScale(peak,4);
-  const X=k=>N<2?480:k/(N-1)*960,Y=v=>260-(v/sc.max)*(260-8);
-  const pathOf=a=>a.map((v,k)=>`${k?"L":"M"}${X(k).toFixed(1)},${Y(v).toFixed(1)}`).join(" ");
+  // Stacked bars, one per bucket; the stack of a bucket is clipped to one rounded column.
+  const peak=Math.max(0,...totals),sc=niceScale(peak,4);
+  const slot=960/Math.max(1,n),bw=Math.min(slot*(n>40?.78:.66),56),BX=i=>i*slot+(slot-bw)/2,Y=v=>260-(v/sc.max)*(260-8);
   const NS='vector-effect="non-scaling-stroke"';
   let svg=sc.ticks.map(t=>`<line class="grid" x1="0" x2="960" y1="${Y(t)}" y2="${Y(t)}" ${NS}/>`).join("");
-  if(total&&n>1){
-    const tops=cs.map(pathOf),st=id=>`style="--c:${color(id)}"`;
-    svg+=`<defs>${ids.map((id,j)=>`<linearGradient id="ag${j}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:${color(id)};stop-opacity:var(--lg-top)"/><stop offset="1" style="stop-color:${color(id)};stop-opacity:var(--lg-bot)"/></linearGradient>`).join("")}</defs>`;
-    svg+=ids.map((id,j)=>{
-      const bottom=j?cs[j-1].map((v,k)=>[k,v]).reverse().map(([k,v])=>`L${X(k).toFixed(1)},${Y(v).toFixed(1)}`).join(" "):`L${X(N-1)},260 L${X(0)},260`;
-      return `<path ${st(id)} fill="url(#ag${j})" d="${tops[j]} ${bottom} Z"/>`}).join("")
-      +tops.map(d=>`<path class="halo" d="${d}" ${NS}/>`).join("")
-      +ids.map((id,j)=>`<path class="ln" ${st(id)} d="${tops[j]}" ${NS}/>`).join("")}
+  if(total){
+    let clips="",bars="";
+    h.buckets.forEach((b,i)=>{if(!(totals[i]>0))return;
+      const x=BX(i).toFixed(1),top=Y(totals[i]),hh=Math.max(1.5,260-top);
+      clips+=`<clipPath id="bc${i}"><rect x="${x}" y="${(260-hh).toFixed(1)}" width="${bw.toFixed(1)}" height="${(hh+4).toFixed(1)}" rx="3"/></clipPath>`;
+      let seg="";ids.forEach((id,j)=>{const v=val(b,id);if(!(v>0))return;const y0=Y(cum[j][i]-v),y1=Y(cum[j][i]);
+        seg+=`<rect x="${x}" y="${y1.toFixed(2)}" width="${bw.toFixed(1)}" height="${Math.max(.6,y0-y1).toFixed(2)}" style="fill:${color(id)}"/>`});
+      bars+=`<g class="bar" data-i="${i}" clip-path="url(#bc${i})">${seg}</g>`});
+    svg+=`<defs>${clips}</defs>${bars}`}
   $("#chartSvg").innerHTML=svg;
   const plot=$("#plot"),tip=$("#tip"),hl=$("#hoverLine");
   plot.querySelectorAll(".empty-chart,.dot").forEach(e=>e.remove());
@@ -1307,28 +1532,30 @@ function renderActivity(){
     const anyReq=h.buckets.some(b=>Object.values(b.by_account||{}).some(v=>v>0));
     const msg=state.metric==="cost"&&anyReq?"Ainda sem custo nesse período: o custo é calculado por modelo, registrado a partir de agora. Veja Tokens ou Requisições para o histórico anterior.":"Nenhuma atividade nesse período.";
     plot.insertAdjacentHTML("beforeend",`<div class="empty-chart">${msg}</div>`)}
-  const dots=ids.map(id=>{const d=document.createElement("i");d.className="dot";d.style.setProperty("--c",color(id));plot.appendChild(d);return d});
   $("#ylabels").innerHTML=sc.ticks.map(t=>`<span style="top:${Y(t)/260*100}%">${t?fmtAxis(t):"0"}</span>`).join("");
   const lab=i=>{const d=new Date(h.buckets[i].t*1000);return hourly?fmtHour(d):fmtDay(d)};
-  $("#xlabels").innerHTML=[0,1,2,3,4].map(k=>`<span>${lab(Math.round(k*(n-1)/4))}</span>`).join("");
+  // Labels under their bars: about 5, spread evenly.
+  const every=Math.max(1,Math.ceil(n/(innerWidth<640?4:7))),xl=[];
+  for(let i=n-1;i>=0;i-=every)xl.unshift(i);
+  $("#xlabels").innerHTML=xl.map(i=>`<span style="left:${((BX(i)+bw/2)/960*100).toFixed(2)}%">${lab(i)}</span>`).join("");
   // By-model sums miss tokens recorded before per-model tracking.
   const accTotal=h.buckets.reduce((s,b)=>s+Object.values(b[acck]||{}).reduce((x,v)=>x+v,0),0);
   const note=$("#chartNote");note.hidden=!(byModel&&total<accTotal*(1-1e-6));
   note.textContent="Parte do histórico foi registrada antes do rastreio por modelo e não aparece nesta visão.";
   $("#chartLegend").innerHTML=ids.map(id=>`<span class="lg"><i style="--c:${color(id)}"></i>${esc(sname(id))}</span>`).join("");
 
-  plot.onmousemove=e=>{const r=plot.getBoundingClientRect(),x=e.clientX-r.left,i=Math.max(0,Math.min(n-1,Math.round(x/r.width*(n-1))));
-    const d=new Date(h.buckets[i].t*1000);hl.style.left=(n<2?50:i/(n-1)*100)+"%";hl.style.opacity=.6;
-    const k=n<2?0:i*SUB;
-    dots.forEach((dt,j)=>{const shown=total>0&&val(h.buckets[i],ids[j])>0;dt.style.display=shown?"block":"none";
-      if(shown){dt.style.left=(X(k)/960*100)+"%";dt.style.top=(Y(cs[j][k])/260*r.height)+"px"}});
-    const rows=ids.slice().reverse().map(id=>`<div class="r"><span><i class="adot" style="--c:${color(id)}"></i>${esc(sname(id))}</span><b class="tabular">${fmtMetric(val(h.buckets[i],id))}</b></div>`).join("");
+  const svgEl=$("#chartSvg");
+  plot.onmousemove=e=>{const r=plot.getBoundingClientRect(),x=e.clientX-r.left,i=Math.max(0,Math.min(n-1,Math.floor(x/r.width*n)));
+    const d=new Date(h.buckets[i].t*1000);
+    hl.style.left=((BX(i)+bw/2)/960*100)+"%";hl.style.width=(bw/960*100)+"%";hl.style.opacity=1;
+    svgEl.querySelectorAll(".bar").forEach(g=>g.classList.toggle("dim",+g.dataset.i!==i));
+    const rows=ids.slice().reverse().filter(id=>val(h.buckets[i],id)>0).map(id=>`<div class="r"><span><i class="adot" style="--c:${color(id)}"></i>${esc(sname(id))}</span><b class="tabular">${fmtMetric(val(h.buckets[i],id))}</b></div>`).join("");
     tip.innerHTML=`<div class="d">${hourly?fmtDate(d):d.toLocaleDateString("pt-BR",{weekday:"short",day:"numeric",month:"short"})}</div>${rows}
       <div class="r tot"><span>${mlabel} · total</span><b class="tabular">${fmtMetric(totals[i])}</b></div>`;
     tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
     let lx=x+12;if(lx+tw>r.width)lx=x-12-tw;const ly=Math.max(-8,Math.min(r.height-th+8,e.clientY-r.top-th/2));
     tip.style.left=lx+"px";tip.style.top=ly+"px"};
-  plot.onmouseleave=()=>{tip.style.display="none";hl.style.opacity=0;dots.forEach(d=>d.style.display="none")};
+  plot.onmouseleave=()=>{tip.style.display="none";hl.style.opacity=0;svgEl.querySelectorAll(".bar.dim").forEach(g=>g.classList.remove("dim"))};
 
   const cur=sumTotals(h.accounts,h.providers),{inp,out,cache,cw,req,fail,unpriced,cs:cs$,saved,tok,hit}=cur;
   const pc=v=>tok>0?fmtPct(v/tok):"0,0%";
@@ -1425,7 +1652,7 @@ function renderAll(){
   $("#emptyState").hidden=!none;
   ["#secHero","#secTl","#secAcc"].forEach(id=>$(id).hidden=none);
   ["#secAct","#secHeat"].forEach(id=>$(id).hidden=none&&!hasHist);
-  if(none){$("#tl").dataset.key=""}else{renderHero();renderTimeline();renderAccounts()}
+  if(none){$("#tl").dataset.key="";closeAccModal()}else{renderHero();renderTimeline();renderAccounts();renderModal()}
   if(!none||hasHist)renderActivity();
   if(none)state.cap=null;
   updateBrand();updateLive();countUps();
