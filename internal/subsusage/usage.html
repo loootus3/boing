@@ -123,7 +123,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .cr-n{grid-area:n;display:flex;align-items:center;gap:8px;min-width:0}
 .cr-e{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;color:var(--foreground)}
 .cr-n em{flex:none;font-style:normal;font-size:12px;color:var(--muted-foreground)}
-.cr-n em.use{display:inline-flex;align-items:center;gap:5px;font-weight:600;color:var(--success-foreground);cursor:help}
+.cr-n em.use{display:inline-flex;align-items:center;padding:4px;margin:-4px -2px;cursor:help}
 .cr-n em.use::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--st-good);animation:pulse 2.4s ease-in-out infinite}
 .cr.on .cr-e{font-weight:600}
 .cr-m{grid-area:m;display:flex;align-items:center;gap:8px;min-width:0}
@@ -1035,7 +1035,7 @@ function renderCapacity(now){
   const row=a=>{
     const w=weeklyOf(a),mode=a.mode||"normal",email=a.email||a.auth_id,r=resetOf(a),off=mode==="off",on=!!a.active&&!a.needs_login&&!!w;
     const hint=mode==="last"?"por último":off?"não usar":"";
-    const name=`<div class="cr-n"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span class="cr-e" title="${esc(email)}">${esc(legendName(email))}</span>${on?`<em class="use" data-tip="${esc("O proxy está usando esta conta agora.\nQuando ela esgotar ou resetar, passa para a próxima.")}">em uso</em>`:""}${hint?`<em>${hint}</em>`:""}</div>`;
+    const name=`<div class="cr-n"><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span class="cr-e" title="${esc(email)}">${esc(legendName(email))}</span>${on?`<em class="use" role="img" aria-label="em uso" data-tip="${esc("Em uso: o proxy está usando esta conta agora.\nQuando ela esgotar ou resetar, passa para a próxima.")}"></em>`:""}${hint?`<em>${hint}</em>`:""}</div>`;
     const reason=a.needs_login?"desconectada":!w?"sem janela semanal":off?"sem projeção":!r?"sem horário de reset":"";
     if(a.needs_login||!w)return `<div class="cr dim">${name}<span class="cr-e2" style="grid-area:e">${reason}</span></div>`;
     const left=Math.round(rem(a)),l=lvl(left);
