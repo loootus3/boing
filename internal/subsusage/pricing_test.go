@@ -91,18 +91,25 @@ func TestViewCost(t *testing.T) {
 			CacheCreationTokens: 500_000, CacheCreation1hTokens: &oneHour,
 		},
 	})
-	// Legacy hour without per-model counts stays unpriced.
-	h.data.Hours["a"][now.Add(-2*time.Hour).Truncate(time.Hour).Unix()] = &hourStat{Requests: 1, Input: 1000}
+	// Legacy hour without per-model counts is priced as the assumed model, writes at 1h.
+	h.data.Hours["a"][now.Add(-2*time.Hour).Truncate(time.Hour).Unix()] = &hourStat{Requests: 1, Input: 1000, CacheWrite: 1000}
+	// An unknown model stays unpriced.
+	h.HandleUsage(context.Background(), usage.Record{Provider: "claude", AuthID: "a", Model: "mystery", RequestedAt: now.Add(-time.Hour), Detail: usage.Detail{InputTokens: 500}})
 
 	v := h.View("24h", now)
 	acc := v.Accounts["a"]
 	// input 4 + read 0.4 + write (300k*1.25 + 200k*2)*4/1e6 = 3.1 + output 2.
-	want := 4 + 0.4 + 3.1 + 2.0
+	tracked := 4 + 0.4 + 3.1 + 2.0
+	legacy := (1000*4 + 1000*2*4) / 1e6
+	want := tracked + legacy
 	if !near(acc.Cost.Total, want) {
 		t.Errorf("account cost = %v, want %v", acc.Cost.Total, want)
 	}
-	if acc.UnpricedTokens != 1000 {
-		t.Errorf("unpriced = %d, want 1000", acc.UnpricedTokens)
+	if acc.UnpricedTokens != 500 {
+		t.Errorf("unpriced = %d, want 500", acc.UnpricedTokens)
+	}
+	if l := v.Models[legacyModelKey]; l.Requests != 1 || l.CacheWrite != 1000 || !near(l.Cost.Total, legacy) {
+		t.Errorf("legacy totals = %+v", l)
 	}
 	var bucketSum float64
 	for _, b := range v.Buckets {
@@ -115,7 +122,7 @@ func TestViewCost(t *testing.T) {
 		t.Errorf("bucket cost sum = %v", bucketSum)
 	}
 	m := v.Models["claude-opus-5-5"]
-	if !m.Priced || m.Requests != 1 || m.CacheWrite != 500_000 || !near(m.Cost.Total, want) {
+	if !m.Priced || m.Requests != 1 || m.CacheWrite != 500_000 || !near(m.Cost.Total, tracked) {
 		t.Errorf("model totals = %+v", m)
 	}
 }

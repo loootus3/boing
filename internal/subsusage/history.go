@@ -399,19 +399,52 @@ type AccountTotals struct {
 	// CacheWrite counts cache creation tokens.
 	CacheWrite int64 `json:"cache_write"`
 	// Cost estimates the API price of the priced tokens; UnpricedTokens counts tokens of
-	// unknown models or recorded before per-model tracking, which Cost leaves out.
+	// unknown models, which Cost leaves out. Claude tokens recorded before per-model tracking
+	// are priced as legacyModelKey and included in Cost.
 	Cost           CostBreakdown `json:"cost"`
 	UnpricedTokens int64         `json:"unpriced_tokens"`
 }
 
+// legacyModelKey groups Claude tokens recorded before per-model tracking (history v3). They
+// are priced as legacyAssumedModel with cache writes at the 1-hour rate, the Claude Code
+// default, so ranges that start before tracking still get a cost estimate.
+const (
+	legacyModelKey     = "legacy"
+	legacyAssumedModel = "claude-opus-5-5"
+)
+
 type modelCost struct {
+	stat   *modelStat
 	cost   CostBreakdown
 	priced bool
 }
 
+// legacyStat returns the part of a Claude hour not covered by per-model counts.
+func legacyStat(stat *hourStat) *modelStat {
+	var m modelStat
+	for _, ms := range stat.Models {
+		m.Requests += ms.Requests
+		m.Input += ms.Input
+		m.CacheRead += ms.CacheRead
+		m.CacheWrite1h += ms.CacheWrite5m + ms.CacheWrite1h
+		m.Output += ms.Output
+	}
+	rest := &modelStat{
+		Requests:     max(0, stat.Requests-m.Requests),
+		Input:        max(0, stat.Input-m.Input),
+		CacheRead:    max(0, stat.Cached-m.CacheRead),
+		CacheWrite1h: max(0, stat.CacheWrite-m.CacheWrite1h),
+		Output:       max(0, stat.Output-m.Output),
+	}
+	if rest.tokens() == 0 {
+		return nil
+	}
+	return rest
+}
+
 // addHour adds one hour of a credential to the totals and returns the cost of each of its
-// pricing keys.
-func (t *AccountTotals) addHour(stat *hourStat) map[string]modelCost {
+// pricing keys, including legacyModelKey for untracked Claude tokens.
+func (t *AccountTotals) addHour(stat *hourStat, provider string) map[string]modelCost {
 	t.Requests += stat.Requests
 	t.Failed += stat.Failed
 	t.Input += stat.Input
@@ -428,9 +461,17 @@ func (t *AccountTotals) addHour(stat *hourStat) map[string]modelCost {
 		} else {
 			t.UnpricedTokens += ms.tokens()
 		}
-		costs[key] = modelCost{cost, priced}
+		costs[key] = modelCost{ms, cost, priced}
 	}
-	t.UnpricedTokens += max(0, stat.tokens()-tracked)
+	if provider != "claude" {
+		t.UnpricedTokens += max(0, stat.tokens()-tracked)
+		return costs
+	}
+	if rest := legacyStat(stat); rest != nil {
+		cost, _ := priceOf(legacyAssumedModel, rest)
+		t.Cost.add(cost)
+		costs[legacyModelKey] = modelCost{rest, cost, true}
+	}
 	return costs
 }
 
@@ -549,7 +590,7 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 				}
 			}
 			if provider == "claude" && !t.Before(prevStart) && t.Before(start) {
-				prev.addHour(stat)
+				prev.addHour(stat, provider)
 				continue
 			}
 			if t.Before(start) || !t.Before(end) {
@@ -573,7 +614,7 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			b.TokensByAccount[id] += total
 			b.Failed += stat.Failed
 			b.ByAccount[id] += stat.Requests
-			for key, mc := range totals.addHour(stat) {
+			for key, mc := range totals.addHour(stat, provider) {
 				if mc.priced {
 					b.Cost[provider] += mc.cost.Total
 					b.CostByAccount[id] += mc.cost.Total
@@ -581,7 +622,7 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 				if provider != "claude" {
 					continue
 				}
-				ms := stat.Models[key]
+				ms := mc.stat
 				b.CostByModel[key] += mc.cost.Total
 				b.TokensByModel[key] += ms.tokens()
 				b.RequestsByModel[key] += ms.Requests

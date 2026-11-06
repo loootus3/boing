@@ -297,7 +297,12 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tl-chart{display:grid;grid-template-columns:var(--g) minmax(0,1fr)}
 .tl-y{position:relative;height:240px}
 .tl-y span{position:absolute;right:8px;transform:translateY(-50%);font-size:10px;color:var(--muted-foreground)}
-.tl-plot{position:relative;height:240px;min-width:0;touch-action:pan-y}
+.tl-plot{position:relative;height:240px;min-width:0;touch-action:pan-y;cursor:crosshair;user-select:none;-webkit-user-select:none}
+.tl-rt{display:flex;align-items:center;gap:6px 14px;flex-wrap:wrap}
+.tl-tools{display:flex;align-items:center;gap:10px}
+.tl-reset{border:0;background:none;padding:0;font:inherit;font-size:12px;color:var(--muted-foreground);text-decoration:underline;text-underline-offset:2px;cursor:pointer;white-space:nowrap}
+.tl-reset:hover{color:var(--foreground)}
+.tl-brush{position:absolute;top:8px;bottom:6px;z-index:4;pointer-events:none;background:color-mix(in srgb,var(--claude) 16%,transparent);border:solid color-mix(in srgb,var(--claude) 55%,transparent);border-width:0 1px}
 .tl-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .tl-plot .gl{stroke:var(--border);stroke-width:1}
 .tl-plot .gv{stroke:var(--border);stroke-width:1;opacity:.6}
@@ -330,13 +335,13 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 /* agenda de recargas */
 .ag{display:flex;flex-direction:column;gap:10px;margin-top:2px;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
 .ag-t{font-size:12px;font-weight:500}
-.ag-row{display:grid;grid-template-columns:var(--g) minmax(0,1fr)}
-.ag-cols{display:grid;min-width:0}
-.ag-col{container-type:inline-size;min-width:0;min-height:84px;padding:6px 4px;display:flex;flex-direction:column;gap:6px;border-left:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
-.ag-col:first-child{border-left:0;padding-left:0}
-.ag-col.today{background:color-mix(in srgb,var(--foreground) 4%,transparent);border-radius:8px 0 0 8px}
+.ag-row{min-width:0;max-width:100%}
+.ag-cols{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr))}
+.ag-col{container-type:inline-size;min-width:0;min-height:84px;padding:6px 6px;display:flex;flex-direction:column;gap:6px;border-left:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
+.ag-col:first-child{border-left:0}
+.ag-col.today{background:color-mix(in srgb,var(--foreground) 4%,transparent);border-radius:8px}
+.ag-col.today .ag-d{color:var(--foreground);font-weight:600}
 .ag-d{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;padding-left:2px}
-.ag-d em{font-style:normal;font-weight:600;color:var(--foreground);font-size:10px;padding:0 5px;border-radius:999px;background:color-mix(in srgb,var(--foreground) 10%,transparent)}
 .ag-chip{display:flex;align-items:center;gap:7px;min-width:0;padding:4px 7px 4px 4px;border-radius:7px;background:color-mix(in srgb,var(--foreground) 6%,transparent);overflow:hidden}
 .ag-chip .bar{align-self:stretch;flex:none;width:3px;min-height:26px;border-radius:3px;background:var(--c)}
 .ag-chip .tx{min-width:0;flex:1;font-size:11px;line-height:1.35}
@@ -345,21 +350,14 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ag-chip .nm{color:var(--muted-foreground);overflow:hidden;text-overflow:ellipsis;font-family:var(--font-mono);font-size:10.5px}
 .ag-chip .r2 b{font-weight:600}
 .ag-chip .mut{color:var(--muted-foreground)}
-.ag-chip .cd{font-size:12px;color:var(--muted-foreground);white-space:nowrap}
-.ag-list{display:none}
-@container (max-width:118px){.ag-chip .nm,.ag-chip .r2 .mut{display:none}}
+@container (max-width:100px){.ag-chip .nm,.ag-chip .r2 .mut{display:none}}
 @container (max-width:96px){.ag-d .wd{display:none}.ag-d{padding-left:0}}
 @container (max-width:58px){.ag-chip .tx{display:none}.ag-chip{padding:4px 0 4px 4px}}
 @container (max-width:30px){.ag-d{display:none}}
 @media (max-width:640px){
   .tl-card{--g:44px;padding:16px 14px 16px}
-  .ag-row{display:none}
-  .ag-list{display:flex;flex-direction:column;gap:6px}
-  .ag-list .ag-chip{padding:6px 10px 6px 6px}
-  .ag-list .tx{font-size:12px}
-  .ag-list .r1,.ag-list .r2{gap:6px}
-  .ag-list .dy{order:-1}
-  .ag-list .nm,.ag-list .r2 .mut{display:inline}
+  .ag-row{overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--input) transparent}
+  .ag-cols{grid-template-columns:repeat(var(--n),minmax(132px,1fr));min-width:calc(var(--n)*132px)}
 }
 
 /* global tooltip */
@@ -486,7 +484,8 @@ function fmtUSDc(v){const tr=(x,d)=>String(Number(x.toFixed(d))).replace(".",","
 const fmtMetric=v=>state.metric==="cost"?fmtUSD(v):state.metric==="tokens"?fmtTokens(v):fmtCount(v);
 const fmtAxis=v=>state.metric==="cost"?fmtUSDc(v):fmtMetric(v);
 const MODEL_NAMES={opus:"Opus",sonnet:"Sonnet",haiku:"Haiku",fable:"Fable"};
-function prettyModel(key){const parts=String(key).split("+"),m=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2}))?$/.exec(parts[0]);
+function prettyModel(key){if(key==="legacy")return"Sem modelo (≈ Opus 5.5)";
+  const parts=String(key).split("+"),m=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2}))?$/.exec(parts[0]);
   if(!m)return String(key);
   let s=(MODEL_NAMES[m[1]]||m[1][0].toUpperCase()+m[1].slice(1))+" "+m[2]+(m[3]!=null?"."+m[3]:"");
   if(parts.includes("fast"))s+=" · fast";if(parts.includes("long"))s+=" · >100K";return s}
@@ -885,142 +884,197 @@ const fmtWd=d=>d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","");
 const fmtLane=d=>fmtWd(d)+" "+fmtHour(d);
 const fmtSpan=h=>h<1?"<1h":h<48?Math.round(h)+"h":fmtLeft(h*3600e3);
 const sameDay=(a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
-// Real total remaining of the given accounts every 30 min over the last `span` s, ending at `nowTotal` (the
-// projection's start). Null when the samples in the window are too few to draw a line.
+// Real total remaining of the given accounts, as far back as every account has history (at most `span` s),
+// ending at `nowTotal` (the projection's start). Between two samples of an account the value is interpolated
+// while the weekly remaining falls or holds; when it rises (weekly refill) the old value is kept and the jump
+// happens at the later sample. Never extends before an account's first sample. Null when under 1h is available.
 function pastSeries(accs,t0,nowTotal,span){
-  const per=accs.map(a=>quota7Of(a.auth_id).filter(p=>p.w!=null));
-  if(per.reduce((n,q)=>n+q.filter(p=>p.t>=t0-span&&p.t<=t0).length,0)<2)return null;
-  const pts=[];
-  for(let t=t0-span;t<t0-1;t+=1800){let sum=0;
-    per.forEach((q,i)=>{if(!q.length){sum+=100-clampPct(weeklyOf(accs[i]).used_percent);return}
-      let v=q[0].w;for(const p of q){if(p.t<=t)v=p.w;else break}sum+=v});
-    pts.push([t,sum])}
+  const per=accs.map(a=>quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0).sort((x,y)=>x.t-y.t));
+  const have=per.filter(q=>q.length);
+  if(!have.length)return null;
+  const start=Math.max(t0-span,...have.map(q=>q[0].t));
+  if(t0-start<3600)return null;
+  const at=(q,t)=>{
+    if(t<=q[0].t)return q[0].w;
+    if(t>=q[q.length-1].t)return q[q.length-1].w;
+    let k=0;while(k<q.length-2&&q[k+1].t<=t)k++;
+    const a=q[k],b=q[k+1];
+    return b.w>a.w||b.t<=a.t?a.w:a.w+(b.w-a.w)*(t-a.t)/(b.t-a.t)};
+  const times=new Set();
+  for(let t=start;t<t0-1;t+=1800)times.add(t);
+  per.forEach(q=>q.forEach((p,k)=>{
+    if(p.t>start&&p.t<t0-1)times.add(p.t);
+    if(k&&p.w>q[k-1].w&&p.t-1>start&&p.t-1<t0-1)times.add(p.t-1)}));
+  const pts=[...times].sort((a,b)=>a-b).map(t=>{let sum=0;
+    per.forEach((q,i)=>{sum+=q.length?at(q,t):100-clampPct(weeklyOf(accs[i]).used_percent)});
+    return[t,sum]});
   pts.push([t0,nowTotal]);return pts}
+
+// Zoom of the 7-day chart: `rng` is a custom [from,to] (unix s) from a brush or panning, else `preset` is
+// "all" | "24h" | "3d". Kept in memory only, so the 15s data refresh keeps the view.
+const tlz={rng:null,preset:"all"};
+const TL_WIN={"24h":86400,"3d":3*86400},TL_MIN=2*3600;
+// Linear value of a [[t,v]…] series at t (clamped to its ends).
+function atPts(p,t){if(t<=p[0][0])return p[0][1];
+  for(let k=1;k<p.length;k++)if(p[k][0]>=t){const a=p[k-1],b=p[k],u=b[0]>a[0]?(t-a[0])/(b[0]-a[0]):1;return a[1]+(b[1]-a[1])*u}
+  return p[p.length-1][1]}
+// The part of a series inside [a,b], with interpolated end points.
+function clipPts(p,a,b){const s=Math.max(a,p[0][0]),e=Math.min(b,p[p.length-1][0]);
+  if(s>e)return[];
+  const out=[[s,atPts(p,s)]];for(const q of p)if(q[0]>s&&q[0]<e)out.push(q);
+  if(e>s)out.push([e,atPts(p,e)]);return out}
+// Axis ticks for the visible range: local midnights (weekday labels) from 2 days up, else round hours.
+function xTicks(V0,V1){const span=V1-V0,out=[],d=new Date(V0*1000);
+  if(span>=2*DAY){
+    for(let k=0;;k++){const m=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k).getTime()/1000;if(m>V1)break;
+      if(m>=V0)out.push({t:m,l:fmtWd(new Date((m+12*3600)*1000))})}
+  }else{
+    const sh=span<=6*3600?1:span<=12*3600?2:span<=27*3600?3:6;
+    for(let k=0;;k++){const dt=new Date(d.getFullYear(),d.getMonth(),d.getDate(),d.getHours()+k),m=dt.getTime()/1000;if(m>V1)break;
+      if(m<V0||dt.getHours()%sh)continue;
+      out.push({t:m,l:dt.getHours()===0?fmtWd(dt):dt.getHours()+"h"})}}
+  return out}
 function renderTimeline(){
   const el=$("#tl"),now=Date.now(),accs=runwayAccs();
   if(!accs.length){el.dataset.key="";el.innerHTML=`<div class="tl-empty">Nenhuma conta com limite semanal para projetar.</div>`;return}
   const rec={},br=poolForecast(now,rec).br,perHour=br.ok?br.perDay/24:0;
-  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,Object.values(ACC).join(","),accs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
+  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),Object.values(ACC).join(","),accs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+legendName(a.email||a.auth_id)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
   const PH=240,TOP=44,BOT=PH-6,HZ=7*DAY,PAST=48*3600,t0=now/1000,cap=rec.cap,ts=rec.ts,tot=rec.tot,K=ts.length;
-  const past=pastSeries(accs,t0,tot[0],PAST),T0=past?t0-PAST:t0,SP=HZ+(past?PAST:0);
-  const X=t=>(t-T0)/SP*1000,P=t=>(t-T0)/SP*100,Y=v=>BOT-v/cap*(BOT-TOP);
+  const past=pastSeries(accs,t0,tot[0],PAST),F0=past?past[0][0]:t0,F1=t0+HZ;
+  // Visible range: the whole chart, a preset window (starts 2h before "agora") or a custom zoom.
+  let V0=F0,V1=F1,custom=false;
+  if(tlz.rng){const w=Math.min(tlz.rng[1]-tlz.rng[0],F1-F0);
+    if(w>=F1-F0-1){tlz.rng=null;tlz.preset="all"}
+    else{V0=Math.min(Math.max(tlz.rng[0],F0),F1-w);V1=V0+w;custom=true}}
+  else if(TL_WIN[tlz.preset]){V0=Math.max(F0,t0-2*3600);V1=Math.min(F1,V0+TL_WIN[tlz.preset])}
+  const VS=V1-V0,zoomed=VS<F1-F0-1,nowVis=t0>=V0-1e-6&&t0<=V1;
+  const X=t=>(t-V0)/VS*1000,P=t=>(t-V0)/VS*100,Y=v=>BOT-v/cap*(BOT-TOP);
   const nm=a=>legendName(a.email||a.auth_id);
-  // local midnights inside the horizon
-  const d0=new Date(now),mids=[];
-  for(let k=1;;k++){const m=new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()+k).getTime()/1000;if(m>=t0+HZ)break;mids.push(m)}
-  const pmids=[];
-  if(past)for(let k=0;;k--){const m=new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()+k).getTime()/1000;if(m<T0)break;if(m<t0)pmids.push(m)}
-  pmids.reverse();
+  const d0=new Date(now),ticks=xTicks(V0,V1);
 
-  const px=k=>`${X(ts[k]).toFixed(1)},${Y(tot[k]).toFixed(1)}`;
-  let lineD="";for(let k=0;k<K;k++)lineD+=(k?"L":"M")+px(k);
-  const areaD=`${lineD}L${X(ts[K-1]).toFixed(1)},${BOT}L${X(ts[0]).toFixed(1)},${BOT}Z`;
+  const prc=clipPts(ts.map((t,k)=>[t,tot[k]]),V0,V1),pastc=past?clipPts(past,V0,V1):[];
+  const fx=p=>`${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`;
+  const lineD=prc.length>1?prc.map((p,k)=>(k?"L":"M")+fx(p)).join(""):"";
+  const areaD=lineD?`${lineD}L${X(prc[prc.length-1][0]).toFixed(1)},${BOT}L${X(prc[0][0]).toFixed(1)},${BOT}Z`:"";
   const NS='vector-effect="non-scaling-stroke"';
   let pastArea="",pastLine="";
-  if(past){const pd=past.map((p,k)=>`${k?"L":"M"}${X(p[0]).toFixed(1)},${Y(p[1]).toFixed(1)}`).join("");
-    pastArea=`<path d="${pd}L${X(t0).toFixed(1)},${BOT}L${X(past[0][0]).toFixed(1)},${BOT}Z" fill="url(#tlGrad)" stroke="none"/>`;
+  if(pastc.length>1){const pd=pastc.map((p,k)=>(k?"L":"M")+fx(p)).join("");
+    pastArea=`<path d="${pd}L${X(pastc[pastc.length-1][0]).toFixed(1)},${BOT}L${X(pastc[0][0]).toFixed(1)},${BOT}Z" fill="url(#tlGrad)" stroke="none"/>`;
     pastLine=`<path class="tl-line" d="${pd}" ${NS}/>`}
   const zs=[];let zi=null;
   for(let k=0;k<K;k++){const z=tot[k]<=.5;
     if(z&&zi===null)zi=ts[k];else if(!z&&zi!==null){zs.push([zi,ts[k]]);zi=null}}
   if(zi!==null)zs.push([zi,t0+HZ]);
+  const zv=zs.map(([s,e])=>({s,e,vs:Math.max(s,V0),ve:Math.min(e,V1)})).filter(z=>z.ve>z.vs);
 
   // At most 4 ticks: 0, steps of whole accounts, and the full capacity.
-  const n=cap/100,step=n===1?50:100*Math.ceil(n/3),ticks=[];
-  for(let v=0;v<=cap;v+=step)ticks.push(v);
-  if(cap-ticks[ticks.length-1]>step*.4)ticks.push(cap);else ticks[ticks.length-1]=cap;
-  const grid=ticks.filter(v=>v>0&&v!==cap).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")
-    +pmids.concat(mids).map(m=>`<line class="gv" x1="${X(m).toFixed(1)}" x2="${X(m).toFixed(1)}" y1="8" y2="${BOT}" ${NS}/>`).join("");
-  const zrect=zs.map(([s,e])=>`<rect x="${X(s).toFixed(1)}" y="8" width="${Math.max(2,X(e)-X(s)).toFixed(1)}" height="${BOT-8}" fill="var(--st-crit)" fill-opacity=".12"/>`).join("");
+  const n=cap/100,step=n===1?50:100*Math.ceil(n/3),yt=[];
+  for(let v=0;v<=cap;v+=step)yt.push(v);
+  if(cap-yt[yt.length-1]>step*.4)yt.push(cap);else yt[yt.length-1]=cap;
+  const grid=yt.filter(v=>v>0&&v!==cap).map(v=>`<line class="gl" x1="0" x2="1000" y1="${Y(v)}" y2="${Y(v)}" ${NS}/>`).join("")
+    +ticks.map(k=>`<line class="gv" x1="${X(k.t).toFixed(1)}" x2="${X(k.t).toFixed(1)}" y1="8" y2="${BOT}" ${NS}/>`).join("");
+  const zrect=zv.map(z=>`<rect x="${X(z.vs).toFixed(1)}" y="8" width="${Math.max(2,X(z.ve)-X(z.vs)).toFixed(1)}" height="${BOT-8}" fill="var(--st-crit)" fill-opacity=".12"/>`).join("");
   const evs=rec.events.map(e=>({...e,x:Math.max(e.at,t0)})).sort((a,b)=>a.x-b.x);
   const svg=`<defs><linearGradient id="tlGrad" gradientUnits="userSpaceOnUse" x1="0" x2="0" y1="${Y(cap)}" y2="${BOT}">
       <stop offset="0" stop-color="var(--claude)" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="var(--claude)" stop-opacity="0"/></linearGradient></defs>
-    ${grid}${zrect}<path d="${areaD}" fill="url(#tlGrad)" stroke="none"${past?` opacity=".45"`:""}/>${pastArea}
+    ${grid}${zrect}${areaD?`<path d="${areaD}" fill="url(#tlGrad)" stroke="none"${past?` opacity=".45"`:""}/>`:""}${pastArea}
     <line class="capl" x1="0" x2="1000" y1="${Y(cap)}" y2="${Y(cap)}" ${NS}/>
-    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`;
-  const ylab=ticks.map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("");
+    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past&&nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}${lineD?`<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`:""}`;
+  const ylab=yt.map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("");
   const capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${cap===100?"conta cheia":"todas cheias"}</div>`;
-  const zlab=zs.map(([s,e])=>{const right=P(s)>60;
-    return `<div class="tl-zero" style="top:${BOT-24}px;${right?`right:${(100-P(e)).toFixed(2)}%`:`left:${P(s).toFixed(2)}%`}" data-tip="${esc(`Sem limite de ${fmtDate(new Date(s*1000))} até ${e>=t0+HZ-1?"depois do fim da projeção":fmtDate(new Date(e*1000))}`)}">
-      <b>${ICON_X}sem limite · ${fmtSpan((e-s)/3600)}</b></div>`}).join("");
-  // Lowest point of the week (skipped when it is now, or zero: the "sem limite" label covers that).
-  let mk=0;for(let k=1;k<K;k++)if(tot[k]<tot[mk]-.05)mk=k;
-  const minOn=mk>0&&tot[mk]>.5;
+  const zlab=zv.map(z=>{const right=P(z.vs)>60;
+    return `<div class="tl-zero" style="top:${BOT-24}px;${right?`right:${(100-P(z.ve)).toFixed(2)}%`:`left:${P(z.vs).toFixed(2)}%`}" data-tip="${esc(`Sem limite de ${fmtDate(new Date(z.s*1000))} até ${z.e>=t0+HZ-1?"depois do fim da projeção":fmtDate(new Date(z.e*1000))}`)}">
+      <b>${ICON_X}sem limite · ${fmtSpan((z.e-z.s)/3600)}</b></div>`}).join("");
+  // Lowest point of the visible projection (skipped when it is its first point, or zero: the "sem limite" label covers that).
+  let mk=0;for(let k=1;k<prc.length;k++)if(prc[k][1]<prc[mk][1]-.05)mk=k;
+  const minOn=prc.length>1&&mk>0&&prc[mk][1]>.5;
 
-  const legend=past?`<span><i></i>Real (48h)</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>Capacidade restante somada</span>`;
+  const pastH=past?Math.round((t0-F0)/3600):0;
+  const legend=past?`<span><i></i>Real (${pastH}h)</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>Capacidade restante somada</span>`;
   const rate=br.ok
     ?`gasto <b>${Math.round(br.perDay)}%/dia</b>${paceTagHtml(br)} · recarga <b>${Math.round(refillPerDay(accs))}%/dia</b>`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
+  const tools=`<div class="tl-tools">${custom?`<button type="button" class="tl-reset" data-z="reset">Redefinir zoom</button>`:""}<div class="seg">${
+    [["24h","24h"],["3d","3 dias"],["all","Tudo"]].map(([v,l])=>`<button type="button" data-z="${v}"${!custom&&tlz.preset===v?` class="on"`:""}>${l}</button>`).join("")}</div></div>`;
 
-  // Agenda: one column per day, aligned with the chart's midnight gridlines.
+  // Agenda: one equal column per calendar day, today through the day of now+7d. It does not follow the chart's zoom.
   // The chip shows the same simulated gain as the chart marker; today's usage is secondary.
-  const cuts=[t0,...mids,t0+HZ],used=new Set(),items=evs.map(e=>{
+  const dayAt=k=>new Date(d0.getFullYear(),d0.getMonth(),d0.getDate()+k).getTime()/1000;
+  const days=[];for(let k=0;k<8;k++)days.push(dayAt(k));
+  const used=new Set(),items=evs.map(e=>{
     const first=!used.has(e.a.auth_id);used.add(e.a.auth_id);
     const amt=Math.round(e.gain),today=first?Math.round(clampPct(weeklyOf(e.a).used_percent)):null,d=new Date(e.at*1000);
     return{e,d,amt,today,short:nm(e.a).split("@")[0],
       tip:`${nm(e.a)}\nReseta ${fmtDate(d)} (em ${fmtLeft(e.at*1000-now)})\nNo ritmo atual recupera +${amt}% e volta a 100%`+(today!=null?`\nHoje faltam ${today}%`:"")}});
-  const chip=(it,extra)=>`<div class="ag-chip" data-tip="${esc(it.tip)}" style="--c:${ACC[it.e.a.auth_id]}"><i class="bar"></i>
-    <div class="tx"><div class="r1"><b>${esc(fmtHour(it.d))}</b>${extra||""}<span class="nm">${esc(it.short)}</span></div>
-    <div class="r2">${it.amt>=1?`<b>+${it.amt}%</b> `:""}<span class="mut">${it.today!=null?`${it.today}% hoje`:"volta a 100%"}</span></div></div></div>`;
+  const chip=it=>`<div class="ag-chip" data-tip="${esc(it.tip)}" style="--c:${ACC[it.e.a.auth_id]}"><i class="bar"></i>
+    <div class="tx"><div class="r1"><b>${esc(fmtHour(it.d))}</b><span class="nm">${esc(it.short)}</span></div>
+    <div class="r2">${it.amt>=1?`<b>+${it.amt}%</b> `:""}<span class="mut">${it.today!=null?`usado ${it.today}%`:"volta a 100%"}</span></div></div></div>`;
+  const colOf=it=>{const x=Math.max(it.e.at,t0);let c=0;while(c+1<days.length&&days[c+1]<=x)c++;return c};
   let agenda;
   if(!items.length)agenda=`<div class="tl-empty">Nenhuma recarga semanal nos próximos 7 dias.</div>`;
   else{
-    const cols=cuts.slice(0,-1).map((a,c)=>{const b=cuts[c+1],d=new Date(a*1000),today=c===0;
-      const mine=items.filter(it=>Math.max(it.e.at,t0)>=a&&Math.max(it.e.at,t0)<b);
-      return `<div class="ag-col${today?" today":""}" style="grid-column:${c+1}"><div class="ag-d"><span class="wd">${esc(fmtWd(d))} ${d.getDate()}</span>${today?`<em>hoje</em>`:""}</div>${mine.map(it=>chip(it)).join("")}</div>`}).join("");
-    const tpl=cuts.slice(0,-1).map((a,c)=>`minmax(0,${Math.round(cuts[c+1]-a)}fr)`).join(" ");
-    const list=items.map(it=>{const today=sameDay(it.d,d0);
-      return chip(it,`<span class="mut dy">${today?"hoje":esc(fmtWd(it.d))}</span>`).replace(/<\/div><\/div><\/div>$/,`</div></div><span class="cd">em ${fmtLeft(it.e.at*1000-now)}</span></div>`)}).join("");
-    agenda=`<div class="ag-row"><div></div><div class="ag-cols" style="margin-left:${P(t0).toFixed(3)}%;grid-template-columns:${tpl}">${cols}</div></div><div class="ag-list">${list}</div>`;
+    const cols=days.map((a,c)=>{const d=new Date(a*1000);
+      return `<div class="ag-col${c===0?" today":""}"><div class="ag-d"><span class="wd">${c===0?"hoje":esc(fmtWd(d))+" "+d.getDate()}</span></div>${items.filter(it=>colOf(it)===c).map(chip).join("")}</div>`}).join("");
+    agenda=`<div class="ag-row"><div class="ag-cols" style="--n:${days.length}">${cols}</div></div>`;
   }
 
-  el.innerHTML=`<div class="tl-cap"><div class="tl-leg">${legend}</div><span>${rate}</span></div>
+  const agOld=el.querySelector(".ag-row"),agScroll=agOld?agOld.scrollLeft:0;
+  el.innerHTML=`<div class="tl-cap"><div class="tl-leg">${legend}</div><div class="tl-rt"><span>${rate}</span>${tools}</div></div>
     <div class="tl-chart"><div class="tl-y">${ylab}</div>
-      <div class="tl-plot" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none">${svg}</svg>${zlab}${capLabel}
+      <div class="tl-plot" id="tlPlot"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
         <div class="tl-hover" id="tlHover"></div><i class="tl-hdot" id="tlHdot"></i><div class="tip" id="tlTip"></div></div></div>
     <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>
     <div class="ag"><div class="ag-t">Agenda de recargas</div>${agenda}</div>`;
+  const agNew=el.querySelector(".ag-row");if(agNew)agNew.scrollLeft=agScroll;
+  el.onclick=ev=>{const b=ev.target.closest&&ev.target.closest("[data-z]");if(!b)return;
+    tlz.rng=null;tlz.preset=b.dataset.z==="reset"?"all":b.dataset.z;renderTimeline()};
 
   const plot=$("#tlPlot"),W=plot.clientWidth||800;
-  // Axis labels by priority (agora, -48h, then midnights), dropping any that would touch an accepted one.
-  const xn=P(t0)/100*W,xs=[],xlab=[{x:xn,t:"agora",first:true}];
-  if(past)xlab.push({x:0,t:"−48h",first:true});
-  pmids.concat(mids).forEach(m=>xlab.push({x:P(m)/100*W,t:fmtWd(new Date((m+12*3600)*1000)),pct:P(m)}));
+  // Axis labels by priority (agora, left edge, then ticks), dropping any that would touch an accepted one.
+  const xn=P(t0)/100*W,xs=[],xlab=[];
+  if(nowVis)xlab.push({x:xn,t:"agora",first:true});
+  if(past&&V0<=F0+1)xlab.push({x:0,t:"−"+pastH+"h",first:true});
+  ticks.forEach(k=>xlab.push({x:P(k.t)/100*W,t:k.l,pct:P(k.t)}));
   let xl="";
   for(const l of xlab){
-    if(!l.first&&(l.x+22>W||(!past&&l.x<46)))continue;
+    if(!l.first&&(l.x+22>W||(!past&&!zoomed&&l.x<46)))continue;
     if(xs.some(x=>Math.abs(x-l.x)<46))continue;
     xs.push(l.x);
     xl+=`<span${l.first?` class="first"`:""} style="left:${(l.first?l.x/W*100:l.pct).toFixed(2)}%">${esc(l.t)}</span>`}
   $("#tlXl").innerHTML=xl;
   // Overlays in HTML so the dots stay round under the stretched SVG. Reset labels sit above their dot;
   // a second row when two would overlap ("agora" value label takes the first slot at the left).
-  const CW=46,boxes=[{l:xn,r:xn+58,t:Y(tot[0])-24}];
-  if(past)boxes.push({l:xn-20,r:xn+20,t:0});
-  let ov=`<i class="tl-dot now" style="left:${P(t0).toFixed(3)}%;top:${Y(tot[0]).toFixed(1)}px"></i><div class="tl-now" style="left:${(xn+9).toFixed(1)}px;top:${(Y(tot[0])-24).toFixed(1)}px">${Math.round(tot[0])}%</div>`
-    +(past?`<div class="tl-nowl" style="left:${xn.toFixed(1)}px">agora</div>`:"");
-  for(const e of evs){if(e.gain<1)continue;
-    const x=P(e.x)/100*W,yt=Y(e.top),l=Math.max(CW/2,Math.min(W-CW/2,x));
+  const CW=46,boxes=[];
+  let ov="";
+  if(nowVis){const nr=xn+58>W;
+    boxes.push({l:nr?xn-58:xn,r:nr?xn:xn+58,t:Y(tot[0])-24});
+    if(past)boxes.push({l:xn-20,r:xn+20,t:0});
+    ov+=`<i class="tl-dot now" style="left:${P(t0).toFixed(3)}%;top:${Y(tot[0]).toFixed(1)}px"></i><div class="tl-now" style="left:${(nr?xn-9:xn+9).toFixed(1)}px;top:${(Y(tot[0])-24).toFixed(1)}px${nr?";transform:translateX(-100%)":""}">${Math.round(tot[0])}%</div>`
+      +(past?`<div class="tl-nowl" style="left:${xn.toFixed(1)}px">agora</div>`:"")}
+  for(const e of evs){if(e.gain<1||e.x<V0||e.x>V1)continue;
+    const x=P(e.x)/100*W,yt2=Y(e.top),l=Math.max(CW/2,Math.min(W-CW/2,x));
     let top=0;
-    for(let row=0;row<4;row++){top=Math.max(0,yt-24-row*20);
+    for(let row=0;row<4;row++){top=Math.max(0,yt2-24-row*20);
       if(!boxes.some(b=>l-CW/2<b.r+4&&l+CW/2>b.l-4&&Math.abs(top-b.t)<18))break}
     boxes.push({l:l-CW/2,r:l+CW/2,t:top});
-    ov+=`<i class="tl-dot" style="left:${P(e.x).toFixed(2)}%;top:${yt.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"></i>`
+    ov+=`<i class="tl-dot" style="left:${P(e.x).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"></i>`
       +`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[e.a.auth_id]}">+${Math.round(e.gain)}%</div>`}
-  if(minOn){const ym=Y(tot[mk]),l=Math.max(60,Math.min(W-60,P(ts[mk])/100*W)),below=ym+26<=BOT;
-    ov+=`<i class="tl-dot min" style="left:${P(ts[mk]).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
-      +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(tot[mk])}% · ${esc(fmtWd(new Date(ts[mk]*1000))+" "+(m=>m.getHours()+"h"+(m.getMinutes()?String(m.getMinutes()).padStart(2,"0"):""))(new Date(ts[mk]*1000)))}</div>`}
+  if(minOn){const tm=prc[mk][0],vm=prc[mk][1],ym=Y(vm),l=Math.max(60,Math.min(W-60,P(tm)/100*W)),below=ym+26<=BOT;
+    ov+=`<i class="tl-dot min" style="left:${P(tm).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
+      +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(fmtWd(new Date(tm*1000))+" "+(m=>m.getHours()+"h"+(m.getMinutes()?String(m.getMinutes()).padStart(2,"0"):""))(new Date(tm*1000)))}</div>`}
   plot.insertAdjacentHTML("beforeend",ov);
 
   const tip=$("#tlTip"),hl=$("#tlHover"),hd=$("#tlHdot");
+  let drag=null;
   const lerp=(ta,va,t)=>{let k=1;while(k<ta.length-1&&ta[k]<t)k++;
     const u=Math.max(0,Math.min(1,(t-ta[k-1])/Math.max(1e-6,ta[k]-ta[k-1])));
     return va[k-1]+(va[k]-va[k-1])*u};
   const valAt=t=>lerp(ts,tot,t),pt=past&&past.map(p=>p[0]),pv=past&&past.map(p=>p[1]);
   plot.onpointermove=plot.onpointerdown=ev=>{
-    const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=T0+x/r.width*SP;
+    if(drag&&drag.on)return;
+    const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=V0+x/r.width*VS;
     if(past&&t<t0){
       const v=lerp(pt,pv,t);
       hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
@@ -1041,7 +1095,38 @@ function renderTimeline(){
     tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
     let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
     tip.style.left=lx+"px";tip.style.top=Math.max(0,Math.min(r.height-th,ev.clientY-r.top-th/2))+"px"};
-  plot.onpointerleave=()=>{tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
+  plot.onpointerleave=()=>{if(drag&&drag.on)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
+
+  // Brush to zoom (mouse/pen; touch keeps scrolling the page and uses the presets).
+  const band=document.createElement("div");band.className="tl-brush";
+  plot.addEventListener("pointerdown",ev=>{if(ev.pointerType==="touch"||ev.button!==0)return;
+    drag={x0:Math.max(0,Math.min(plot.clientWidth,ev.clientX-plot.getBoundingClientRect().left)),x:0,on:false,id:ev.pointerId}});
+  plot.addEventListener("pointermove",ev=>{if(!drag)return;
+    // The button was released outside the plot before the brush started.
+    if(!drag.on&&ev.buttons===0){drag=null;return}
+    const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left));
+    if(!drag.on){if(Math.abs(x-drag.x0)<5)return;
+      drag.on=true;try{plot.setPointerCapture(drag.id)}catch(_){}
+      plot.appendChild(band);tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0}
+    drag.x=x;band.style.left=Math.min(drag.x0,x)+"px";band.style.width=Math.abs(x-drag.x0)+"px"});
+  plot.addEventListener("pointerup",()=>{
+    const d=drag;drag=null;band.remove();if(!d||!d.on)return;
+    const w=plot.clientWidth||1;let ta=V0+Math.min(d.x0,d.x)/w*VS,tb=V0+Math.max(d.x0,d.x)/w*VS;
+    if(tb-ta<TL_MIN){const c=(ta+tb)/2;ta=c-TL_MIN/2;tb=c+TL_MIN/2}
+    if(ta<F0){tb+=F0-ta;ta=F0}
+    if(tb>F1){ta=Math.max(F0,ta-(tb-F1));tb=F1}
+    tlz.rng=[ta,tb];tlz.preset=null;renderTimeline()});
+  plot.addEventListener("pointercancel",()=>{drag=null;band.remove()});
+  plot.addEventListener("dblclick",()=>{if(tlz.rng||tlz.preset!=="all"){tlz.rng=null;tlz.preset="all";renderTimeline()}});
+  // Pan while zoomed: shift+wheel or horizontal wheel/trackpad. Plain vertical wheel keeps scrolling the page.
+  let wacc=0,wraf=0;
+  plot.addEventListener("wheel",ev=>{
+    if(!zoomed||!(ev.shiftKey||Math.abs(ev.deltaX)>Math.abs(ev.deltaY)))return;
+    ev.preventDefault();
+    wacc+=(Math.abs(ev.deltaX)>=Math.abs(ev.deltaY)?ev.deltaX:ev.deltaY)*(ev.deltaMode===1?16:1);
+    if(wraf)return;
+    wraf=requestAnimationFrame(()=>{wraf=0;const dt=wacc/(plot.clientWidth||1)*VS;wacc=0;
+      const a=Math.min(Math.max(F0,V0+dt),F1-VS);tlz.rng=[a,a+VS];tlz.preset=null;renderTimeline()})},{passive:false});
 }
 let tlResize=0;addEventListener("resize",()=>{clearTimeout(tlResize);tlResize=setTimeout(()=>{if(state.data.accounts.length)renderTimeline()},150)});
 
@@ -1129,13 +1214,14 @@ function renderSkeleton(){
 
 /* ---- activity ---- */
 // Claude accounts present in the history, in the stable colour order (sorted by auth_id).
+const LEGACY_TIP="Tokens de antes do registro por modelo, estimados como Opus 5.5 com cache de 1h.";
 const MODEL_FAMILIES=["fable","mythos","opus","sonnet","haiku"];
 // Pricing keys present in the by-model maps: family, then version descending, then plain before +fast/+long.
 function modelOrder(h){
   const set=new Set();
   for(const b of h.buckets)for(const f of["cost_by_model","tokens_by_model","requests_by_model"])for(const k of Object.keys(b[f]||{}))set.add(k);
   const info=k=>{const parts=k.split("+"),m=/^claude-([a-z]+)-(\d{1,2})(?:-(\d{1,2}))?$/.exec(parts[0]),fi=m?MODEL_FAMILIES.indexOf(m[1]):-1;
-    return{k,fam:m&&fi>=0?fi:MODEL_FAMILIES.length,ver:m?Number(m[2])*100+Number(m[3]||0):0,sfx:parts.slice(1).join("+")}};
+    return{k,fam:k==="legacy"?99:m&&fi>=0?fi:MODEL_FAMILIES.length,ver:m?Number(m[2])*100+Number(m[3]||0):0,sfx:parts.slice(1).join("+")}};
   return[...set].map(info).sort((x,y)=>x.fam-y.fam||y.ver-x.ver||(x.sfx===""?0:1)-(y.sfx===""?0:1)||x.sfx.localeCompare(y.sfx)||x.k.localeCompare(y.k)).map(x=>x.k);
 }
 function seriesIds(h){
@@ -1170,7 +1256,7 @@ function renderActivity(){
   // Series: accounts (stable colour order) or pricing keys (colour by model order across all three metrics).
   let ids,color,sname;
   if(byModel){
-    const all=modelOrder(h),colorOf={};all.forEach((k,i)=>{colorOf[k]=`var(--acc-${i%6+1})`});
+    const all=modelOrder(h),colorOf={};all.forEach((k,i)=>{colorOf[k]=k==="legacy"?"color-mix(in srgb,var(--muted-foreground) 55%,transparent)":`var(--acc-${i%6+1})`});
     ids=all.filter(k=>h.buckets.some(b=>val(b,k)>0));color=k=>colorOf[k];sname=prettyModel;
   }else{ids=seriesIds(h);color=accColor;sname=accName}
   // cum[j][i]: stacked total of accounts 0..j in bucket i.
@@ -1239,8 +1325,9 @@ function renderActivity(){
     const d=(c-p)/p*100,tip=`${plab[0].toUpperCase()+plab.slice(1)}: ${fmtP(p)}`;
     return deltaHtml(d,"%",plab,tip)};
   const ratePP=(c,p)=>{if(!prev||!(p>0))return"";return deltaHtml((c-p)*100,"p.p.",plab,`Taxa de cache anterior: ${Math.floor(p*100)}%`)};
+  const lgCost=(h.models&&h.models.legacy&&h.models.legacy.cost&&h.models.legacy.cost.total)||0;
   const stat=(k,v,s,tip,n,f,dl)=>`<div class="card stat"${tip?` data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular"${f?` data-n="${n}" data-f="${f}"`:""}>${v}</div><div class="s">${s}</div><div class="dl">${dl||""}</div></div>`;
-  $("#stats").innerHTML=stat("Custo estimado",fmtUSD(cs$.total),"preço de API · com cache","Quanto esses tokens custariam na API da Anthropic, por modelo e com preços de cache. Não é o que a assinatura cobra.",cs$.total,"usd",delta(cs$.total,prev&&prev.cs.total,fmtUSD,true))
+  $("#stats").innerHTML=stat("Custo estimado",fmtUSD(cs$.total),lgCost>0?`inclui ≈${fmtUSD(lgCost)} estimado`:"preço de API · com cache","Quanto esses tokens custariam na API da Anthropic, por modelo e com preços de cache. Não é o que a assinatura cobra."+(lgCost>0?" Parte é estimada: tokens de antes do registro por modelo foram precificados como Opus 5.5 com cache de 1h.":""),cs$.total,"usd",delta(cs$.total,prev&&prev.cs.total,fmtUSD,true))
     +stat("Economia com cache",fmtUSD(saved),saved<0?"escritas custaram mais do que poupou":`sem cache: ${fmtUSD(cs$.no_cache)}`,
       "Diferença entre cobrar toda leitura e escrita de cache como input normal e o custo real com os preços de cache. Negativo significa que as escritas de cache custaram mais do que as leituras economizaram.",saved,"usd",delta(saved,prev&&prev.saved,fmtUSD,true))
     +stat("Tokens processados",fmtTokens(tok),"input + cache + output","Tudo que o modelo processou: input novo, cache lido, cache escrito e output",tok,"tok",delta(tok,prev&&prev.tok,fmtTokens))
@@ -1258,13 +1345,14 @@ function renderActivity(){
 /* ---- cost per model ---- */
 function renderModels(h){
   const el=$("#modelCost"),rows=Object.entries(h.models||{}).map(([k,m])=>({k,m,tok:(m.input||0)+(m.cache_read||0)+(m.cache_write||0)+(m.output||0),c:(m.cost&&m.cost.total)||0}));
-  rows.sort((a,b)=>b.c-a.c||b.tok-a.tok);
+  rows.sort((a,b)=>(a.k==="legacy")-(b.k==="legacy")||b.c-a.c||b.tok-a.tok);
   el.hidden=!rows.length;if(!rows.length){el.innerHTML="";return}
   const top=rows.reduce((s,r)=>s+r.c,0);
   el.innerHTML=`<div class="cm-h">Custo por modelo</div>`+rows.map(({k,m,tok,c})=>{
     const b=m.cost||{},tip=m.priced?`Input novo: ${fmtUSD(b.input)}\nCache lido: ${fmtUSD(b.cache_read)}\nCache escrito: ${fmtUSD(b.cache_write)}\nOutput: ${fmtUSD(b.output)}\nTotal: ${fmtUSD(b.total)}\nSem cache: ${fmtUSD(b.no_cache)}`:"Modelo sem preço conhecido: não entra no custo.";
+    const tipFull=k==="legacy"?LEGACY_TIP+"\n\n"+tip:tip;
     const w=m.priced&&top>0?Math.max(c>0?2:0,c/top*100):0;
-    return `<div class="cm-row" data-tip="${esc(tip)}"><span class="cm-n">${esc(prettyModel(k))}</span><span class="cm-r">${fmtCount(m.requests||0)} req</span><span class="cm-t">${fmtTokens(tok)} tokens</span>`
+    return `<div class="cm-row" data-tip="${esc(tipFull)}"><span class="cm-n">${esc(prettyModel(k))}</span><span class="cm-r">${fmtCount(m.requests||0)} req</span><span class="cm-t">${fmtTokens(tok)} tokens</span>`
       +`<span class="cm-b"><i style="width:${w.toFixed(1)}%"></i></span><span class="cm-c${m.priced?"":" mut"}">${m.priced?fmtUSD(c):"sem preço"}</span></div>`}).join("");
 }
 
@@ -1474,12 +1562,12 @@ function demo(){
   const sum=o=>o.f+o.rd+o.w+o.o;
   const buckets=[],accounts={};
   // Prices per million tokens: Opus 5.5 and Haiku 5.5. no_cache bills every cache read/write as fresh input.
-  const OP={i:4,r:.2,w:5,o:20},HK={i:.1,r:.01,w:.125,o:.5};
+  const OP={i:4,r:.2,w:5,o:20},HK={i:.1,r:.01,w:.125,o:.5},LG={i:4,r:.2,w:8,o:20};
   const zc=()=>({total:0,input:0,cache_read:0,cache_write:0,output:0,no_cache:0});
   const addCost=(c,R,f,rd,w,o,m)=>{const i=f*R.i*m/1e6,r=rd*R.r*m/1e6,wr=w*R.w*m/1e6,ou=o*R.o*m/1e6;
     c.input+=i;c.cache_read+=r;c.cache_write+=wr;c.output+=ou;c.total+=i+r+wr+ou;c.no_cache+=(f+rd+w)*R.i*m/1e6+ou;return i+r+wr+ou};
   const newModel=()=>({requests:0,input:0,cache_read:0,cache_write:0,output:0,priced:true,cost:zc()});
-  const models={"claude-opus-5-5":newModel(),"claude-haiku-5-5":newModel()};
+  const models={"claude-opus-5-5":newModel(),"claude-haiku-5-5":newModel(),legacy:newModel()};
   const addModel=(mo,R,r,f,rd,w,o,m)=>{mo.requests+=r;mo.input+=f;mo.cache_read+=rd;mo.cache_write+=w;mo.output+=o;return addCost(mo.cost,R,f,rd,w,o,m)};
   for(const id of ids)accounts[id]={requests:0,failed:id==="c3"?2:0,input:0,output:0,cached:0,cache_write:0,cost:zc(),unpriced_tokens:id==="c2"?1.2e6:0};
   const addBM=(b,k,r,t,c)=>{b.requests_by_model[k]=(b.requests_by_model[k]||0)+r;b.tokens_by_model[k]=(b.tokens_by_model[k]||0)+t;b.cost_by_model[k]=(b.cost_by_model[k]||0)+c};
@@ -1495,12 +1583,15 @@ function demo(){
         const a=accounts[id];a.requests+=o.r;a.input+=o.f;a.output+=o.o;a.cached+=o.rd;a.cache_write+=o.w;
         // ~10% of the tokens go to Haiku 5.5, the rest to Opus 5.5.
         const hk=x=>Math.round(x*.1),hr_=hk(o.r),hf=hk(o.f),hrd=hk(o.rd),hw=hk(o.w),ho=hk(o.o);
-        const uo=addModel(models["claude-opus-5-5"],OP,o.r-hr_,o.f-hf,o.rd-hrd,o.w-hw,o.o-ho,1),uh=addModel(models["claude-haiku-5-5"],HK,hr_,hf,hrd,hw,ho,1),usd=uo+uh;
+        // The oldest buckets also carry a legacy share (35% of Opus): tokens from before per-model tracking, priced as Opus 5.5 with 1h cache writes.
+        const or_=o.r-hr_,of=o.f-hf,ord=o.rd-hrd,ow=o.w-hw,oo=o.o-ho,lgf=i<Math.max(1,Math.round(slots/6))?.35:0,lk=x=>Math.round(x*lgf);
+        const lr=lk(or_),lf=lk(of),lrd=lk(ord),lw=lk(ow),lo=lk(oo),lt=lf+lrd+lw+lo;
+        const uo=addModel(models["claude-opus-5-5"],OP,or_-lr,of-lf,ord-lrd,ow-lw,oo-lo,1),uh=addModel(models["claude-haiku-5-5"],HK,hr_,hf,hrd,hw,ho,1),ul=lgf?addModel(models.legacy,LG,lr,lf,lrd,lw,lo,1):0,usd=uo+uh+ul;
         // The oldest bucket of c2 predates per-model tracking: no model on its tokens and requests.
         if(!(id==="c2"&&i===0)){
-          addBM(b,"claude-opus-5-5",o.r-hr_,sum(o)-(hf+hrd+hw+ho),uo);addBM(b,"claude-haiku-5-5",hr_,hf+hrd+hw+ho,uh)}
-        else{addBM(b,"claude-opus-5-5",0,0,uo);addBM(b,"claude-haiku-5-5",0,0,uh)}
-        addCost(a.cost,OP,o.f-hf,o.rd-hrd,o.w-hw,o.o-ho,1);addCost(a.cost,HK,hf,hrd,hw,ho,1);
+          addBM(b,"claude-opus-5-5",or_-lr,sum(o)-(hf+hrd+hw+ho)-lt,uo);addBM(b,"claude-haiku-5-5",hr_,hf+hrd+hw+ho,uh);if(lgf)addBM(b,"legacy",lr,lt,ul)}
+        else{addBM(b,"claude-opus-5-5",0,0,uo);addBM(b,"claude-haiku-5-5",0,0,uh);if(lgf)addBM(b,"legacy",0,0,ul)}
+        addCost(a.cost,OP,of-lf,ord-lrd,ow-lw,oo-lo,1);addCost(a.cost,HK,hf,hrd,hw,ho,1);if(lgf)addCost(a.cost,LG,lf,lrd,lw,lo,1);
         b.cost.claude+=usd;b.cost_by_account[id]=(b.cost_by_account[id]||0)+usd}}
     buckets.push(b)}
   // A small fast-mode Opus row (2x rates) for c1, counted in its totals.
