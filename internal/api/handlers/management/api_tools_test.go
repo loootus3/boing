@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1488,5 +1489,90 @@ func TestAPICallRejectsWhenOnlyIDTokenPresentWithoutRefreshToken(t *testing.T) {
 	}
 	if upstreamHit.Load() {
 		t.Fatal("upstream must not be hit when access token cannot be resolved")
+	}
+}
+
+func TestAPICallServesFromCache(t *testing.T) {
+	t.Parallel()
+
+	var upstreamHits atomic.Int32
+	upstreamServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		upstreamHits.Add(1)
+		_, _ = w.Write([]byte(`{"upstream":true}`))
+	}))
+	defer upstreamServer.Close()
+
+	manager := coreauth.NewManager(nil, &coreauth.RoundRobinSelector{}, nil)
+	claudeAuth := &coreauth.Auth{
+		ID:       "claude-test.json",
+		Provider: "claude",
+		Metadata: map[string]any{"type": "claude", "access_token": "tok"},
+	}
+	if _, errRegister := manager.Register(context.Background(), claudeAuth); errRegister != nil {
+		t.Fatalf("register claude auth: %v", errRegister)
+	}
+	authIndex := claudeAuth.EnsureIndex()
+
+	var serve atomic.Bool
+	var gotAuthID, gotMethod, gotURL string
+	h := &Handler{cfg: &config.Config{}, authManager: manager}
+	h.SetAPICallCache(func(auth *coreauth.Auth, method string, target *url.URL) ([]byte, bool) {
+		if auth != nil {
+			gotAuthID = auth.ID
+		}
+		gotMethod, gotURL = method, target.String()
+		return []byte(`{"cached":true}`), serve.Load()
+	})
+	router := gin.New()
+	router.POST("/", h.APICall)
+
+	var callWith func(authHeader, extra string) apiCallResponse
+	call := func(extra string) apiCallResponse {
+		t.Helper()
+		return callWith(`"Bearer $TOKEN$"`, extra)
+	}
+	callWith = func(authHeader, extra string) apiCallResponse {
+		t.Helper()
+		payload := `{"auth_index":"` + authIndex + `","method":"get","url":"` + upstreamServer.URL + `/usage","header":{"Authorization":` + authHeader + `}` + extra + `}`
+		recorder := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(payload))
+		req.Header.Set("Content-Type", "application/json")
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("status code = %d; body = %s", recorder.Code, recorder.Body.String())
+		}
+		var response apiCallResponse
+		if errDecode := json.NewDecoder(recorder.Body).Decode(&response); errDecode != nil {
+			t.Fatalf("decode response: %v", errDecode)
+		}
+		return response
+	}
+
+	serve.Store(true)
+	cached := call("")
+	if cached.StatusCode != http.StatusOK || cached.Body != `{"cached":true}` || cached.Header[apiCallCacheHeader] == nil {
+		t.Fatalf("cached response = %+v", cached)
+	}
+	if upstreamHits.Load() != 0 {
+		t.Fatal("cache hit still contacted the upstream")
+	}
+	if gotAuthID != claudeAuth.ID || gotMethod != http.MethodGet || gotURL != upstreamServer.URL+"/usage" {
+		t.Fatalf("cache asked with auth=%q method=%q url=%q", gotAuthID, gotMethod, gotURL)
+	}
+
+	serve.Store(false)
+	if miss := call(""); miss.Body != `{"upstream":true}` || miss.Header[apiCallCacheHeader] != nil {
+		t.Fatalf("cache miss response = %+v", miss)
+	}
+
+	serve.Store(true)
+	if direct := call(`,"proxy_url":"direct"`); direct.Body != `{"upstream":true}` {
+		t.Fatalf("explicit proxy_url must skip the cache, got %+v", direct)
+	}
+	if other := callWith(`"Bearer another-token"`, ""); other.Body != `{"upstream":true}` {
+		t.Fatalf("a request without $TOKEN$ must skip the cache, got %+v", other)
+	}
+	if upstreamHits.Load() != 3 {
+		t.Fatalf("upstream hits = %d, want 3", upstreamHits.Load())
 	}
 }

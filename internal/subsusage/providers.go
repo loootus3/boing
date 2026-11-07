@@ -3,6 +3,7 @@ package subsusage
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -21,6 +22,15 @@ const (
 	codexUsageURL    = "https://chatgpt.com/backend-api/wham/usage"
 	codexUserAgent   = "codex-tui/0.149.1 (Mac OS 26.5.2; arm64) iTerm.app/3.6.11 (codex-tui; 0.149.1)"
 )
+
+// claudeUsageTarget is claudeUsageURL parsed, for matching api-call requests (see CachedAPICall).
+var claudeUsageTarget = func() *url.URL {
+	u, err := url.Parse(claudeUsageURL)
+	if err != nil {
+		panic(err)
+	}
+	return u
+}()
 
 // claudeWindows lists the Claude usage windows in display order.
 var claudeWindows = []struct{ key, kind, label string }{
@@ -52,6 +62,7 @@ func (t *Tracker) fetchClaude(ctx context.Context, authID, token string, entry *
 	if errParse := parseClaudeUsage(body, entry); errParse != nil {
 		return errParse
 	}
+	t.storeRawUsage(authID, body)
 	// The plan comes from the profile endpoint, which is only called when the cached plan is
 	// missing or older than planTTL. Failures there are not fatal and keep the previous plan.
 	cached, ok := t.cachedPlanOf(authID)

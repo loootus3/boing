@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -72,6 +73,12 @@ type backoffState struct {
 // cachedPlan is a plan name together with the time it was read.
 type cachedPlan struct {
 	plan string
+	at   time.Time
+}
+
+// cachedBody is an upstream response body together with the time it was read.
+type cachedBody struct {
+	body []byte
 	at   time.Time
 }
 
@@ -189,6 +196,8 @@ type Tracker struct {
 	plans   map[string]cachedPlan
 	// lastFetch holds the time of the last fetch attempt per auth ID, guarded by mu.
 	lastFetch map[string]time.Time
+	// rawUsage holds the last successful Claude usage body per auth ID, guarded by mu.
+	rawUsage map[string]cachedBody
 
 	// Test seams; nil means the production implementation.
 	fetchFn    func(ctx context.Context, a *coreauth.Auth) (*Entry, error)
@@ -451,6 +460,11 @@ func (t *Tracker) refreshAuths(ctx context.Context, force bool, auths []*coreaut
 		results[id] = e
 	}
 	t.entries = results
+	for id := range t.rawUsage {
+		if _, ok := results[id]; !ok {
+			delete(t.rawUsage, id)
+		}
+	}
 	t.lastRefresh = now
 	for _, e := range fetched {
 		defaultHistory.recordQuota(e, now)
@@ -630,6 +644,37 @@ func (t *Tracker) storePlan(authID, plan string) {
 		t.plans = make(map[string]cachedPlan)
 	}
 	t.plans[authID] = cachedPlan{plan: plan, at: time.Now()}
+}
+
+func (t *Tracker) storeRawUsage(authID string, body []byte) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.rawUsage == nil {
+		t.rawUsage = make(map[string]cachedBody)
+	}
+	t.rawUsage[authID] = cachedBody{body: body, at: t.now()}
+}
+
+// CachedAPICall answers a management api-call for a Claude account's usage with the last body
+// the tracker fetched for that account. Clients that poll every account through the management
+// API (T3 Code's CLIProxyAPI hub) then add no requests to the rate-limited usage endpoint. Only a
+// GET of the exact URL the tracker polls is answered, and only while the copy is under
+// staleAfter old; anything else returns false and goes upstream.
+func (t *Tracker) CachedAPICall(a *coreauth.Auth, method string, target *url.URL) ([]byte, bool) {
+	if a == nil || target == nil || method != http.MethodGet || !strings.EqualFold(a.Provider, "claude") {
+		return nil, false
+	}
+	if !strings.EqualFold(target.Scheme, claudeUsageTarget.Scheme) || !strings.EqualFold(target.Host, claudeUsageTarget.Host) ||
+		target.Path != claudeUsageTarget.Path || target.RawQuery != "" || target.User != nil {
+		return nil, false
+	}
+	t.mu.RLock()
+	defer t.mu.RUnlock()
+	c, ok := t.rawUsage[a.ID]
+	if !ok || t.now().Sub(c.at) > staleAfter {
+		return nil, false
+	}
+	return c.body, true
 }
 
 func metaString(a *coreauth.Auth, key string) string {

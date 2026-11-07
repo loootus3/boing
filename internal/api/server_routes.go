@@ -64,6 +64,7 @@ func (s *Server) setupRoutes() {
 		Callback:    s.mgmt.PostOAuthCallback,
 		PatchFields: s.mgmt.PatchAuthFileFields,
 	})
+	s.mgmt.SetAPICallCache(subsusage.Default().CachedAPICall)
 	// Start history first so the tracker's first quota samples are not overwritten by load.
 	historyDir := ""
 	if cfg := s.getConfig(); cfg != nil {

@@ -64,6 +64,8 @@ type Handler struct {
 	siwcOAuthFactory        func(*config.Config) siwcOAuthService
 	siwcCommitMu            sync.Mutex
 	pluginLoginSaveMu       sync.Mutex
+	// apiCallCache may answer an api-call locally; see SetAPICallCache.
+	apiCallCache APICallCache
 }
 
 type configReloadSnapshot struct {
@@ -294,6 +296,10 @@ func (h *Handler) reloadConfigAfterManagementSaveAsync(ctx context.Context, snap
 
 // SetLocalPassword configures the runtime-local password accepted for localhost requests.
 func (h *Handler) SetLocalPassword(password string) { h.localPassword = password }
+
+// SetAPICallCache installs a lookup that lets APICall answer from a local copy instead of the
+// upstream. Call it before the server starts serving requests.
+func (h *Handler) SetAPICallCache(fn APICallCache) { h.apiCallCache = fn }
 
 // SetLogDirectory updates the directory where main.log should be looked up.
 func (h *Handler) SetLogDirectory(dir string) {

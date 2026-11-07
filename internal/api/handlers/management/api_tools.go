@@ -47,6 +47,13 @@ type apiCallResponse struct {
 	Body       string              `json:"body"`
 }
 
+// APICallCache returns a body to answer an api-call with HTTP 200 without contacting the
+// upstream, or false to make the real request. auth is nil when no credential was selected.
+type APICallCache func(auth *coreauth.Auth, method string, target *url.URL) ([]byte, bool)
+
+// apiCallCacheHeader marks api-call responses that were answered from APICallCache.
+const apiCallCacheHeader = "X-Cliproxy-Cache"
+
 // APICall makes a generic HTTP request on behalf of the management API caller.
 // It is protected by the management middleware.
 //
@@ -135,6 +142,26 @@ func (h *Handler) APICall(c *gin.Context) {
 
 	authIndex := firstNonEmptyString(body.AuthIndexSnake, body.AuthIndexCamel, body.AuthIndexPascal)
 	auth := h.authByIndex(authIndex)
+
+	// The cache stands in for a request made with the selected credential's own token. A caller
+	// that sends another token or picks its own proxy wants the real request.
+	usesAccountToken := false
+	for _, value := range body.Header {
+		if strings.Contains(value, "$TOKEN$") {
+			usesAccountToken = true
+			break
+		}
+	}
+	if h.apiCallCache != nil && usesAccountToken && requestProxyURL == "" {
+		if cached, ok := h.apiCallCache(auth, method, parsedURL); ok {
+			c.JSON(http.StatusOK, apiCallResponse{
+				StatusCode: http.StatusOK,
+				Header:     map[string][]string{"Content-Type": {"application/json"}, apiCallCacheHeader: {"hit"}},
+				Body:       string(cached),
+			})
+			return
+		}
+	}
 
 	reqHeaders := body.Header
 	if reqHeaders == nil {
