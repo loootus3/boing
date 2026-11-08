@@ -1624,7 +1624,10 @@ function renderAccounts(){
       const wst=!wf?null:wf.zero!=null?{t:wf.zero*1000-now<=60000?"esgotada":`esgota em ${fmtLeft(wf.zero*1000-now)}`,c:"fast",tip:wTip+`\n${fmtLeft((wf.at-wf.zero)*1000)} antes do reset; depois o proxy passa para a próxima.`}
         :wf.before>=5?{t:`sobra ~${Math.round(wf.before)}% no reset`,c:"fast",tip:wTip+"\nO proxy usa esta conta depois das outras, então parte da cota não chega a ser usada."}
         :{t:"usa tudo até o reset",c:"ok",tip:wTip};
-      if(wk)h+=`<div class="rings">${sOn?ringBlock(s,ACC[a.auth_id],now):noRing("5h","não iniciada")}${ringBlock(wk,ACC[a.auth_id],now,wst)}</div>`;
+      // No short window at all means the account has no 5h limit (the API sends five_hour: null); a 5h window that
+      // has not started still arrives, without a reset time.
+      if(wk&&!s)h+=`<div class="rings solo">${ringBlock(wk,ACC[a.auth_id],now,wst)}</div>`;
+      else if(wk)h+=`<div class="rings">${sOn?ringBlock(s,ACC[a.auth_id],now):noRing("5h","não iniciada")}${ringBlock(wk,ACC[a.auth_id],now,wst)}</div>`;
       else if(s)h+=`<div class="rings solo">${ringBlock(s,ACC[a.auth_id],now)}</div>`;
       else if(loading)h+=`<div class="rings">${noRing("5h","carregando")}${noRing("Semanal","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
@@ -1836,7 +1839,7 @@ function renderModal(){
   const ownTxt=own.measured!=null?`${fmt1(own.measured/24)}%/h`:"—";
   const r3=recentUse(quota7Of(a.auth_id),now/1000,3);
   const stats=stat("Semanal",wl!=null?wl+"%":"—",rs(wk),wk?winInfo(wk,now).tip:"",wl!=null?lvl(wl):"")
-    +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"sem janela de 5h ativa",sh?winInfo(sh,now).tip:"",sl!=null?lvl(sl):"")
+    +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"esta conta não tem limite de 5h",sh?winInfo(sh,now).tip:"",sl!=null?lvl(sl):"")
     +stat(fkey,fv,fs,pf.br.ok?paceTipFull(pf.br):"",fc)
     +stat("Ritmo semanal",ext>=.05?`${fmt1((own.measured||0)/24)}<small> + ${fmt1(ext/24)}</small>`:r3.n>=2&&r3.drop>0?fmt1(r3.perHour)+"%/h":ownTxt,ext>=.05?"%/h pelo proxy + no app/site":r3.n>=2&&r3.drop>0?`últimas 3h · média de 24h: ${ownTxt}`:"média de 24h",
       `Queda do % semanal desta conta, ponderada pelas últimas ~24h (meia-vida ${PACE_HALF_LIFE_H}h).`+(ext>=.05?"\nFora do proxy: quedas sem requisições do proxy nesta conta (apps do Claude com o mesmo login).":""));
