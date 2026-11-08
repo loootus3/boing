@@ -187,7 +187,12 @@ func Register(engine *gin.Engine, h Handlers) {
 	})
 	g.GET("/api/history", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
-		c.JSON(http.StatusOK, DefaultHistory().View(c.Query("range"), time.Now().In(queryLocation(c.Query("tz")))))
+		c.JSON(http.StatusOK, DefaultHistory().ViewWith(c.Query("range"), c.Query("heat"), time.Now().In(queryLocation(c.Query("tz")))))
+	})
+	g.GET("/api/quota", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store")
+		id := c.Query("id")
+		c.JSON(http.StatusOK, gin.H{"id": id, "quota": DefaultHistory().QuotaAll(id)})
 	})
 	if h.LoginClaude != nil {
 		g.POST("/api/login/claude", requireUIHeader(forceWebUI(h.LoginClaude)))

@@ -427,6 +427,8 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-nav{display:flex;align-items:center;gap:2px;white-space:nowrap}.tl-nav:empty{display:none}
 .tl-nav span{margin-right:6px}
 .tl-nav button{display:grid;place-items:center;width:26px;height:26px;border:0;border-radius:6px;background:none;color:var(--foreground);cursor:pointer}
+.tl-nav button.tl-reset{display:inline-flex;align-items:center;width:auto;padding:0 6px;margin-right:4px;border-radius:6px;background:none;color:var(--muted-foreground)}
+.tl-nav button.tl-reset:hover:not(:disabled){background:none;color:var(--foreground)}
 .tl-nav button:hover:not(:disabled){background:var(--accent)}
 .tl-nav button:disabled{opacity:.3;cursor:default}
 .tl-nav button[data-z="prev"] svg{transform:rotate(180deg)}
@@ -466,7 +468,7 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
   .tl-adv{height:36px}
   .tl-card{--ph:240px}
   .tl-ctl .spacer{display:none}
-  .tl-nav button{width:34px;height:34px}
+  .tl-nav button{width:34px;height:34px}.tl-nav button.tl-reset{width:auto}
 }
 
 /* account detail modal */
@@ -609,7 +611,7 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
   <section class="blk" id="secAct">
     <div class="act-head"><div class="sec-head"><h2>Atividade</h2><span class="range tabular" id="rangeLabel"></span></div>
       <div class="act-ctl"><div class="seg" id="period" role="group" aria-label="Período">
-        <button data-v="24h">24h</button><button data-v="7d">7 dias</button><button data-v="30d">30 dias</button></div>
+        <button data-v="24h">24h</button><button data-v="7d">7 dias</button><button data-v="30d">30 dias</button><button data-v="all">Tudo</button></div>
 </div></div>
     <div class="stats" id="stats" role="group" aria-label="Escolha a métrica do gráfico"></div>
     <div class="card chart-card">
@@ -628,7 +630,8 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
   </section>
 
   <section class="blk" id="secHeat">
-    <div class="sec-head"><h2>Quando você trabalha</h2><span class="sec-sub" id="heatSub"></span></div>
+    <div class="act-head"><div class="sec-head"><h2>Quando você trabalha</h2><span class="sec-sub" id="heatSub"></span></div>
+      <div class="act-ctl"><div class="seg" id="heatWin" role="group" aria-label="Janela do mapa de calor"><button data-v="28d">4 semanas</button><button data-v="all">Tempo todo</button></div></div></div>
     <div class="card heat-card" id="heat"></div>
   </section>
 </main>
@@ -658,7 +661,7 @@ const store={get(k,d){try{return localStorage.getItem(k)??d}catch(_){return d}},
 const SCEN={same:{l:"No ritmo atual",m:1},half:{l:"Na metade do ritmo",m:.5},double:{l:"No dobro do ritmo",m:2},none:{l:"Sem usar nada",m:0}};
 const tlo={view:store.get("usage.tlview","left")==="rate"?"rate":"left",scen:SCEN[store.get("usage.scen","same")]?store.get("usage.scen","same"):"same",
   hide:new Set((()=>{try{const v=JSON.parse(store.get("usage.tlhide","[]"));return Array.isArray(v)?v:[]}catch(_){return[]}})()),menu:false};
-const state={burn:(b=>["auto","1","3","6"].includes(b)?b:"auto")(store.get("usage.burn","auto")),period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
+const state={burn:(b=>["auto","1","3","6"].includes(b)?b:"auto")(store.get("usage.burn","auto")),period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),heat:(s=>s==="all"?"all":"28d")(store.get("usage.heat","28d")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
 $("#emptyLogo").innerHTML=LOGO.claude;
 
 /* formatting (after T3 Code usageFormat) */
@@ -1232,7 +1235,17 @@ function clipPts(p,a,b){const s=Math.max(a,p[0][0]),e=Math.min(b,p[p.length-1][0
   if(e>s)out.push([e,atPts(p,e)]);return out}
 // Axis ticks for the visible range: local midnights (weekday labels) from 2 days up, else round hours.
 function xTicks(V0,V1){const span=V1-V0,out=[],d=new Date(V0*1000);
-  if(span>=2*DAY){
+  if(span>100*DAY){
+    // Months: the 1st of every month (every 2nd, 3rd... for very long spans), aligned to the calendar so panning keeps them put.
+    const ms=Math.ceil(span/(30.4*DAY)/8);
+    for(let k=0;;k++){const dt=new Date(d.getFullYear(),d.getMonth()+k,1),m=dt.getTime()/1000;if(m>V1)break;
+      if(m>=V0&&(dt.getFullYear()*12+dt.getMonth())%ms===0)out.push({t:m,l:fmtDay(dt)+(dt.getMonth()===0?" "+dt.getFullYear():"")})}
+  }else if(span>10*DAY){
+    // Weeks to months: "5 nov" labels, every sd-th local day (counted from the epoch so panning keeps them put).
+    const sd=Math.ceil(span/DAY/9);
+    for(let k=0;;k++){const dt=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k),m=dt.getTime()/1000;if(m>V1)break;
+      if(m>=V0&&Math.round(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate())/864e5)%sd===0)out.push({t:m,l:fmtDay(dt)})}
+  }else if(span>=2*DAY){
     // Under 4 days, noons too.
     for(let k=0;;k++){const m=new Date(d.getFullYear(),d.getMonth(),d.getDate()+k).getTime()/1000;if(m>V1)break;
       if(m>=V0){const nd=new Date((m+12*3600)*1000);out.push({t:m,l:fmtWd(nd)+" "+nd.getDate()})}
@@ -1644,7 +1657,7 @@ function renderAccounts(){
 }
 
 /* ---- account detail modal ---- */
-let modalId=null,mdRange="all";
+let modalId=null,mdRange="week";
 function openAccModal(id){
   if(id!==modalId)mdz=null;modalId=id;$("#accModal").hidden=false;document.body.classList.add("modal-open");hideTip();
   $("#mdBody").dataset.key="";renderModal();
@@ -1660,7 +1673,9 @@ addEventListener("keydown",e=>{if(!modalId)return;
   if(e.key==="Tab"){const f=[...$("#accModal").querySelectorAll("button,select,[tabindex]:not([tabindex='-1'])")].filter(x=>x.offsetParent);if(!f.length)return;
     const i=f.indexOf(document.activeElement),n=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i===f.length-1?0:i+1);e.preventDefault();f[n].focus()}});
 $("#accModal").addEventListener("click",e=>{if(e.target.closest("[data-close]")){closeAccModal();return}
-  const z=e.target.closest("[data-mdz]");if(z&&(mdz||z.dataset.mdz!==mdRange)){mdz=null;mdRange=z.dataset.mdz;if(mdChart)mdChart.draw();else renderModal()}});
+  const z=e.target.closest("[data-mdz]");if(z&&(mdz||z.dataset.mdz!==mdRange)){const prev=mdRange;mdz=null;mdRange=z.dataset.mdz;
+    // The "hist" preset changes the data source, so the chart (and its F0/F1) is rebuilt instead of redrawn.
+    if(mdChart&&(prev==="hist")===(mdRange==="hist"))mdChart.draw();else renderModal()}});
 $("#accts").addEventListener("click",e=>{const o=e.target.closest("[data-open]");if(o){openAccModal(o.dataset.open);return}
   const rn=e.target.closest("[data-rename]");if(rn){startRename(rn.dataset.rename);return}
   if(e.target.closest("select,button,a,input"))return;
@@ -1681,16 +1696,29 @@ addEventListener("pointermove",ev=>{if(!mdPan||ev.pointerId!==mdPan.id||!mdChart
   if(!mdPanRaf)mdPanRaf=requestAnimationFrame(()=>{mdPanRaf=0;if(mdChart)mdChart.draw()})});
 function mdPanEnd(ev){if(!mdPan||(ev&&ev.pointerId!==mdPan.id))return;mdPan=null;document.body.classList.remove("tl-panning")}
 addEventListener("pointerup",mdPanEnd);addEventListener("pointercancel",mdPanEnd);
+// All stored samples of one account for the "Tempo todo" preset: fetched on demand, cached for a minute, null until they
+// arrive (and in demo). When they land the dialog is rebuilt, only if it is still on that account and preset.
+state.quotaAll={};
+function quotaAllOf(id){if(DEMO)return null;
+  let e=state.quotaAll[id];if(!e)e=state.quotaAll[id]={at:0,q:null,busy:false};
+  if(!e.busy&&Date.now()-e.at>60e3){e.busy=true;
+    fetch("/usage/api/quota?id="+encodeURIComponent(id),{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json()})
+      .then(j=>{e.q=Array.isArray(j.quota)?j.quota:e.q},()=>{}).then(()=>{e.at=Date.now();e.busy=false;if(modalId===id&&mdRange==="hist")renderModal()})}
+  return e.q}
+// Keeps at most n points (evenly strided, always the first and last) so months of samples stay cheap to draw.
+const thinPts=(p,n)=>{if(p.length<=n)return p;const k=(p.length-1)/(n-1);return Array.from({length:n},(_,i)=>p[Math.round(i*k)])};
 // Weekly remaining of one account: real samples of the last 3 days (5h window in the tooltip), then the pool
 // simulation's share of this account for 7 days, with its refills and the point it runs dry.
 function accChart(a,i,rec,now,f){
   const t0=now/1000,PAST=3*DAY,HZ=7*DAY,c=ACC[a.auth_id],wk=weeklyOf(a),sh=shortOf(a);
-  const q=quota7Of(a.auth_id).filter(p=>p.t>=t0-PAST&&p.t<=t0);
+  // "hist" preset: every stored sample of this account (fetched on demand); until it arrives the 3-day data is shown.
+  const qa=mdRange==="hist"?quotaAllOf(a.auth_id):null;
+  const q=qa?qa.filter(p=>p.t<=t0):quota7Of(a.auth_id).filter(p=>p.t>=t0-PAST&&p.t<=t0);
   const pw=q.filter(p=>p.w!=null).map(p=>[p.t,p.w]),ps=q.filter(p=>p.s!=null).map(p=>[p.t,p.s]);
   if(wk)pw.push([t0,100-clampPct(wk.used_percent)]);
   if(sh&&ps.length)ps.push([t0,100-clampPct(sh.used_percent)]);
   const proj=i>=0&&rec.ts?rec.ts.map((t,k)=>[t,rec.lefts[k][i]]).filter(p=>p[0]<=t0+HZ):[];
-  // Full range: every sample of the last 3 days through 7 days ahead. "3d" preset: a day back and two ahead.
+  // Full range: every sample of the last 3 days (or of all history) through 7 days ahead. "3d" preset: a day back and two ahead.
   const F0=Math.min(t0-6*3600,...pw.map(p=>p[0]),...ps.map(p=>p[0])),F1=proj.length?t0+HZ:t0+6*3600,MINW=2*3600;
   const evsAll=i>=0&&rec.events?rec.events.filter(e=>e.i===i&&e.at<=F1&&e.at>=F0):[];
   let zero=null;for(let k=1;k<proj.length;k++)if(proj[k][1]<=.5&&proj[k-1][1]>.5){zero=proj[k][0];break}
@@ -1705,7 +1733,7 @@ function accChart(a,i,rec,now,f){
     return mdRange==="3d"?{V0:Math.max(F0,t0-DAY),V1:Math.min(F1,t0+2*DAY),custom:false}:{V0:F0,V1:F1,custom:false}};
   const frame=v=>{
     const{V0,V1}=v,VS=V1-V0,X=t=>(t-V0)/VS*1000,P=t=>(t-V0)/VS*100,inV=t=>t>=V0&&t<=V1;
-    const cw=pts=>pts.length>1?clipPts(pts,V0,V1):pts.filter(p=>inV(p[0]));
+    const cw=pts=>thinPts(pts.length>1?clipPts(pts,V0,V1):pts.filter(p=>inV(p[0])),1500);
     const d=pts=>pts.map((p,k)=>(k?"L":"M")+X(p[0]).toFixed(1)+","+Y(p[1]).toFixed(1)).join("");
     const area=pts=>pts.length>1?`${d(pts)}L${X(pts[pts.length-1][0]).toFixed(1)},${BOT}L${X(pts[0][0]).toFixed(1)},${BOT}Z`:"";
     const evs=evsAll.filter(e=>inV(e.at)),cpw=cw(pw),cproj=cw(proj),ticks=xTicks(V0,V1);
@@ -1722,7 +1750,7 @@ function accChart(a,i,rec,now,f){
     if(zero&&inV(zero))ov+=`<i class="tl-dot" style="left:${P(zero).toFixed(2)}%;top:${Y(0)}px;--c:var(--st-crit)"></i><div class="md-zero" style="left:${P(zero).toFixed(2)}%;top:${Y(0)-22}px${inV(t0)&&P(zero)-P(t0)<9?";transform:translateX(5px)":""}">esgota ~${esc(hm(zero))}</div>`;
     if(wk&&inV(t0))ov+=`<i class="tl-dot now" style="left:${P(t0).toFixed(2)}%;top:${Y(pw[pw.length-1][1]).toFixed(1)}px;background:${c}"></i>`;
     const xl=[{t:t0,l:"agora",now:1},...ticks].reduce((o,k)=>{const x=P(k.t);if(!o.some(z=>Math.abs(z.x-x)<5.5)&&x>2&&x<97)o.push({...k,x});return o},[]);
-    const seg=`<div class="seg md-z" data-tip="${esc("Roda do mouse (ou pinça): zoom\nArraste: selecionar um trecho para ampliar\nCom zoom: arraste para mover, shift + arraste seleciona\nDuplo clique: voltar aos 7 dias")}">${[["3d","3 dias"],["all","7 dias"]].map(([k,l])=>{const on=!v.custom&&mdRange===k;return `<button type="button" data-mdz="${k}" aria-pressed="${on}"${on?` class="on"`:""}>${l}</button>`}).join("")}</div>`;
+    const seg=`<div class="seg md-z" data-tip="${esc("Roda do mouse (ou pinça): zoom\nArraste: selecionar um trecho para ampliar\nCom zoom: arraste para mover, shift + arraste seleciona\nDuplo clique: ver o período inteiro")}">${[["3d","3 dias"],["week","7 dias"],["hist","Tempo todo"]].map(([k,l])=>{const on=!v.custom&&mdRange===k;return `<button type="button" data-mdz="${k}" aria-pressed="${on}"${on?` class="on"`:""}>${l}</button>`}).join("")}</div>`;
     const zoomed=VS<F1-F0-1;
     return `<div class="md-tl"><div class="md-leg tl-leg">${leg}</div>${seg}</div>
       <div class="tl-chart md-chart"><div class="tl-y" style="height:${H}px">${[0,50,100].map(v=>`<span style="top:${Y(v)}px">${v}%</span>`).join("")}</div>
@@ -1761,7 +1789,7 @@ function accChart(a,i,rec,now,f){
       if(tb>F1){ta=Math.max(F0,ta-(tb-F1));tb=F1}
       mdz=[ta,tb];draw()});
     plot.addEventListener("pointercancel",()=>{drag=null;band.remove()});
-    plot.ondblclick=()=>{if(mdz||mdRange!=="all"){mdz=null;mdRange="all";draw()}};
+    plot.ondblclick=()=>{if(mdz||mdRange==="3d"){mdz=null;if(mdRange==="3d")mdRange="week";draw()}};
     // Vertical wheel zooms around the pointer; shift or a horizontal wheel pans while zoomed.
     let zacc=0,zx=0,zraf=0,wacc=0,wraf=0;
     plot.addEventListener("wheel",ev=>{
@@ -1773,7 +1801,7 @@ function accChart(a,i,rec,now,f){
         if(zraf)return;
         zraf=requestAnimationFrame(()=>{zraf=0;if(!plot.isConnected)return;const k=Math.exp(zacc*0.0015);zacc=0;
           const full=F1-F0,w=Math.min(full,Math.max(MINW,VS*k)),at=V0+zx*VS;
-          if(w>=full-1){mdz=null;mdRange="all"}else{const a=Math.min(Math.max(F0,at-zx*w),F1-w);mdz=[a,a+w]}
+          if(w>=full-1){mdz=null;if(mdRange==="3d")mdRange="week"}else{const a=Math.min(Math.max(F0,at-zx*w),F1-w);mdz=[a,a+w]}
           draw()});
         return}
       if(!zoomed)return;
@@ -1819,15 +1847,15 @@ function renderModal(){
   if(h&&h.buckets&&h.buckets.length){
     let hb=h.buckets;if(h.step>=86400){const nz=hb.findIndex(b=>Object.values(b[acck]||{}).some(v=>v>0));if(nz>0)hb=hb.slice(Math.min(nz,hb.length-2))}
     const vals=hb.map(b=>((b[acck]||{})[a.auth_id])||0),mx=Math.max(...vals),hourly=h.step<86400;
-    const lbl={"24h":"24h","7d":"7 dias","30d":"30 dias"}[h.range||state.period]||"";
+    const lbl={"24h":"24h","7d":"7 dias","30d":"30 dias",all:"tempo todo"}[h.range||state.period]||"";
     const t=h.accounts&&h.accounts[a.auth_id];
     const foot=t&&(t.requests||t.input||t.output||t.cached)?`<b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · ${fmtCount(t.requests||0)} req · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`:ext>=.05?"sem uso pelo proxy":"sem atividade";
     act=`<div class="md-act"><div class="md-h"><span>${state.metric==="cost"?"Custo":state.metric==="tokens"?"Tokens":"Requisições"} pelo proxy · ${hourly?"por hora":"por dia"} · ${lbl}</span><span>${foot}</span></div>
       <div class="md-bars">${vals.map((v,k)=>{const d=new Date(hb[k].t*1000);
         const part=!hourly&&k===vals.length-1;
         return `<i data-tip="${esc((hourly?fmtDate(d):fmtDay(d))+(part?" (parcial)":"")+": "+fmtMetric(v))}" style="--h:${mx>0?(v/mx*100).toFixed(1):0}%;--c:${c}"${v>0?part?` class="p"`:"":` class="z"`}>${v>0&&vals.length<=8?`<em>${esc(fmtMetric(v))}</em>`:""}</i>`}).join("")}</div>
-      <div class="md-bx">${vals.map((v,k)=>{const d=new Date(hb[k].t*1000),n=vals.length,every=n<=8?1:n<=16?2:hourly?6:7,show=k%every===0||k===n-1;
-        return `<span>${show?esc(hourly?d.getHours()+"h":k===n-1?"hoje":fmtWd(d)+" "+d.getDate()):""}</span>`}).join("")}</div>
+      <div class="md-bx">${vals.map((v,k)=>{const d=new Date(hb[k].t*1000),n=vals.length,every=n<=8?1:n<=16?2:hourly?6:n<=32?7:Math.ceil(n/8),show=k===n-1||(k%every===0&&(n-1-k>=every/2||every===1));
+        return `<span>${show?esc(hourly?d.getHours()+"h":k===n-1?"hoje":n>60?fmtDay(d):fmtWd(d)+" "+d.getDate()):""}</span>`}).join("")}</div>
       ${mx>0&&vals.length>8?`<div class="md-max">máx. ${esc(fmtMetric(mx))}</div>`:""}</div>`}
   const modeTxt={normal:"Normal",last:"Por último",off:"Não usar"}[mode]||mode;
   const markup=`<div class="md-head">${who(email,c,a.name)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">Prioridade: ${esc(modeTxt)}</span>
@@ -1861,7 +1889,7 @@ function renderSkeleton(){
 
 /* ---- activity ---- */
 // Claude accounts present in the history, in the stable colour order (sorted by auth_id).
-const PERIOD_LBL={"24h":"Últimas 24h","7d":"Últimos 7 dias","30d":"Últimos 30 dias"};
+const PERIOD_LBL={"24h":"Últimas 24h","7d":"Últimos 7 dias","30d":"Últimos 30 dias",all:"Todo o histórico"};
 const LEGACY_TIP="Tokens de antes do registro por modelo, estimados como Opus 5.5 com cache de 1h.";
 const MODEL_FAMILIES=["fable","mythos","opus","sonnet","haiku"];
 // Pricing keys present in the by-model maps: family, then version descending, then plain before +fast/+long.
@@ -1946,7 +1974,7 @@ function renderActivity(){
     plot.insertAdjacentHTML("beforeend",`<div class="empty-chart">${msg}</div>`)}
   const dots=ids.map(id=>{const d=document.createElement("i");d.className="dot";d.style.setProperty("--c",color(id));plot.appendChild(d);return d});
   $("#ylabels").innerHTML=sc.ticks.map(t=>`<span style="top:${Y(t)/260*100}%">${t?fmtAxis(t):"0"}</span>`).join("");
-  const lab=i=>{const d=new Date(h.buckets[i].t*1000);return hourly?fmtHour(d):i===n-1?"hoje":d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")+" "+d.getDate()};
+  const lab=i=>{const d=new Date(h.buckets[i].t*1000);return hourly?fmtHour(d):i===n-1?"hoje":n>60?fmtDay(d):d.toLocaleDateString("pt-BR",{weekday:"short"}).replace(".","")+" "+d.getDate()};
   // Labels sit exactly over their bucket: every day when there are few, else ~5 evenly picked buckets.
   const xi=n<=8?[...Array(n).keys()]:[...new Set([0,1,2,3,4].map(k=>Math.round(k*(n-1)/4)))];
   $("#xlabels").innerHTML=xi.map(i=>{const p=pos(i);return `<span style="left:${p.toFixed(2)}%;transform:translateX(${i===0?0:i===n-1?-100:-50}%)">${lab(i)}</span>`}).join("");
@@ -1985,7 +2013,7 @@ function renderActivity(){
   // Delta against the previous period, only when its history is complete and the previous value is > 0.
   const prev=h.previous_complete&&h.previous?sumTotals(h.previous,h.providers):null;
   const prevMoney=prev&&prev.unpriced<=prev.tok*.01;
-  const plab={"24h":"24h anteriores","7d":"7 dias anteriores","30d":"30 dias anteriores"}[h.range||state.period]||"período anterior";
+  const plab={"24h":"24h anteriores","7d":"7 dias anteriores","30d":"30 dias anteriores",all:"período anterior"}[h.range||state.period]||"período anterior";
   const delta=(c,p,fmtP,money)=>{
     if(!prev||(money&&!prevMoney)||!(p>0))return"";
     const d=(c-p)/p*100,tip=`${plab[0].toUpperCase()+plab.slice(1)}: ${fmtP(p)}`;
@@ -2023,8 +2051,9 @@ function renderHeat(){
   const h=state.hist,el=$("#heat"),sub=$("#heatSub");
   if(!h||!h.heat_tokens||!h.heat_requests){el.innerHTML="";return}
   const days=h.heat_days||0,tokens=state.metric!=="requests";
-  sub.textContent=`${tokens?"Tokens":"Requisições"} por hora do dia, `+(days>=28?"média das últimas 4 semanas":days>=14?`média dos últimos ${days} dias`:`últimos ${days} ${days===1?"dia":"dias"}`)+" · hora local"+(days<7?" · só os dias com uso":"");
-  if(!days){el.innerHTML=`<div class="sub">Sem atividade nas últimas 4 semanas.</div>`;return}
+  const full=h.heat_range==="all";
+  sub.textContent=`${tokens?"Tokens":"Requisições"} por hora do dia, `+(full?`média de todo o histórico (${days} ${days===1?"dia":"dias"})`:days>=28?"média das últimas 4 semanas":days>=14?`média dos últimos ${days} dias`:`últimos ${days} ${days===1?"dia":"dias"}`)+" · hora local"+(days<7?" · só os dias com uso":"");
+  if(!days){el.innerHTML=`<div class="sub">${full?"Sem atividade registrada.":"Sem atividade nas últimas 4 semanas."}</div>`;return}
   // How many times each weekday occurred in the covered days, to turn totals into per-day averages.
   // The server counts them in the zone it binned the heatmap in.
   let cnt=h.heat_weekday_days;
@@ -2086,7 +2115,7 @@ function renderAll(){
 const DEMO_MODE=new URLSearchParams(location.search).get("demo"),DEMO=DEMO_MODE!==null;
 // The browser's IANA zone, so the server bins days and the heatmap like the labels read.
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(_){return""}})();
-const histUrl=range=>"/usage/api/history?range="+encodeURIComponent(range)+(TZ?"&tz="+encodeURIComponent(TZ):"");
+const histUrl=(range,heat)=>"/usage/api/history?range="+encodeURIComponent(range)+(heat==="all"?"&heat=all":"")+(TZ?"&tz="+encodeURIComponent(TZ):"");
 // loadSeq makes sure a slow response never overwrites the state of a newer load.
 let loadSeq=0;
 // A poll (`poll`) whose responses match the last ones only moves the clocks, re-rendering at most once a minute.
@@ -2095,18 +2124,19 @@ async function load(refresh,poll){
   const seq=++loadSeq,period=state.period;
   try{
     const reqs=[fetch("/usage/api/data"+(refresh?"?refresh=1":""),{cache:"no-store",headers:{"X-Usage-UI":"1"}}),
-      fetch(histUrl(period),{cache:"no-store"})];
+      fetch(histUrl(period,state.heat),{cache:"no-store"})];
     // The runway sparkline always covers 7 days, whatever the chart period is.
     if(period==="24h")reqs.push(fetch(histUrl("7d"),{cache:"no-store"}));
     const [r1,r2,r3]=await Promise.all(reqs);
     if(!r1.ok)throw new Error("HTTP "+r1.status);
     const t1=await r1.text(),t2=r2.ok?await r2.text():null,t3=r3&&r3.ok?await r3.text():null;
     if(seq!==loadSeq)return;
-    const nowM=t1.match(/"now":"([^"]*)"/),sig=[period,t1.replace(/"now":"[^"]*"/,""),t2,t3].join("\u0001");
+    const nowM=t1.match(/"now":"([^"]*)"/),sig=[period,state.heat,t1.replace(/"now":"[^"]*"/,""),t2,t3].join("\u0001");
     if(poll&&t2!=null&&sig===state.sig&&Date.now()-state.renderAt<60e3){state.dataNow=(nowM&&Date.parse(nowM[1]))||Date.now();state.recvAt=Date.now();
       if(/^Falha ao carregar/.test($("#toast").textContent))toast("");return}
     const data=JSON.parse(t1),hist=t2!=null?JSON.parse(t2):state.hist;
     // Every period needs the 7-day samples for the pace: 7d/30d responses carry the server's full retention, filtered client-side.
+    // 7d, 30d and all responses carry the server's quota retention (last 8 days) in `quota`.
     const quota7=period==="24h"?(t3!=null?JSON.parse(t3).quota:state.quota7):hist?hist.quota:state.quota7;
     // Committed only after every response parsed, so a failed poll keeps the last good data.
     applyNames(data);
@@ -2120,8 +2150,8 @@ async function load(refresh,poll){
 function setupSeg(id,key){const el=$("#"+id);el.setAttribute("role","group");
   const sync=()=>el.querySelectorAll("button").forEach(b=>{b.type="button";const on=b.dataset.v===state[key];b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)});
   el.querySelectorAll("button").forEach(b=>b.onclick=()=>{state[key]=b.dataset.v;store.set("usage."+key,b.dataset.v);sync();
-    key==="period"?load(false):renderActivity()});sync()}
-setupSeg("period","period");setupSeg("stack","stack");
+    key==="period"||key==="heat"?load(false):renderActivity()});sync()}
+setupSeg("period","period");setupSeg("stack","stack");setupSeg("heatWin","heat");
 $("#stats").onclick=e=>{const b=e.target.closest("[data-metric]");if(!b||b.dataset.metric===state.metric)return;state.metric=b.dataset.metric;store.set("usage.metric",state.metric);renderActivity();const nb=$(`#stats [data-metric="${state.metric}"]`);if(nb)nb.focus()};
 
 // Inline rename on the account card: Enter or leaving the field saves, Esc cancels, empty goes back to the e-mail.

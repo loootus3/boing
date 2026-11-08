@@ -20,7 +20,6 @@ import (
 const (
 	// Not *.json: the auth watcher treats every JSON file in the auth dir as a credential.
 	historyFileName    = "usage-history.dat"
-	historyKeepHours   = 62 * 24 // two 30-day ranges, for the previous-period comparison
 	quotaKeepDuration  = 8 * 24 * time.Hour
 	quotaPointSpacing  = 10 * time.Minute
 	historyFlushPeriod = 2 * time.Minute
@@ -233,26 +232,28 @@ func (h *History) flush() {
 	}
 }
 
+// pruneLocked keeps hour stats forever and compacts quota samples older than quotaKeepDuration
+// to the last sample of each unix hour. It marks the history dirty only when it removed points.
 func (h *History) pruneLocked(now time.Time) {
-	minHour := now.Add(-historyKeepHours * time.Hour).Unix()
-	for id, hours := range h.data.Hours {
-		for hour := range hours {
-			if hour < minHour {
-				delete(hours, hour)
-			}
-		}
-		if len(hours) == 0 {
-			delete(h.data.Hours, id)
-		}
-	}
 	minQuota := now.Add(-quotaKeepDuration).Unix()
 	for id, points := range h.data.Quota {
 		i := sort.Search(len(points), func(i int) bool { return points[i].T >= minQuota })
-		if i == len(points) {
-			delete(h.data.Quota, id)
+		if i < 2 {
 			continue
 		}
-		h.data.Quota[id] = append([]quotaPoint(nil), points[i:]...)
+		kept := make([]quotaPoint, 0, len(points))
+		for _, p := range points[:i] {
+			if n := len(kept); n > 0 && kept[n-1].T/3600 == p.T/3600 {
+				kept[n-1] = p
+			} else {
+				kept = append(kept, p)
+			}
+		}
+		if len(kept) == i {
+			continue
+		}
+		h.data.Quota[id] = append(kept, points[i:]...)
+		h.dirty = true
 	}
 	for id := range h.data.Providers {
 		if _, ok := h.data.Hours[id]; ok {
@@ -523,22 +524,69 @@ type HistoryView struct {
 	HeatRequests    [7][24]int64 `json:"heat_requests"`
 	HeatDays        int          `json:"heat_days"`
 	HeatWeekdayDays [7]int       `json:"heat_weekday_days"`
+	// HeatRange is "all" when the heatmap covers every Claude hour, else "28d".
+	HeatRange string `json:"heat_range"`
 }
 
-// View aggregates history for a range: "24h" (hourly), "7d" or "30d" (daily). Day buckets and
-// heat bins use the location of now.
+// View aggregates history for a range with the default 28-day heatmap; see ViewWith.
 func (h *History) View(rangeKey string, now time.Time) HistoryView {
+	return h.ViewWith(rangeKey, "", now)
+}
+
+// maxAllSlots caps the number of day buckets of the "all" range.
+const maxAllSlots = 3660
+
+// earliestHourLocked returns the earliest stored hour of Claude accounts, falling back to any
+// account, or 0 without history.
+func (h *History) earliestHourLocked() int64 {
+	var claude, anyFirst int64
+	for id, hours := range h.data.Hours {
+		isClaude := h.data.Providers[id] == "claude"
+		for hour := range hours {
+			if anyFirst == 0 || hour < anyFirst {
+				anyFirst = hour
+			}
+			if isClaude && (claude == 0 || hour < claude) {
+				claude = hour
+			}
+		}
+	}
+	if claude != 0 {
+		return claude
+	}
+	return anyFirst
+}
+
+// ViewWith aggregates history for a range: "24h" (hourly), "7d", "30d" or "all" (daily). Day
+// buckets and heat bins use the location of now. heatKey "all" extends the heatmap to every
+// Claude hour; anything else covers the last 28 days.
+func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView {
 	var span, step time.Duration
 	switch rangeKey {
 	case "24h":
 		span, step = 24*time.Hour, time.Hour
 	case "30d":
 		span, step = 30*24*time.Hour, 24*time.Hour
+	case "all":
+		span, step = 7*24*time.Hour, 24*time.Hour
 	default:
 		rangeKey, span, step = "7d", 7*24*time.Hour, 24*time.Hour
 	}
 	loc := now.Location()
 	slots := int(span / step)
+	allHeat := heatKey == "all"
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if rangeKey == "all" {
+		if first := h.earliestHourLocked(); first != 0 {
+			ny, nm, nd := now.In(loc).Date()
+			fy, fm, fd := time.Unix(first, 0).In(loc).Date()
+			today := time.Date(ny, nm, nd, 0, 0, 0, 0, loc)
+			firstDay := time.Date(fy, fm, fd, 0, 0, 0, 0, loc)
+			slots = int(today.Sub(firstDay).Hours()/24+0.5) + 1
+			slots = min(max(slots, 2), maxAllSlots)
+		}
+	}
 	// Calendar arithmetic keeps day buckets on local midnights across DST changes.
 	slotStart := func(i int) time.Time {
 		y, m, d := now.In(loc).Date()
@@ -577,11 +625,14 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 	}
 
 	heatStart := now.Add(-heatDays * 24 * time.Hour)
+	view.HeatRange = "28d"
+	if allHeat {
+		heatStart = time.Time{}
+		view.HeatRange = "all"
+	}
 	var heatFirst time.Time
 	haveHeat := false
 
-	h.mu.Lock()
-	defer h.mu.Unlock()
 	for id, provider := range h.data.Providers {
 		view.Providers[id] = provider
 	}
@@ -663,10 +714,17 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 			view.Previous[id] = prev
 		}
 	}
-	view.PreviousComplete = earliest != 0 && earliest <= prevStart.Unix()
+	view.PreviousComplete = rangeKey != "all" && earliest != 0 && earliest <= prevStart.Unix()
 	if haveHeat {
-		view.HeatDays = min(heatDays, max(1, int(now.Sub(heatFirst)/(24*time.Hour))+1))
+		// Calendar days from the first heat hour's local date through today, so the weekday
+		// counts below cover every day whose hours are in the totals.
 		y, m, d := now.In(loc).Date()
+		fy, fm, fd := heatFirst.In(loc).Date()
+		calDays := int(time.Date(y, m, d, 0, 0, 0, 0, loc).Sub(time.Date(fy, fm, fd, 0, 0, 0, 0, loc)).Hours()/24+0.5) + 1
+		view.HeatDays = max(1, calDays)
+		if !allHeat {
+			view.HeatDays = min(heatDays, view.HeatDays)
+		}
 		for k := 0; k < view.HeatDays; k++ {
 			view.HeatWeekdayDays[time.Date(y, m, d-k, 12, 0, 0, 0, loc).Weekday()]++
 		}
@@ -682,6 +740,15 @@ func (h *History) View(rangeKey string, now time.Time) HistoryView {
 	}
 	view.roundCosts()
 	return view
+}
+
+// QuotaAll returns a copy of every stored quota sample of a credential, compacted and full
+// resolution, with Proxy marks set. Unknown credentials give an empty slice.
+func (h *History) QuotaAll(authID string) []quotaPoint {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	points := append([]quotaPoint{}, h.data.Quota[authID]...)
+	return markProxied(points, h.data.Hours[authID])
 }
 
 // roundUSD rounds to a millionth of a dollar: the float sums carry ~17 digits nobody reads, and the payload gets shorter.
