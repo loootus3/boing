@@ -102,6 +102,12 @@ type Window struct {
 	ResetAt     *time.Time `json:"reset_at,omitempty"`
 	// DurationSec is the window length, used by the page to draw the even-pace marker.
 	DurationSec int64 `json:"duration_sec,omitempty"`
+	// FablePercent is the part of this (weekly) window spent on Fable, in % of the window;
+	// FableLimitPercent is the use of Fable's own weekly allowance and FableAllowance that
+	// allowance in % of the window. Set only when the API reports a Fable-scoped limit.
+	FablePercent      *float64 `json:"fable_percent,omitempty"`
+	FableLimitPercent *float64 `json:"fable_limit_percent,omitempty"`
+	FableAllowance    *float64 `json:"fable_allowance,omitempty"`
 }
 
 // Entry is the usage snapshot of one credential.

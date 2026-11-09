@@ -197,6 +197,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .ring{display:inline-block;position:relative;flex:none;line-height:0;padding:6px}
 .ring svg{display:block;overflow:visible}
 .ring .trk{stroke:var(--track)}
+.ring .fab{stroke-opacity:.6}
 .ring text{fill:var(--foreground);font-weight:600;font-family:inherit}
 .rb .rs{flex-wrap:wrap;justify-content:center}.rs .pc{flex-basis:100%;text-align:center;font-size:12px;margin-top:1px;color:var(--muted-foreground);cursor:help}.rs .pc.fast{color:var(--warning-foreground)}
 .ring .tick{stroke:var(--foreground);stroke-opacity:.7;stroke-linecap:round}.ring text.rsub{fill:var(--muted-foreground);font-weight:500}
@@ -775,9 +776,13 @@ function ring(left,o){
   if(has&&o.pace!=null){const th=o.pace/100*2*Math.PI,r1=r-sw/2-2,r2=r+sw/2+3,
     p=(rr)=>`${(c+rr*Math.sin(th)).toFixed(2)}`,q=(rr)=>`${(c-rr*Math.cos(th)).toFixed(2)}`;
     tick=`<line class="tick" x1="${p(r1)}" y1="${q(r1)}" x2="${p(r2)}" y2="${q(r2)}" stroke-width="2.5"/>`}
+  // Fable's part of the used share: a dashed arc right after the remaining arc, in the used track.
+  let fab="";
+  if(has&&o.fable>0&&l<100){const f=Math.min(o.fable,100-l,99.9),pt=p=>{const th=p/100*2*Math.PI;return `${(c+r*Math.sin(th)).toFixed(2)},${(c-r*Math.cos(th)).toFixed(2)}`};
+    fab=`<path class="fab" d="M${pt(l)} A${r} ${r} 0 ${f>50?1:0} 1 ${pt(l+f)}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-dasharray="3 3"/>`}
   const txt=has?`${Math.round(l)}%`:"—";
   return `<span class="ring${has?"":" empty"}"${o.tip?` data-tip="${esc(o.tip)}" tabindex="0"`:""}><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-    <circle class="trk" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${sw}"/>${arc}${tick}
+    <circle class="trk" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${sw}"/>${fab}${arc}${tick}
     <text x="${c}" y="${has&&size>=80?c-6:c}" text-anchor="middle" dominant-baseline="central" font-size="${(size*.25).toFixed(1)}"${has?` data-n="${l}" data-f="pct"`:""}>${txt}</text>${has&&size>=80?`<text class="rsub" x="${c}" y="${c+15}" text-anchor="middle" dominant-baseline="central" font-size="10.5">restante</text>`:""}</svg></span>`;
 }
 // Remaining %, even-pace position, hover text and pace icon of one window.
@@ -1602,9 +1607,15 @@ function renderTimeline(){
 let tlResize=0;addEventListener("resize",()=>{clearTimeout(tlResize);tlResize=setTimeout(()=>{if(state.data.accounts.length)renderTimeline()},150)});
 
 /* ---- accounts ---- */
+// Hover text for Fable's part of a weekly window (the dashed arc).
+function fableTip(w){
+  if(w.fable_percent==null)return"";
+  let t=`\nTracejado: Fable, ${fmt1(w.fable_percent)}% do semanal`;
+  if(w.fable_allowance!=null)t+=`\nO Fable pode usar até ${Math.round(w.fable_allowance)}% do semanal`+(w.fable_limit_percent!=null?` (${Math.round(w.fable_limit_percent)}% desse limite usado)`:"");
+  return t}
 function ringBlock(w,acc,now,st){
   const i=winInfo(w,now),l=lvl(i.left);
-  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip,color:acc,keep:1})}
+  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip+fableTip(w),color:acc,keep:1,fable:w.fable_percent})}
     <div class="rl">${esc(w.label)}${l?`<span class="chip ${l}">${ICON_ALERT}${i.left<=0?"esgotada":l==="crit"?"crítico":"baixo"}</span>`:""}</div>
     <div class="rs tabular"><span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"janela não iniciada"}</span>${st?`<span class="pc ${st.c}" tabindex="0" data-tip="${esc(st.tip)}">${st.t}</span>`:i.reset&&i.pace!=null&&i.left>0?(d=>`<span class="pc ${d<-5?"fast":""}" tabindex="0" data-tip="${esc("Comparado com o traço no anel: onde você estaria gastando por igual até o reset.")}">${d<-5?"acima do ritmo ideal":d>5?"abaixo do ritmo ideal":"no ritmo ideal"}</span>`)(i.left-i.pace):""}</div></div>`;
 }

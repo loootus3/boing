@@ -94,7 +94,50 @@ func parseClaudeUsage(body []byte, entry *Entry) error {
 	if len(entry.Windows) == 0 {
 		return fmt.Errorf("resposta sem janelas de uso")
 	}
+	addFableShare(body, entry)
 	return nil
+}
+
+// addFableShare marks on the weekly window how much of it went to Fable. The API lists a
+// Fable-scoped weekly limit in "limits" (scope.model.display_name "Fable…") and, in
+// "weekly_scoped_shares", that limit's use as a percentage of the whole weekly window.
+func addFableShare(body []byte, entry *Entry) {
+	var weekly *Window
+	for i := range entry.Windows {
+		if entry.Windows[i].Kind == "weekly" {
+			weekly = &entry.Windows[i]
+			break
+		}
+	}
+	if weekly == nil {
+		return
+	}
+	limits := ojson.GetBytes(body, "limits").Array()
+	fable := -1
+	for i, l := range limits {
+		if l.Get("kind").String() == "weekly_scoped" && strings.HasPrefix(strings.ToLower(l.Get("scope.model.display_name").String()), "fable") {
+			fable = i
+			break
+		}
+	}
+	if fable < 0 {
+		return
+	}
+	pct := func(v float64) *float64 { v = max(0, min(100, v)); return &v }
+	if p := limits[fable].Get("percent"); p.Exists() {
+		weekly.FableLimitPercent = pct(p.Float())
+	}
+	for _, sh := range ojson.GetBytes(body, "weekly_scoped_shares").Array() {
+		if int(sh.Get("limit_index").Int()) != fable {
+			continue
+		}
+		if u := sh.Get("used_percent_of_weekly"); u.Exists() {
+			weekly.FablePercent = pct(u.Float())
+		}
+		if a := sh.Get("allowance_percent_of_weekly"); a.Exists() {
+			weekly.FableAllowance = pct(a.Float())
+		}
+	}
 }
 
 func claudePlan(profile []byte) string {
