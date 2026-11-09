@@ -5,14 +5,14 @@ import "testing"
 func TestAddFableShare(t *testing.T) {
 	body := []byte(`{"seven_day":{"utilization":60,"resets_at":null},
 	 "limits":[{"kind":"session","percent":3},{"kind":"weekly_all","percent":60},
-	  {"kind":"weekly_scoped","percent":40,"scope":{"model":{"display_name":"Fable"}}}],
+	  {"kind":"weekly_scoped","percent":40,"resets_at":"2026-11-15T03:00:00Z","scope":{"model":{"display_name":"Fable"}}}],
 	 "weekly_scoped_shares":[{"limit_index":2,"used_percent_of_weekly":20,"allowance_percent_of_weekly":50}]}`)
 	var e Entry
 	if err := parseClaudeUsage(body, &e); err != nil {
 		t.Fatal(err)
 	}
 	w := e.Windows[0]
-	if w.Kind != "weekly" || w.FablePercent == nil || *w.FablePercent != 20 || *w.FableAllowance != 50 || *w.FableLimitPercent != 40 {
+	if w.Kind != "weekly" || w.FablePercent == nil || *w.FablePercent != 20 || *w.FableAllowance != 50 || *w.FableLimitPercent != 40 || w.FableResetAt == nil || w.FableResetAt.Day() != 15 {
 		t.Fatalf("weekly = %+v", w)
 	}
 	var none Entry

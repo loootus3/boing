@@ -1613,9 +1613,21 @@ function fableTip(w){
   let t=`\nTracejado: Fable, ${fmt1(w.fable_percent)}% do semanal`;
   if(w.fable_allowance!=null)t+=`\nO Fable pode usar até ${Math.round(w.fable_allowance)}% do semanal`+(w.fable_limit_percent!=null?` (${Math.round(w.fable_limit_percent)}% desse limite usado)`:"");
   return t}
+// Fable's own weekly allowance as a window of its own, built from the weekly window's Fable fields.
+function fableWin(wk){
+  if(!wk||wk.fable_limit_percent==null)return null;
+  return{kind:"fable",label:"Fable",used_percent:wk.fable_limit_percent,reset_at:wk.fable_reset_at||wk.reset_at,duration_sec:wk.duration_sec||604800,wk};
+}
+function fableOwnTip(w){
+  const wk=w.wk,wl=Math.round(100-clampPct(wk.used_percent));
+  let t="";
+  if(wk.fable_allowance!=null)t+=`\nLimite próprio do Fable: até ${Math.round(wk.fable_allowance)}% do semanal`;
+  if(wk.fable_percent!=null)t+=`\nUsado com Fable: ${fmt1(wk.fable_percent)}% do semanal`;
+  if(wl<Math.round(100-clampPct(w.used_percent)))t+=`\nO Fable também gasta o semanal, que só tem ${wl}% restante.`;
+  return t}
 function ringBlock(w,acc,now,st){
-  const i=winInfo(w,now),l=lvl(i.left);
-  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip+fableTip(w),color:acc,keep:1,fable:w.fable_percent})}
+  const i=winInfo(w,now),l=lvl(i.left),fab=w.kind==="fable";
+  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip+(fab?fableOwnTip(w):fableTip(w)),color:acc,keep:1,fable:fab?null:w.fable_percent})}
     <div class="rl">${esc(w.label)}${l?`<span class="chip ${l}">${ICON_ALERT}${i.left<=0?"esgotada":l==="crit"?"crítico":"baixo"}</span>`:""}</div>
     <div class="rs tabular"><span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"janela não iniciada"}</span>${st?`<span class="pc ${st.c}" tabindex="0" data-tip="${esc(st.tip)}">${st.t}</span>`:i.reset&&i.pace!=null&&i.left>0?(d=>`<span class="pc ${d<-5?"fast":""}" tabindex="0" data-tip="${esc("Comparado com o traço no anel: onde você estaria gastando por igual até o reset.")}">${d<-5?"acima do ritmo ideal":d>5?"abaixo do ritmo ideal":"no ritmo ideal"}</span>`)(i.left-i.pace):""}</div></div>`;
 }
@@ -1689,10 +1701,10 @@ function renderAccounts(){
         :{t:"usa tudo até o reset",c:"ok",tip:wTip};
       // No short window at all means the account has no 5h limit (the API sends five_hour: null); a 5h window that
       // has not started still arrives, without a reset time.
-      if(wk&&!s)h+=`<div class="rings solo">${ringBlock(wk,ACC[a.auth_id],now,wst)}</div>`;
-      else if(wk)h+=`<div class="rings">${sOn?ringBlock(s,ACC[a.auth_id],now):noRing("5h","não iniciada")}${ringBlock(wk,ACC[a.auth_id],now,wst)}</div>`;
-      else if(s)h+=`<div class="rings solo">${ringBlock(s,ACC[a.auth_id],now)}</div>`;
-      else if(loading)h+=`<div class="rings">${noRing("5h","carregando")}${noRing("Semanal","carregando")}</div>`;
+      // Weekly and Fable rings only; the 5h window still counts for the "no limite" badge.
+      const fw=fableWin(wk);
+      if(wk)h+=`<div class="rings${fw?"":" solo"}">${ringBlock(wk,ACC[a.auth_id],now,wst)}${fw?ringBlock(fw,ACC[a.auth_id],now):""}</div>`;
+      else if(loading)h+=`<div class="rings">${noRing("Semanal","carregando")}${noRing("Fable","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
       const f=wk&&mode!=="off"?accountForecast(a,now,pf):null,sp="";

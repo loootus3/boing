@@ -108,6 +108,8 @@ type Window struct {
 	FablePercent      *float64 `json:"fable_percent,omitempty"`
 	FableLimitPercent *float64 `json:"fable_limit_percent,omitempty"`
 	FableAllowance    *float64 `json:"fable_allowance,omitempty"`
+	// FableResetAt is when Fable's own weekly allowance resets.
+	FableResetAt *time.Time `json:"fable_reset_at,omitempty"`
 }
 
 // Entry is the usage snapshot of one credential.

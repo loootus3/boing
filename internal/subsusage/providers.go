@@ -127,6 +127,7 @@ func addFableShare(body []byte, entry *Entry) {
 	if p := limits[fable].Get("percent"); p.Exists() {
 		weekly.FableLimitPercent = pct(p.Float())
 	}
+	weekly.FableResetAt = parseResetTime(limits[fable].Get("resets_at"))
 	for _, sh := range ojson.GetBytes(body, "weekly_scoped_shares").Array() {
 		if int(sh.Get("limit_index").Int()) != fable {
 			continue
