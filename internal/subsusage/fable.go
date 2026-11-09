@@ -47,7 +47,9 @@ func (t *Tracker) SetFableOrder(ctx context.Context, order []string) error {
 			continue
 		}
 		want := rank[a.ID]
-		if fableRankOf(a) == want && (want > 0 || a.Metadata == nil || a.Metadata[coreauth.MetadataPreferModels] == nil) {
+		// Accounts outside the order are only touched when they are in it now, so an order kept
+		// by hand for other models is left alone.
+		if want == 0 && !coreauth.AuthPrefersModel(a, "claude-fable-5-2") || want > 0 && fableRankOf(a) == want {
 			continue
 		}
 		_, _, err := m.Modify(ctx, a.ID, 0, func(x *coreauth.Auth) error {

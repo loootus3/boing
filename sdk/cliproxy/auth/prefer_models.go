@@ -102,9 +102,15 @@ func preferModelAuths(auths []*Auth, model string) []*Auth {
 	}
 	var preferred []*Auth
 	for _, a := range auths {
-		if AuthPrefersModel(a, model) {
-			preferred = append(preferred, a)
+		if !AuthPrefersModel(a, model) {
+			continue
 		}
+		// An account whose usage shows a full shared window would only answer 429; skip it like
+		// the normal order does, rather than spending a request to find out.
+		if info, ok := lookupResetInfo(a.ID); ok && info.Exhausted {
+			continue
+		}
+		preferred = append(preferred, a)
 	}
 	return preferred
 }

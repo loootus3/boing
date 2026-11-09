@@ -193,6 +193,8 @@ type Tracker struct {
 	refreshMu   sync.Mutex
 	client      *http.Client
 	startOnce   sync.Once
+	// cooldownCleared maps auth ID -> last time clearStaleCooldowns cleared it; guarded by mu.
+	cooldownCleared map[string]time.Time
 	// backoff and plans are keyed by auth ID and guarded by mu.
 	backoff map[string]backoffState
 	plans   map[string]cachedPlan
@@ -396,6 +398,10 @@ func (t *Tracker) refreshAuths(ctx context.Context, force bool, auths []*coreaut
 			}
 		}
 	}
+
+	// Accounts the proxy paused after a shared-limit 429 come back as soon as fresh usage shows
+	// room again (e.g. a reset used on claude.ai), instead of waiting for the full cooldown.
+	t.clearStaleCooldowns(ctx, auths, fetched, startedAt)
 
 	t.mu.Lock()
 	defer t.mu.Unlock()

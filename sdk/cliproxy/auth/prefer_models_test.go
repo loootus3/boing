@@ -67,3 +67,20 @@ func TestSoonestResetModelOrder(t *testing.T) {
 		t.Fatal("anyAuthPrefersModel")
 	}
 }
+
+func TestPreferModelAuthsSkipsExhausted(t *testing.T) {
+	prev := resetInfoProvider.Load()
+	fn := func(id string) (ResetInfo, bool) { return ResetInfo{Exhausted: id == "full"}, id == "full" }
+	SetResetInfoProvider(fn)
+	t.Cleanup(func() {
+		if prev != nil {
+			resetInfoProvider.Store(prev)
+		} else {
+			SetResetInfoProvider(nil)
+		}
+	})
+	full, ok := fableAuth("full", 1, nil), fableAuth("ok", 2, nil)
+	if got := preferModelAuths([]*Auth{full, ok}, "claude-fable-5-2"); len(got) != 1 || got[0].ID != "ok" {
+		t.Fatalf("got %v", got)
+	}
+}
