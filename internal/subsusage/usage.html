@@ -1374,7 +1374,9 @@ function renderTimeline(){
       <div class="tl-field"><label class="tl-lab" for="tlScen">Se eu continuar</label><select class="sel" id="tlScen" data-scen="1">${Object.entries(SCEN).map(([v,o])=>`<option value="${v}"${tlo.scen===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select></div>
       <div class="tl-field">${accMenu}</div></div>`;
   // Summary strip (this chart's run).
-  const zf=zs.find(z=>z[0]>t0-60),firstEmpty=Object.entries(cf.info).filter(([,f])=>f.zero!=null).sort((a,b)=>a[1].zero-b[1].zero)[0];
+  // The next account to run dry from here on; accounts already at 0% are only counted.
+  const zeroes=Object.entries(cf.info).filter(([,f])=>f.zero!=null),dryNow=zeroes.filter(([,f])=>f.zero*1000<=now+60e3).length;
+  const zf=zs.find(z=>z[0]>t0-60),firstEmpty=zeroes.filter(([,f])=>f.zero*1000>now+60e3).sort((a,b)=>a[1].zero-b[1].zero)[0];
   const nxt=evs.find(e=>e.gain>=1)||evs[0];
   const wH=state.burn==="auto"?3:+state.burn;
   let d3=0,c3=0;for(const a of accs){const r=recentUse(quota7Of(a.auth_id),t0,wH);if(r.n>1){d3+=r.drop;c3=Math.max(c3,r.coveredH)}}
@@ -1387,8 +1389,12 @@ function renderTimeline(){
   const stats=!fullStats?"":`<div class="tl-stats">${
     (stItem("Fica sem cota",!br.ok?"—":zf?esc(hm(zf[0])):"Não nesta semana",zf?`em ${fmtLeft(zf[0]*1000-now)} · volta ${esc(hm(zEnd))}`:br.ok?`no ritmo atual, até ${esc(fmtWd(new Date(F1*1000))+" "+new Date(F1*1000).getDate())}`:"coletando ritmo",
       "Quando o total de todas as contas do gráfico chega a 0%, no ritmo escolhido.","lead "+zCls))
-    +stItem("Primeira conta a zerar",firstEmpty?esc(faName):"Nenhuma",firstEmpty?(firstEmpty[1].zero*1000<=now+60e3?"já esgotada":`${esc(hm(firstEmpty[1].zero))} · ${fmtLeft((firstEmpty[1].at-firstEmpty[1].zero)*1000)} antes da recarga`):"nenhuma antes da própria recarga",
-      "Primeira conta a chegar a 0% antes da própria recarga semanal. É o esperado com várias contas: o proxy passa para a próxima.")
+    +(()=>{const dry=dryNow?` · ${dryNow} já esgotada${dryNow>1?"s":""}`:"";
+      if(!firstEmpty)return stItem("Próxima conta a zerar","Nenhuma","nenhuma antes da própria recarga"+dry,"Nenhuma conta chega a 0% antes da própria recarga semanal, no ritmo escolhido.");
+      const[fid,f]=firstEmpty,fa=allAccs.find(a=>a.auth_id===fid),fw=fa&&weeklyOf(fa),left=fw?Math.round(100-clampPct(fw.used_percent)):null;
+      return stItem("Próxima conta a zerar",`<i class="adot" style="--c:${ACC[fid]}"></i>${esc(faName)}`,
+        `${left!=null?left+"% agora · ":""}zera ${esc(hm(f.zero))} · volta ${esc(hm(f.at))}${dry}`,
+        `${faName}${left!=null?`: ${left}% do semanal agora`:""}\nZera em ${fmtLeft(f.zero*1000-now)} (${hm(f.zero)}), ${fmtLeft((f.at-f.zero)*1000)} antes da recarga (${hm(f.at)}).\nÉ o esperado com várias contas: o proxy passa para a próxima.`+(dryNow?`\n${dryNow} conta${dryNow>1?"s":""} já esgotada${dryNow>1?"s":""} até a recarga.`:""))})()
     +stItem("Próxima recarga",nxt?`<i class="adot" style="--c:${ACC[nxt.a.auth_id]}"></i>+${Math.round((nxt.gain))}%`:"—",nxt?`${esc(nm(nxt.a).split("@")[0])} · ${esc(hm(nxt.at))}`:"nenhuma nos próximos 7 dias")
 }</div>`;
 
@@ -1599,8 +1605,13 @@ function modelRow(w,acc,now){
     <div class="meter" style="--c:${gaugeColor(i.left,acc)}"><i style="width:${100-i.used}%"></i>${i.pace!=null?`<u style="left:${i.pace}%"></u>`:""}</div>
     <span class="p tabular"><b>${i.left}%</b> · ${i.reset?fmtLeft(i.reset-now):"—"}</span></div>`;
 }
+// Card order: normal accounts by weekly reset (soonest first), then "usar por último", then "não usar".
+const MODE_RANK={normal:0,last:1,off:2};
+function cardOrder(list){
+  const rs=a=>{const w=weeklyOf(a),t=w&&w.reset_at?Date.parse(w.reset_at):NaN;return isFinite(t)?t:Infinity};
+  return list.slice().sort((a,b)=>(MODE_RANK[a.mode||"normal"]??0)-(MODE_RANK[b.mode||"normal"]??0)||rs(a)-rs(b)||String(a.auth_id).localeCompare(String(b.auth_id)))}
 function renderAccounts(){
-  const accs=claudeAccs(),now=Date.now(),pf=poolForecast(now);
+  const accs=cardOrder(claudeAccs()),now=Date.now(),pf=poolForecast(now);
   $("#acctCount").innerHTML=`${accs.length} conta${accs.length===1?"":"s"} <span class="tick-key" data-tip="Onde o anel estaria se você gastasse por igual até o reset" tabindex="0">· <i></i>no anel = ritmo ideal</span>`;
   const box=$("#accts");
   // Replacing the markup would close an open mode <select> or a name being edited; the next poll renders instead.

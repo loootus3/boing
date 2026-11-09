@@ -1863,7 +1863,7 @@ var errPluginRollbackSuperseded = errors.New("plugin login rollback superseded")
 
 func (h *Handler) restoreOverwrittenPluginRecord(ctx context.Context, rb savedPluginRecordRollback, diskPath string) {
 	if diskPath != "" && len(rb.prevDiskBytes) > 0 {
-		if errWrite := os.WriteFile(diskPath, rb.prevDiskBytes, 0o600); errWrite != nil {
+		if errWrite := misc.WriteFileAtomic(diskPath, rb.prevDiskBytes, 0o600); errWrite != nil {
 			log.WithError(errWrite).WithField("path", diskPath).Warn("failed to restore overwritten plugin auth token")
 		}
 	}

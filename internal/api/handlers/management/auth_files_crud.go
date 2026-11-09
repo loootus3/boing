@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -307,10 +308,10 @@ func (h *Handler) writeAuthFile(ctx context.Context, name string, data []byte) e
 func (h *Handler) writeAuthFileBytes(dst string, data []byte, auth *coreauth.Auth) error {
 	if h.shouldLockCodexAuthFile(auth) {
 		return codex.WithFileLock(dst, func() error {
-			return os.WriteFile(dst, data, 0o600)
+			return misc.WriteFileAtomic(dst, data, 0o600)
 		})
 	}
-	return os.WriteFile(dst, data, 0o600)
+	return misc.WriteFileAtomic(dst, data, 0o600)
 }
 
 func (h *Handler) shouldLockCodexAuthFile(auth *coreauth.Auth) bool {

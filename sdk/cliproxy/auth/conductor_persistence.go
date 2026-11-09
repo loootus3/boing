@@ -226,6 +226,7 @@ func (m *Manager) persistLocked(ctx context.Context, auth *Auth) error {
 	saved := auth.Clone()
 	m.mu.Unlock()
 	err := m.persist(ctx, saved)
+	m.notePersistResult(auth.ID, err)
 	m.mu.Lock()
 	mergeAuthSaveDelta(auth, before, saved, true)
 	return err

@@ -240,6 +240,12 @@ type Manager struct {
 	refreshLocks sync.Map
 	// persistLocks serializes disk persistence per auth ID and guards against out-of-order writes.
 	persistLocks sync.Map
+	// persistPending marks auth IDs whose last save failed; persistRetrying marks IDs with a
+	// running retry loop (see notePersistResult).
+	persistPending  sync.Map
+	persistRetrying sync.Map
+	// persistRetryMin and persistRetryMax override the retry schedule (tests only).
+	persistRetryMin, persistRetryMax time.Duration
 	// authMutationLocks coordinate credential mutations without blocking unrelated readers.
 	authMutationLocks      sync.Map
 	metadataPersistCancels sync.Map
