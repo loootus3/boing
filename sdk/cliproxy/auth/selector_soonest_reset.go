@@ -83,7 +83,9 @@ type SoonestResetSelector struct{}
 func (s *SoonestResetSelector) Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*Auth) (*Auth, error) {
 	_ = opts
 	now := time.Now()
-	available, err := getSelectorAvailableAuths(ctx, auths, provider, model, now)
+	// Every tier is kept here: a model order may start in a lower tier, and the highest tier is
+	// applied below for everything else.
+	available, err := getSelectorAvailableAuthsAcrossPriorities(ctx, auths, provider, model, now)
 	if err != nil {
 		return nil, err
 	}
@@ -96,6 +98,14 @@ func (s *SoonestResetSelector) Pick(ctx context.Context, provider, model string,
 	if len(usable) == 0 {
 		return nil, &Error{Code: "auth_unavailable", Message: "all available credentials are set to not be used", HTTPStatus: 503}
 	}
+	// A model with its own credential order (prefer_models / prefer_rank) is served by the
+	// first available credential of that order, from any priority tier.
+	if ranked := preferModelAuths(usable, model); len(ranked) > 0 {
+		return sortByPreferRank(ranked, now)[0], nil
+	}
+	// The candidates span every tier when some credential has a model order (see
+	// availableAuthsForSelector); everything else keeps the highest available tier.
+	usable = highestPriorityAuths(usable)
 	usable = preferCodexWebsocketAuths(ctx, provider, usable)
 	ordered := SortBySoonestReset(usable, now)
 	return ordered[0], nil

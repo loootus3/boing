@@ -935,6 +935,12 @@ func (m *Manager) availableAuthsForRouteModelForRequest(ctx context.Context, aut
 // or scheduler additionally receives lower priority tiers.
 func (m *Manager) availableAuthsForSelector(ctx context.Context, selector Selector, auths []*Auth, provider, routeModel string, now time.Time, schedulerAcross bool, clientHeaders ...http.Header) (priorityAuths, selectorAuths []*Auth, err error) {
 	_, sessionAffinity := selector.(*SessionAffinitySelector)
+	// A model with its own credential order (prefer_models) may be served by a lower priority
+	// tier first, e.g. a "use last" account placed first for Fable: the soonest-reset selector
+	// then sees every tier and applies the tiers itself for everything else.
+	if _, soonest := selector.(*SoonestResetSelector); soonest && anyAuthPrefersModel(auths, routeModel) {
+		sessionAffinity = true
+	}
 	if _, weighted := selector.(*WeightedRoundRobinSelector); weighted {
 		// Exclude zero-weight credentials before priority selection, just as the
 		// scheduler predicate does, including when only a lower tier has weight.

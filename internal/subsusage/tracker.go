@@ -118,6 +118,8 @@ type Entry struct {
 	Active    bool      `json:"active"` // next credential the soonest-reset selector will spend
 	// Mode is the spending mode: "normal", "last" or "off" (see coreauth.MetadataUsageMode).
 	Mode string `json:"mode"`
+	// FableRank is the credential's position in the Fable 5.2 order (1 first), 0 when not in it.
+	FableRank int `json:"fable_rank,omitempty"`
 	// Name is the display name chosen on the /usage page (metadata MetadataUsageName), empty when unset.
 	Name string `json:"name,omitempty"`
 	// NeedsLogin is set when the provider rejected the stored token.
@@ -535,6 +537,7 @@ func (t *Tracker) Snapshot() []Entry {
 			}
 			e.Disabled = a.Disabled
 			e.Mode = coreauth.AuthUsageMode(a)
+			e.FableRank = fableRankOf(a)
 			e.Name = accountName(a)
 			e.NeedsLogin = strings.Contains(e.Error, "HTTP 401") || strings.Contains(strings.ToLower(a.StatusMessage), "invalid_grant")
 			if !activeSet && !a.Disabled && e.Mode != coreauth.UsageModeOff && !e.NeedsLogin && !e.resetInfo().Exhausted {

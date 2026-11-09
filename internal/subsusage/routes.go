@@ -185,6 +185,26 @@ func Register(engine *gin.Engine, h Handlers) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, gin.H{"now": time.Now().UTC(), "accounts": t.Snapshot()})
 	})
+	// {"order": ["<auth id>", ...]} sets the accounts Fable 5.2 uses, first to last; accounts left
+	// out keep normal routing for it. An empty order clears it.
+	g.POST("/api/fable-order", requireUIHeader(func(c *gin.Context) {
+		body, ok := readBody(c)
+		if !ok {
+			return
+		}
+		var req struct {
+			Order []string `json:"order"`
+		}
+		if errJSON := json.Unmarshal(body, &req); errJSON != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "order must be a list of account ids"})
+			return
+		}
+		if errOrder := t.SetFableOrder(c.Request.Context(), req.Order); errOrder != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": errOrder.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	}))
 	g.GET("/api/history", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, DefaultHistory().ViewWith(c.Query("range"), c.Query("heat"), time.Now().In(queryLocation(c.Query("tz")))))
