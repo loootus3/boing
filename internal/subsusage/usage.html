@@ -1985,7 +1985,12 @@ function renderAccounts(){
         if(hasWin&&dataAt>0)msg+=` · dados de há ${fmtLeft(now-dataAt)}`;
         if(retry)msg+=` · nova tentativa em ${fmtLeft(retry-now)}`;
         h+=`<div class="note">${esc(msg)}</div>`;
-      }else if(a.error&&!a.needs_login)h+=`<div class="note err">Erro ao consultar: ${esc(a.error)}</div>`;
+      }else if(a.error&&!a.needs_login){
+        // Timeouts, network failures and 5xx are Anthropic's usage endpoint being slow; the last good numbers still show.
+        const dataAt=Date.parse(a.data_at),transient=/deadline exceeded|timeout|request failed|HTTP 5\d\d|connection|EOF/i.test(a.error);
+        if(transient&&(a.windows||[]).length&&dataAt>0)h+=`<div class="note" data-tip="${esc(a.error)}" tabindex="0">${esc(`Anthropic sem resposta · dados de há ${fmtLeft(now-dataAt)}`)}</div>`;
+        else h+=`<div class="note err">Erro ao consultar: ${esc(a.error)}</div>`;
+      }
       const t=state.hist&&state.hist.accounts&&state.hist.accounts[a.auth_id];
       h+=`<div class="afoot"><span>${t&&(t.requests||t.input||t.output||t.cached)
         ?`<span data-tip="${esc(`${PERIOD_LBL[state.period]||"No período"} pelo proxy\n${fmtTokens((t.input||0)+(t.cached||0)+(t.cache_write||0)+(t.output||0))} tokens · cache ${Math.floor((t.cached||0)/Math.max(1,(t.input||0)+(t.cached||0)+(t.cache_write||0))*100)}%`)}">${PERIOD_LBL[state.period]||"No período"}: <b>${fmtUSD((t.cost&&t.cost.total)||0)}</b> · ${fmtCount(t.requests||0)} req</span>`
@@ -2794,7 +2799,7 @@ function demo(){
   renderAll();
 }
 if(!DEMO||DEMO_MODE==="loading")renderSkeleton();
-load(false);setInterval(()=>{if(!document.hidden)load(false,true)},15000);
+load(false);setInterval(()=>{if(!document.hidden)load(false,true)},45000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)load(false,true)});
 </script>
 </body>
