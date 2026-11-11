@@ -1067,7 +1067,7 @@ function capacitySeries(accs){
   const all=per.flat();if(all.length<2)return null;
   const start=Math.min(...all.map(p=>p.t)),N=56,pts=[];
   for(let k=0;k<=N;k++){const t=start+(now-start)*k/N;let sum=0;
-    for(const s of per){let v=s[0].w;for(const p of s){if(p.t<=t)v=p.w;else break}sum+=v}
+    for(const s of per){let v=s[0].t-start>3600?0:s[0].w;for(const p of s){if(p.t<=t)v=p.w;else break}sum+=v}
     pts.push([t,sum])}
   return{pts,start,cap:accs.length*100};
 }
@@ -1210,9 +1210,12 @@ function pastSeries(accs,t0,nowTotal,span){
   const per=accs.map(a=>quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0).sort((x,y)=>x.t-y.t));
   const have=per.filter(q=>q.length);
   if(!have.length)return null;
-  const start=Math.max(t0-span,...have.map(q=>q[0].t));
+  // The recorded part starts with the oldest account; one added later (first sample over 1h after that)
+  // counts 0 until it was added, so the total steps up there instead of the history being cut.
+  const first=Math.min(...have.map(q=>q[0].t)),start=Math.max(t0-span,first);
   if(t0-start<3600)return null;
   const at=(q,t)=>{
+    if(t<q[0].t&&q[0].t-first>3600)return 0;
     if(t<=q[0].t)return q[0].w;
     if(t>=q[q.length-1].t)return q[q.length-1].w;
     let k=0;while(k<q.length-2&&q[k+1].t<=t)k++;
@@ -1222,7 +1225,7 @@ function pastSeries(accs,t0,nowTotal,span){
   for(let t=start;t<t0-1;t+=1800)times.add(t);
   per.forEach(q=>q.forEach((p,k)=>{
     if(p.t>start&&p.t<t0-1)times.add(p.t);
-    if(k&&p.w>q[k-1].w&&p.t-1>start&&p.t-1<t0-1)times.add(p.t-1)}));
+    if((k?p.w>q[k-1].w:p.t-first>3600)&&p.t-1>start&&p.t-1<t0-1)times.add(p.t-1)}));
   const pts=[...times].sort((a,b)=>a-b).map(t=>{let sum=0;
     per.forEach((q,i)=>{sum+=q.length?at(q,t):100-clampPct(weeklyOf(accs[i]).used_percent)});
     return[t,sum]});
@@ -1530,7 +1533,7 @@ function renderTimeline(){
     ov+=lead(x,top,yt2,e.a)+`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"><span>${esc(narrow?initials(nm(e.a)):shortN(e.a))}</span> +${Math.round((e.gain))}%</div>`}
   // Refills already seen in the recorded part: a rise of the weekly remaining between two samples.
   if(past)for(const a of accs){const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);
-    for(let k=1;k<q.length;k++){const g=q[k].w-q[k-1].w;if(g<3||q[k].t<Math.max(V0,F0)||q[k].t>Math.min(V1,t0))continue;
+    for(let k=q.length&&q[0].t-F0>3600?0:1;k<q.length;k++){const g=k?q[k].w-q[k-1].w:q[0].w;if(g<3||q[k].t<Math.max(V0,F0)||q[k].t>Math.min(V1,t0))continue;
       const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),txt=`${narrow?initials(nm(a)):shortN(a)} +${Math.round(g)}%`;
       ov+=`<i class="tl-dot" style="left:${P(q[k].t).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
       const{l,top}=place(x,yt2,txt);
