@@ -214,6 +214,8 @@ type Tracker struct {
 	rawUsage map[string]cachedBody
 	// resetLocks serializes reset-credit redemptions per auth ID; resetPending holds the
 	// idempotency key of an unsettled redemption. Both guarded by mu.
+	// lastManual is the time of the last RefreshNow, guarded by mu.
+	lastManual   time.Time
 	resetLocks   map[string]*sync.Mutex
 	resetPending map[string]string
 
@@ -350,6 +352,34 @@ func (t *Tracker) Refresh(ctx context.Context, force bool) {
 }
 
 func (t *Tracker) refreshAuths(ctx context.Context, force bool, auths []*coreauth.Auth) {
+	t.refreshAuthsMode(ctx, force, false, auths)
+}
+
+// manualRefreshGap is the minimum time between two manual refreshes, which fetch every account.
+const manualRefreshGap = 60 * time.Second
+
+// RefreshNow fetches every tracked account at once, ignoring the poll intervals, for the page's
+// refresh button. Accounts backing off after a 429 are still skipped. It returns false, with the
+// time the next one is allowed, when the last manual refresh was under manualRefreshGap ago.
+func (t *Tracker) RefreshNow(ctx context.Context) (bool, time.Time) {
+	t.mu.Lock()
+	manager := t.manager
+	now := t.now()
+	if next := t.lastManual.Add(manualRefreshGap); now.Before(next) {
+		t.mu.Unlock()
+		return false, next
+	}
+	t.lastManual = now
+	t.mu.Unlock()
+	if manager == nil {
+		return true, now.Add(manualRefreshGap)
+	}
+	t.refreshAuthsMode(ctx, true, true, trackedAuths(manager.List()))
+	return true, now.Add(manualRefreshGap)
+}
+
+// refreshAuthsMode is refreshAuths; with all set, every account not backing off is due.
+func (t *Tracker) refreshAuthsMode(ctx context.Context, force, all bool, auths []*coreauth.Auth) {
 	t.refreshMu.Lock()
 	defer t.refreshMu.Unlock()
 
@@ -380,7 +410,7 @@ func (t *Tracker) refreshAuths(ctx context.Context, force bool, auths []*coreaut
 			continue
 		}
 		hot := isHot(t.lastUsed(a.ID), active[a.ID], startedAt)
-		if !isDue(hasPrev, hasPrev && retriesFast(prev), hot, t.lastFetch[a.ID], startedAt) {
+		if !all && !isDue(hasPrev, hasPrev && retriesFast(prev), hot, t.lastFetch[a.ID], startedAt) {
 			results[a.ID] = prev
 			continue
 		}

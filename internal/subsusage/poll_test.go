@@ -197,3 +197,29 @@ func TestHistoryLastUsed(t *testing.T) {
 		t.Fatalf("LastUsed = %v", h.LastUsed("a"))
 	}
 }
+
+func TestRefreshNowIsRateLimited(t *testing.T) {
+	tr := &Tracker{entries: map[string]*Entry{}}
+	if ok, _ := tr.RefreshNow(context.Background()); !ok {
+		t.Fatal("first manual refresh should run")
+	}
+	if ok, next := tr.RefreshNow(context.Background()); ok || next.IsZero() {
+		t.Fatal("second manual refresh within the gap should be refused")
+	}
+}
+
+func TestManualRefreshFetchesIdleAccounts(t *testing.T) {
+	clock := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	f := &fakeFetcher{}
+	pauses := 0
+	tr := newFakeTracker(f, &clock, &pauses)
+	tr.lastUsedFn = func(string) time.Time { return time.Time{} }
+	auths := []*coreauth.Auth{claudeAuth("a"), claudeAuth("b")}
+	tr.refreshAuths(context.Background(), true, auths)
+	f.calls = nil
+	clock = clock.Add(30 * time.Second)
+	tr.refreshAuthsMode(context.Background(), true, true, auths)
+	if len(f.calls) != 2 {
+		t.Fatalf("manual refresh calls = %v", f.calls)
+	}
+}

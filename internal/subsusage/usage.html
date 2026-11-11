@@ -46,6 +46,9 @@ svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-widt
   backdrop-filter:blur(12px) saturate(1.14);-webkit-backdrop-filter:blur(12px) saturate(1.14)}
 .tb{max-width:72rem;margin:0 auto;min-height:56px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 24px}
 .live{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-foreground);white-space:nowrap}
+.tb-ref .i{transition:transform .2s}.tb-ref.busy .i{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (max-width:640px){.tb-ref .lbl{display:none}.tb>.tb-ref{order:-2}}
 .live i{position:relative;width:8px;height:8px;border-radius:50%;background:var(--st-good)}
 .live i::after,.cr-n em.use::after{content:"";position:absolute;border-radius:50%;background:var(--st-good);animation:pulse 2.4s ease-out infinite;pointer-events:none}
 .live i::after{inset:0}
@@ -560,6 +563,46 @@ body.modal-open .live i::after,body.modal-open .cr-n em.use::after{animation:non
 /* global tooltip */
 .gtip{position:fixed;z-index:100;max-width:min(18rem,calc(100vw - 16px));white-space:pre-line;text-align:left}
 [data-tip]{cursor:default}
+/* visual tooltip of the window rings (data-tipviz, see tipVizHtml) */
+.gtip.viz{width:min(17.5rem,calc(100vw - 16px));max-width:none;white-space:normal;padding:10px 12px}
+.tv i,.tv u{display:block;font-style:normal;text-decoration:none}
+.tv-h{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:20px}
+.tv-n{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground)}
+.tv-chip{padding:4px 8px;border-radius:999px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap;background:var(--muted);color:var(--muted-foreground)}
+.tv-chip.crit{background:color-mix(in srgb,var(--error) 14%,transparent);color:var(--error-foreground)}
+.tv-chip.good{background:color-mix(in srgb,var(--success) 15%,transparent);color:var(--success-foreground)}
+.tv-v{display:flex;align-items:baseline;gap:6px}
+.tv-v b{font-size:24px;line-height:1.15;font-weight:650;letter-spacing:-.02em}
+.tv-v b.crit{color:var(--error-foreground)}.tv-v b.low{color:var(--warning-foreground)}
+.tv-v span,.tv-d,.tv-t{color:var(--muted-foreground)}
+.tv-ch{position:relative;height:56px;margin-top:8px;border-bottom:1px solid var(--border)}
+.tv-ch svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.tv-ch path{fill:none;stroke:var(--c);stroke-width:1.75;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.tv-ch path.tv-id{stroke:var(--muted-foreground);stroke-width:1;stroke-dasharray:1 3;stroke-opacity:.8}
+.tv-ch path.tv-ar{fill:var(--c);fill-opacity:.13;stroke:none}
+.tv-ch path.tv-ps.m{stroke-opacity:.55}
+.tv-ch path.tv-pj{stroke-dasharray:4 3}
+.tv-ch i{position:absolute}
+.tv-now{top:0;bottom:0;width:1px;margin-left:-.5px;background:var(--border)}
+.tv-dot{width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--c);box-shadow:0 0 0 2px var(--popover)}
+.tv-out,.tv-lg i.out{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--st-crit) 45%,transparent) 0 2px,transparent 2px 5px)}
+.tv-out{top:0;bottom:0;border-left:1px dashed var(--st-crit)}
+.tv-ax{display:flex;justify-content:space-between;gap:8px;margin-top:3px;font-size:10.5px;color:var(--muted-foreground);white-space:nowrap}
+.tv-lg{display:flex;flex-wrap:wrap;gap:2px 10px;margin-top:4px;font-size:10.5px;color:var(--muted-foreground)}
+.tv-lg span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.tv-lg i{flex:none;width:12px;height:0;border-top:2px solid var(--c)}
+.tv-lg i.pj{border-top-style:dashed}
+.tv-lg i.id{border-top:1px dotted var(--muted-foreground)}
+.tv-lg i.out,.tv-lg i.f,.tv-lg i.o,.tv-lg i.fr{width:8px;height:8px;border:0;border-radius:2px}
+.tv-lg i.f{background:var(--c)}.tv-lg i.o,.tv-sb i.o{background:color-mix(in srgb,var(--muted-foreground) 55%,transparent)}
+.tv-lg i.fr{background:var(--track)}
+.tv-lg i.cap{width:2px;height:9px;border:0;border-radius:1px;background:var(--foreground)}
+.tv-t{margin-top:8px;font-size:10.5px}
+.tv-sb{position:relative;display:flex;height:8px;margin-top:4px;border-radius:999px;background:var(--track)}
+.tv-sb i{height:100%}.tv-sb i.f{background:var(--c)}
+.tv-sb i:first-child{border-radius:999px 0 0 999px}
+.tv-sb u{position:absolute;top:-3px;bottom:-3px;width:2px;margin-left:-1px;border-radius:1px;background:var(--foreground)}
+.tv-d{margin-top:6px}
 
 /* loading skeleton and empty state */
 .sk{display:block;border-radius:8px;background:linear-gradient(90deg,var(--track) 0%,color-mix(in srgb,var(--track) 35%,transparent) 50%,var(--track) 100%);
@@ -601,6 +644,7 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
 <header class="topbar"><div class="tb">
   <h1 class="tb-title">Uso do Claude</h1>
   <span class="live" id="live"><i></i><span id="liveTxt">carregando…</span></span>
+  <button type="button" class="btn sm tb-ref" id="refreshBtn" data-tip="Buscar o uso de todas as contas agora (no máximo 1 vez por minuto)"><svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span class="lbl">Atualizar</span></button>
   <div class="spacer"></div>
 </div></header>
 <main>
@@ -739,11 +783,16 @@ const dispName=a=>a?(a.name||legendName(a.email||a.auth_id)):"";
 /* global tooltip for every [data-tip] mark */
 const gtip=document.createElement("div");gtip.className="gtip";document.body.appendChild(gtip);
 function hideTip(){gtip.style.display="none"}
+// Plain text from data-tip; an element that also carries data-tipviz (JSON from winViz) gets the visual
+// version, and data-tip stays as its text fallback.
 function showTipFor(t){
-  gtip.textContent=t.dataset.tip;gtip.style.display="block";
+  let viz="";if(t.dataset.tipviz){try{viz=tipVizHtml(JSON.parse(t.dataset.tipviz))}catch(e){viz=""}}
+  gtip.classList.toggle("viz",!!viz);
+  if(viz)gtip.innerHTML=viz;else gtip.textContent=t.dataset.tip;
+  gtip.style.display="block";
   const r=t.getBoundingClientRect(),w=gtip.offsetWidth,h=gtip.offsetHeight;
   let x=r.left+r.width/2-w/2;x=Math.max(8,Math.min(innerWidth-w-8,x));
-  let y=r.top-h-8;if(y<8)y=r.bottom+8;
+  let y=r.top-h-8;if(y<8)y=Math.max(8,Math.min(r.bottom+8,innerHeight-h-8));
   gtip.style.left=x+"px";gtip.style.top=y+"px"}
 gtip.id="gtip";gtip.setAttribute("role","tooltip");
 document.addEventListener("mouseover",e=>{const t=e.target.closest&&e.target.closest("[data-tip]");if(!t){hideTip();return}showTipFor(t)});
@@ -798,7 +847,7 @@ function ring(left,o){
   if(has&&o.fable>0&&l<100){const f=Math.min(o.fable,100-l,99.9),pt=p=>{const th=p/100*2*Math.PI;return `${(c+r*Math.sin(th)).toFixed(2)},${(c-r*Math.cos(th)).toFixed(2)}`};
     fab=`<path class="fab" d="M${pt(l)} A${r} ${r} 0 ${f>50?1:0} 1 ${pt(l+f)}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-dasharray="3 3"/>`}
   const txt=has?`${Math.round(l)}%`:"—";
-  return `<span class="ring${has?"":" empty"}"${o.tip?` data-tip="${esc(o.tip)}" tabindex="0"`:""}><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+  return `<span class="ring${has?"":" empty"}"${o.tip?` data-tip="${esc(o.tip)}"${o.viz?` data-tipviz="${esc(o.viz)}"`:""} tabindex="0"`:""}><svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
     <circle class="trk" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${sw}"/>${fab}${arc}${tick}
     <text x="${c}" y="${has&&size>=80?c-6:c}" text-anchor="middle" dominant-baseline="central" font-size="${(size*.25).toFixed(1)}"${has?` data-n="${l}" data-f="pct"`:""}>${txt}</text>${has&&size>=80?`<text class="rsub" x="${c}" y="${c+15}" text-anchor="middle" dominant-baseline="central" font-size="10.5">restante</text>`:""}</svg></span>`;
 }
@@ -826,7 +875,8 @@ function winFc(a,w,now,pf){
   return f?(f.zero!=null?{zero:f.zero*1000}:{before:f.before}):null;
 }
 // Remaining %, even-pace position, hover text and pace icon of one window. The hover text leads with the
-// forecast `fc` (see winFc) or, once the window is spent, with the wait for the reset.
+// forecast `fc` (see winFc) or, once the window is spent, with the wait for the reset. `fx` is that same
+// leading line as data, for the visual tooltip.
 function winInfo(w,now,fc){
   const used=clampPct(w.used_percent),left=Math.round(100-used),reset=w.reset_at?new Date(w.reset_at):null;
   let pace=null,icon="";
@@ -837,18 +887,83 @@ function winInfo(w,now,fc){
   const fab=w.kind==="fable",wk=fab?w.wk:null,wkLeft=wk?Math.round(100-clampPct(wk.used_percent)):null;
   const at=d=>fmtShort(new Date(d)).replace(", "," "),back=d=>d?` · volta em ${fmtLeft(d-now)} (${at(d)})`:"";
   const run=z=>z-now<=60000?"agora":`em ~${fmtLeft(z-now)} (${at(z)})`,L=[];
-  if(left<=0)L.push("Esgotado"+back(reset));
-  else if(fab&&wkLeft<=0)L.push("Semanal esgotado"+back(wk.reset_at?new Date(wk.reset_at):null),`${left}% do Fable restante`);
+  let fx=null;
+  if(left<=0){L.push("Esgotado"+back(reset));fx={k:"out",back:reset}}
+  else if(fab&&wkLeft<=0){const wr=wk.reset_at?new Date(wk.reset_at):null;L.push("Semanal esgotado"+back(wr),`${left}% do Fable restante`);fx={k:"wkout",back:wr}}
   else{
     const wz=fab&&fc&&fc.wk&&fc.wk.zero!=null?fc.wk.zero:null,avg=fc&&fc.avg?" · ritmo médio da janela":"";
-    if(wz!=null&&(fc.zero==null||wz<fc.zero))L.push(`Acaba com o semanal ${run(wz)}`);
-    else if(fc&&fc.zero!=null)L.push(`Acaba ${run(fc.zero)}${avg}`);
-    else if(fc&&fc.before!=null)L.push(`Dura até o reset · sobra ~${Math.round(fc.before)}%${avg}`);
+    if(wz!=null&&(fc.zero==null||wz<fc.zero)){L.push(`Acaba com o semanal ${run(wz)}`);fx={k:"zero",at:wz,wk:1}}
+    else if(fc&&fc.zero!=null){L.push(`Acaba ${run(fc.zero)}${avg}`);fx={k:"zero",at:fc.zero,avg:!!fc.avg}}
+    else if(fc&&fc.before!=null){L.push(`Dura até o reset · sobra ~${Math.round(fc.before)}%${avg}`);fx={k:"before",v:fc.before,avg:!!fc.avg}}
     L.push(`${left}% restante`+(reset?` · reseta em ${fmtLeft(reset-now)} (${at(reset)})`:" · janela não iniciada"));
   }
   if(fab){if(wk.fable_percent!=null)L.push(`Gastou ${fmt1(wk.fable_percent)}% do semanal`+(wk.fable_allowance!=null?` (teto ${Math.round(wk.fable_allowance)}%)`:"")+(wkLeft>0&&wkLeft<left?` · semanal em ${wkLeft}%`:""))}
   else if(w.fable_percent!=null)L.push(`Fable gastou ${fmt1(w.fable_percent)}% do semanal`);
-  return{used,left,reset,pace,icon,tip:L.join("\n")};
+  return{used,left,reset,pace,icon,tip:L.join("\n"),fx,wkLeft};
+}
+// Data for the visual tooltip of one window ring, as JSON for data-tipviz (drawn by tipVizHtml). `i` is the
+// window's winInfo, `fc` its winFc and `has` whether the ring shows a value. Times are ms, samples [s,%].
+function winViz(a,w,now,i,fc,color,label,has){
+  const fab=w.kind==="fable",fx=i.fx,reset=i.reset?+i.reset:0,dur=(w.duration_sec||0)*1000,t0=reset-dur;
+  const v={n:label,l:has?i.left:null,c:color,now,k:fx?fx.k:reset?"":"idle"};
+  if(fx){if(fx.at!=null)v.at=fx.at;if(fx.wk)v.wk=1;if(fx.avg)v.avg=1;if(fx.v!=null)v.bf=Math.round(fx.v);if(fx.back)v.back=+fx.back}
+  if(fab){if(w.wk.fable_percent!=null)v.fb={u:w.wk.fable_percent,cap:w.wk.fable_allowance,wl:i.wkLeft}}
+  else if(w.fable_percent!=null)v.fp=w.fable_percent;
+  if(!(reset>now&&dur>0&&now>=t0))return JSON.stringify(v);
+  v.r=reset;v.t0=t0;
+  // `st`..`rs` is the stretch without quota; `pj` is where the projection line ends.
+  const wkReset=fab&&w.wk.reset_at?Date.parse(w.wk.reset_at):0;
+  if(fx&&fx.k==="out")v.st=now;
+  else if(fx&&fx.k==="wkout"){v.st=now;if(wkReset)v.rs=wkReset}
+  else if(fx&&fx.k==="zero"){
+    if(fx.wk){const z=fc.zero,b=fc.before,d=fx.at-now;// Fable stops with the weekly window, above 0%
+      v.pj=[fx.at,z!=null?i.left*(1-d/(z-now)):b!=null?i.left-(i.left-b)*d/(reset-now):i.left];v.st=fx.at;if(wkReset)v.rs=wkReset}
+    else{v.pj=[fx.at,0];v.st=fx.at}}
+  else if(fx&&fx.k==="before")v.pj=[reset,fx.v];
+  // Fable has no samples: its past is drawn as the window's average, the same pace its forecast uses.
+  if(fab){v.pm=1;return JSON.stringify(v)}
+  const key=w.kind==="short"?"s":"w",A=quotaOf(a.auth_id),B=quota7Of(a.auth_id);
+  const pts=(key==="s"?(A.length?A:B):(B.length?B:A)).filter(p=>p[key]!=null&&p.t*1000>=t0&&p.t*1000<=now).sort((x,y)=>x.t-y.t);
+  const step=Math.max(1,Math.ceil(pts.length/40));
+  v.p=pts.filter((p,k)=>k%step===0||k===pts.length-1).map(p=>[Math.round(p.t),Math.round(p[key]*10)/10]);
+  return JSON.stringify(v);
+}
+// The visual tooltip of a window ring: name, % left and a status chip, then a burn-down of the window
+// (real line up to now, projection to the reset, even-pace diagonal, hatched stretch without quota) and,
+// for Fable, its share of the weekly window. Every string goes through esc(); numbers are formatted here.
+function tipVizHtml(v){
+  const now=v.now,at=d=>fmtShort(new Date(d)).replace(", "," "),f=n=>Number(n).toFixed(1),L=v.l==null?"":lvl(v.l);
+  const col=/^(var\(--[\w-]+\)|#[0-9a-f]{3,8})$/i.test(v.c||"")?v.c:"var(--muted-foreground)";
+  const chip={out:["crit","Esgotado"],wkout:["crit","Semanal esgotado"],zero:["crit",v.at-now<=60000?"Acaba agora":`Acaba em ~${fmtLeft(v.at-now)}`],
+    before:["good","Dura até o reset"],idle:["","Não iniciada"]}[v.k];
+  const chart=v.r!=null,avg=v.avg?" · ritmo médio da janela":"",D=[];
+  if(v.k==="zero")D.push(`Acaba ${at(v.at)}${v.wk?", junto com o semanal":""}${avg}`);
+  else if(v.k==="before")D.push(`Sobra ~${Math.round(v.bf)}% no reset${avg}`);
+  else if((v.k==="out"||v.k==="wkout")&&v.back&&(!chart||v.k==="wkout"))D.push(`${v.k==="wkout"?"Semanal volta":"Volta"} em ${fmtLeft(v.back-now)} (${at(v.back)})`);
+  if(v.fp!=null)D.push(`Fable gastou ${fmt1(Number(v.fp))}% do semanal`);
+  let ch="",fb="";
+  if(chart){
+    const X=t=>Math.max(0,Math.min(100,(t-v.t0)/(v.r-v.t0)*100)),Y=q=>96-clampPct(q)*.92;
+    const xn=X(now),yn=Y(v.l),P=(v.p||[]).map(p=>[X(p[0]*1000),Y(p[1])]);
+    let past="",x0=xn;
+    if(v.pm){past=`M0,${f(Y(100))} L${f(xn)},${f(yn)}`;x0=0}
+    else if(P.length>1){past=P.map((p,k)=>`${k?"L":"M"}${f(p[0])},${f(p[1])}`).join(" ")+` L${f(xn)},${f(yn)}`;x0=P[0][0]}
+    const pj=v.pj?`<path class="tv-pj" d="M${f(xn)},${f(yn)} L${f(X(v.pj[0]))},${f(Y(v.pj[1]))}"/>`:"";
+    const sx=v.st!=null?X(v.st):null,se=sx!=null?X(v.rs!=null?v.rs:v.r):0;
+    const out=sx!=null&&se>sx?`<i class="tv-out" style="left:${f(sx)}%;width:${f(se-sx)}%"></i>`:"";
+    ch=`<div class="tv-ch"><svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path class="tv-id" d="M0,${f(Y(100))} L100,${f(Y(0))}"/>`
+      +(past?`<path class="tv-ar" d="${past} L${f(xn)},100 L${f(x0)},100 Z"/><path class="tv-ps${v.pm?" m":""}" d="${past}"/>`:"")+pj+`</svg>${out}<i class="tv-now" style="left:${f(xn)}%"></i><i class="tv-dot" style="left:${f(xn)}%;top:${f(yn)}%"></i></div>`
+      +`<div class="tv-ax"><span>${esc(at(v.t0))}</span><span>reseta ${esc(at(v.r))} · ${esc(fmtLeft(v.r-now))}</span></div>`
+      +`<div class="tv-lg" aria-hidden="true">${past?`<span><i></i>${v.pm?"média":"real"}</span>`:""}${pj?`<span><i class="pj"></i>projeção</span>`:""}<span><i class="id"></i>ritmo ideal</span>${out?`<span><i class="out"></i>sem cota</span>`:""}</div>`;
+  }
+  if(v.fb){
+    const wl=clampPct(v.fb.wl),used=100-wl,u=Math.min(clampPct(v.fb.u),used),o=used-u,cap=v.fb.cap!=null?clampPct(v.fb.cap):null;
+    fb=`<div class="tv-t">Janela semanal</div><div class="tv-sb"><i class="f" style="width:${f(u)}%"></i><i class="o" style="width:${f(o)}%"></i>${cap!=null?`<u style="left:${f(cap)}%"></u>`:""}</div>`
+      +`<div class="tv-lg"><span><i class="f"></i>Fable ${fmt1(Number(v.fb.u))}%</span><span><i class="o"></i>outros ${Math.round(o)}%</span><span><i class="fr"></i>livre ${Math.round(wl)}%</span>${cap!=null?`<span><i class="cap"></i>teto do Fable ${Math.round(cap)}%</span>`:""}</div>`;
+  }
+  return `<div class="tv" style="--c:${col}"><div class="tv-h"><span class="tv-n">${esc(v.n)}</span>${chip?`<span class="tv-chip ${chip[0]}">${esc(chip[1])}</span>`:""}</div>`
+    +`<div class="tv-v"><b${L?` class="${L}"`:""}>${v.l==null?"—":Math.round(v.l)+"%"}</b><span>restante</span></div>${ch}${fb}`
+    +(D.length?`<div class="tv-d">${D.map(d=>`<div>${esc(d)}</div>`).join("")}</div>`:"")+`</div>`;
 }
 
 /* first-render number ease-in */
@@ -1709,9 +1824,9 @@ function fableWin(wk){
   if(!wk||wk.fable_limit_percent==null)return null;
   return{kind:"fable",label:"Fable",used_percent:wk.fable_limit_percent,reset_at:wk.fable_reset_at||wk.reset_at,duration_sec:wk.duration_sec||604800,wk};
 }
-function ringBlock(w,acc,now,st,fc){
+function ringBlock(w,acc,now,st,fc,a){
   const i=winInfo(w,now,fc),l=lvl(i.left),fab=w.kind==="fable";
-  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip,color:acc,keep:1,fable:fab?null:w.fable_percent})}
+  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip,viz:a?winViz(a,w,now,i,fc,acc,w.label,!!i.reset):"",color:acc,keep:1,fable:fab?null:w.fable_percent})}
     <div class="rl">${esc(w.label)}${l?`<span class="chip ${l}">${ICON_ALERT}${i.left<=0?"esgotada":l==="crit"?"crítico":"baixo"}</span>`:""}</div>
     <div class="rs tabular"><span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"janela não iniciada"}</span>${st?`<span class="pc ${st.c}" tabindex="0" data-tip="${esc(st.tip)}">${st.t}</span>`:i.reset&&i.pace!=null&&i.left>0?(d=>`<span class="pc ${d<-5?"fast":""}">${d<-5?"acima do ritmo ideal":d>5?"abaixo do ritmo ideal":"no ritmo ideal"}</span>`)(i.left-i.pace):""}</div></div>`;
 }
@@ -1787,7 +1902,7 @@ function renderAccounts(){
       // has not started still arrives, without a reset time.
       // Weekly and Fable rings only; the 5h window still counts for the "no limite" badge.
       const fw=fableWin(wk);
-      if(wk)h+=`<div class="rings${fw?"":" solo"}">${ringBlock(wk,ACC[a.auth_id],now,wst,winFc(a,wk,now,pf))}${fw?ringBlock(fw,ACC[a.auth_id],now,null,winFc(a,fw,now,pf)):""}</div>`;
+      if(wk)h+=`<div class="rings${fw?"":" solo"}">${ringBlock(wk,ACC[a.auth_id],now,wst,winFc(a,wk,now,pf),a)}${fw?ringBlock(fw,ACC[a.auth_id],now,null,winFc(a,fw,now,pf),a):""}</div>`;
       else if(loading)h+=`<div class="rings">${noRing("Semanal","carregando")}${noRing("Fable","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
@@ -2025,8 +2140,8 @@ function renderModal(){
       ${mx>0&&vals.length>8?`<div class="md-max">máx. ${esc(fmtMetric(mx))}</div>`:""}</div>`}
   const modeTxt={normal:"Normal",last:"Por último",off:"Não usar"}[mode]||mode;
   // The account's limits as small rings in the header: weekly, 5h (only when the account has one) and Fable.
-  const fw=fableWin(wk),lim=(w,name)=>{const i=winInfo(w,now,winFc(a,w,now,pf));
-    return `<div class="md-lim">${ring(i.reset||w.kind==="fable"?i.left:null,{size:40,stroke:4,color:c,keep:1,pace:i.pace,tip:i.tip})}<div class="ln">${name}</div></div>`};
+  const fw=fableWin(wk),lim=(w,name)=>{const fc=winFc(a,w,now,pf),i=winInfo(w,now,fc),has=!!(i.reset||w.kind==="fable");
+    return `<div class="md-lim">${ring(has?i.left:null,{size:40,stroke:4,color:c,keep:1,pace:i.pace,tip:i.tip,viz:winViz(a,w,now,i,fc,c,name,has)})}<div class="ln">${name}</div></div>`};
   const lims=[wk&&lim(wk,"Semanal"),sh&&lim(sh,"5h"),fw&&lim(fw,"Fable")].filter(Boolean);
   // Claude reset credits, one row per kind (5h, weekly, Fable, full); using one asks for confirmation first.
   let rsec="";const rc=a.reset_credits;
@@ -2358,6 +2473,23 @@ for(const ev of["pointerup","pointercancel"])addEventListener(ev,()=>{pointerDow
 // Names saved but maybe not yet in a poll response: applied over every load until the save settles.
 const nameOv={};
 const applyNames=data=>{for(const[id,n]of Object.entries(nameOv)){const x=(data.accounts||[]).find(a=>a.auth_id===id);if(x){if(n)x.name=n;else delete x.name}}};
+// Header button: fetch every account's usage now. The server allows one manual refresh a minute.
+async function manualRefresh(){
+  const b=$("#refreshBtn");if(!b||b.disabled)return;
+  if(DEMO){toast("Indisponível no modo demo.");return}
+  b.disabled=true;b.classList.add("busy");let next=0;
+  try{
+    const r=await fetch("/usage/api/refresh",{method:"POST",headers:{"X-Usage-UI":"1"}});
+    const j=await r.json().catch(()=>({}));next=j.next_at?Date.parse(j.next_at):0;
+    if(r.status===429)toast(`Atualizado há pouco; dá para atualizar de novo em ${Math.max(1,Math.ceil((next-Date.now())/1000))}s.`);
+    else if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    else{await load(false);toast("Uso atualizado.")}
+  }catch(e){toast("Falha ao atualizar: "+e.message,true)}
+  b.classList.remove("busy");
+  const wait=Math.min(60000,Math.max(0,next-Date.now()));
+  setTimeout(()=>{b.disabled=false},wait);
+}
+$("#refreshBtn").addEventListener("click",manualRefresh);
 async function useReset(id,kind){
   if(rsBusy)return;rsAsk=null;rsBusy=kind;rsBusyId=id;rsMsg=null;renderModal();
   let res;const msgs={reset:"Reset aplicado: os limites foram liberados.",nothing_to_reset:"Nada para resetar agora: a conta não está limitada. O crédito não foi usado.",

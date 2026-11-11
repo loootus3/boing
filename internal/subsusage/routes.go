@@ -225,6 +225,15 @@ func Register(engine *gin.Engine, h Handlers) {
 		}
 		c.JSON(http.StatusOK, gin.H{"outcome": outcome, "warning": warning})
 	}))
+	// Manual refresh from the page header: fetches every account now, at most once a minute.
+	g.POST("/api/refresh", requireUIHeader(func(c *gin.Context) {
+		ok, next := t.RefreshNow(c.Request.Context())
+		if !ok {
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "aguarde para atualizar de novo", "next_at": next.UTC()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "next_at": next.UTC()})
+	}))
 	g.GET("/api/history", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, DefaultHistory().ViewWith(c.Query("range"), c.Query("heat"), time.Now().In(queryLocation(c.Query("tz")))))
