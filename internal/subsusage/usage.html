@@ -518,6 +518,9 @@ body.modal-open .live i::after,body.modal-open .cr-n em.use::after{animation:non
 .md-stat .s{font-size:11.5px;line-height:1.4;color:var(--muted-foreground)}
 .md-stat.crit .v{color:var(--error-foreground)}.md-stat.low .v,.md-stat.warn .v{color:var(--warning-foreground)}.md-stat.good .v{color:var(--success-foreground)}
 .md-sec{display:flex;flex-direction:column;gap:10px}
+.mbar{display:inline-block;width:30px;height:6px;border-radius:3px;background:var(--track);margin-right:7px;vertical-align:middle;overflow:hidden;flex:none}
+.mbar>i{display:block;height:100%;border-radius:3px;background:var(--foreground);opacity:.75}
+.r.mix b em{font-style:normal;color:var(--muted-foreground);font-weight:500}
 .md-rs{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px}
 .md-rs-t{min-width:0}.md-rs-t span{color:var(--muted-foreground)}
 .md-rs-d{font-size:12px;color:var(--muted-foreground);margin-top:4px}
@@ -1734,6 +1737,7 @@ function renderTimeline(){
         <div class="d" style="margin:6px 0 2px">Usada nessa hora</div>
         ${(u=>{const l=u?u.by.map((d,k)=>[d,k]).filter(p=>p[0]>=.1).sort((x,y)=>y[0]-x[0]):[];
           return l.length?l.map(([d,k])=>`<div class="r"><span><i class="adot" style="--c:${ACC[accs[k].auth_id]}"></i>${esc(nm(accs[k]).split("@")[0])}</span><b class="tabular">−${fmt1(d)}%</b></div>`).join(""):(r=>r&&r.i>=0?`<div class="r"><span><i class="adot" style="--c:${ACC[accs[r.i].auth_id]}"></i>${esc(nm(accs[r.i]).split("@")[0])}</span><b class="tabular">&lt;1%</b></div>`:`<div class="r"><span>Nenhuma conta gasta</span><b></b></div>`)(pastRuns.find(r=>t>=r.a&&t<r.b))})(pastUse.find(u=>t>=u.a&&t<u.b))}
+        ${(u=>u?modelMixHtml(modelMix(accs.map(a=>a.auth_id),u.by,Math.floor(u.a/3600)*3600)):"")(pastUse.find(u=>t>=u.a&&t<u.b))}
         <div class="d" style="margin:6px 0 0">${esc(fmtLeft((t0-t)*1000))} atrás</div>`;
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
       let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
@@ -1997,6 +2001,26 @@ function quotaAllOf(id){if(DEMO)return null;
 const thinPts=(p,n)=>{if(p.length<=n)return p;const k=(p.length-1)/(n-1);return Array.from({length:n},(_,i)=>p[Math.round(i*k)])};
 // Weekly remaining of one account: real samples of the last 3 days (5h window in the tooltip), then the pool
 // simulation's share of this account for 7 days, with its refills and the point it runs dry.
+// Models one account used in the unix hour starting at h (seconds): {model key: estimated USD}.
+function hourModelsOf(id,h){const m=((state.hist||{}).hour_models||{})[id];return m&&m[h]||null}
+// Drop of a [t, remaining%] series inside the hour starting at h, spreading each sample gap evenly.
+function hourDrop(pts,h){let d=0;for(let k=1;k<pts.length;k++){const[xs,xv]=pts[k-1],[ys,yv]=pts[k];
+  if(xv>yv&&ys>xs){const ov=Math.min(ys,h+3600)-Math.max(xs,h);if(ov>0)d+=(xv-yv)*ov/(ys-xs)}}return d}
+// Splits each account's weekly drop in that hour (`by`, same order as ids) among the models it used,
+// in proportion to their estimated cost. Rows are [model, % points or null, share 0..1], largest first;
+// without any drop the shares are of the hour's cost alone.
+function modelMix(ids,by,h){
+  const pts={},cost={};let ptSum=0,costSum=0;
+  ids.forEach((id,k)=>{const m=hourModelsOf(id,h);if(!m)return;const c=Object.values(m).reduce((x,y)=>x+y,0);if(!(c>0))return;
+    for(const[mk,v]of Object.entries(m)){cost[mk]=(cost[mk]||0)+v;costSum+=v;
+      const d=by&&by[k]>0?by[k]*v/c:0;if(d>0){pts[mk]=(pts[mk]||0)+d;ptSum+=d}}});
+  if(ptSum>0)return Object.entries(pts).map(([m,v])=>[m,v,v/ptSum]).sort((x,y)=>y[2]-x[2]);
+  return costSum>0?Object.entries(cost).map(([m,v])=>[m,null,v/costSum]).sort((x,y)=>y[2]-x[2]):[];
+}
+function modelMixHtml(rows){
+  rows=rows.filter(r=>r[2]>=.01);if(!rows.length)return"";
+  return `<div class="d" style="margin:6px 0 2px">Modelos nessa hora</div>`+rows.map(([m,pt,sh])=>`<div class="r mix"><span><i class="mbar"><i style="width:${Math.max(4,Math.round(sh*100))}%"></i></i>${esc(prettyModel(m))}</span><b class="tabular">${Math.round(sh*100)}%${pt!=null&&pt>=.05?` <em>−${fmt1(pt)}%</em>`:""}</b></div>`).join("");
+}
 function accChart(a,i,rec,now,f){
   const t0=now/1000,PAST=3*DAY,HZ=7*DAY,c=ACC[a.auth_id],wk=weeklyOf(a),sh=shortOf(a);
   // "hist" preset: every stored sample of this account (fetched on demand); until it arrives the 3-day data is shown.
@@ -2056,6 +2080,7 @@ function accChart(a,i,rec,now,f){
       hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
       tip.innerHTML=`<div class="d">${esc(fmtDate(new Date(t*1000)))} · ${past?"real":"projeção"}</div>
         <div class="r"><span>Semanal</span><b class="tabular">${Math.round(v)}%</b></div>${sv!=null?`<div class="r"><span>5h</span><b class="tabular">${Math.round(sv)}%</b></div>`:""}
+        ${past?(h=>modelMixHtml(modelMix([a.auth_id],[hourDrop(pw,h)],h)))(Math.floor(t/3600)*3600):""}
         <div class="d" style="margin:6px 0 0">${past?fmtLeft((t0-t)*1000)+" atrás":"em "+fmtLeft((t-t0)*1000)}</div>`;
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;
       tip.style.left=Math.max(0,lx)+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"};

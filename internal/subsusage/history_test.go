@@ -243,3 +243,22 @@ func TestRecordQuotaKeepsFableRemaining(t *testing.T) {
 		t.Fatalf("got %+v", p)
 	}
 }
+
+func TestHourModelsFoldsVariantsAndSkipsOthers(t *testing.T) {
+	hours := map[string]map[int64]*hourStat{
+		"c": {7200: {Models: map[string]*modelStat{
+			"claude-opus-5-5":      {Requests: 1, Output: 1000000},
+			"claude-opus-5-5+fast": {Requests: 1, Output: 1000000},
+			"claude-fable-5-2":     {Requests: 1, Output: 1000000},
+		}}, 0: {Models: map[string]*modelStat{"claude-opus-5-5": {Output: 1}}}},
+		"x": {7200: {Models: map[string]*modelStat{"gpt": {Output: 5}}}},
+	}
+	got := hourModels(hours, map[string]string{"c": "claude", "x": "codex"}, 3600)
+	if len(got) != 1 || len(got["c"]) != 1 {
+		t.Fatalf("got %+v", got)
+	}
+	m := got["c"][7200]
+	if m["claude-fable-5-2"] != 40 || m["claude-opus-5-5"] <= 25 {
+		t.Fatalf("got %+v", m)
+	}
+}

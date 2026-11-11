@@ -535,6 +535,9 @@ type HistoryView struct {
 	HeatWeekdayDays [7]int       `json:"heat_weekday_days"`
 	// HeatRange is "all" when the heatmap covers every Claude hour, else "28d".
 	HeatRange string `json:"heat_range"`
+	// HourModels maps Claude auth ID -> unix hour -> model -> estimated USD, over the quota
+	// retention. The page splits each hour's quota drop among the models by these costs.
+	HourModels map[string]map[int64]map[string]float64 `json:"hour_models"`
 }
 
 // View aggregates history for a range with the default 28-day heatmap; see ViewWith.
@@ -747,6 +750,7 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 			view.Quota[id] = markProxied(append([]quotaPoint(nil), points[i:]...), h.data.Hours[id])
 		}
 	}
+	view.HourModels = hourModels(h.data.Hours, h.data.Providers, minQuota)
 	view.roundCosts()
 	return view
 }
@@ -813,4 +817,38 @@ func markProxied(points []quotaPoint, hours map[int64]*hourStat) []quotaPoint {
 		}
 	}
 	return points
+}
+
+// hourModels returns, per Claude account and hour since minHour, the estimated cost of each model.
+// Pricing variants ("+fast", "+long") are folded into their model; unpriced models are left out.
+func hourModels(hours map[string]map[int64]*hourStat, providers map[string]string, minHour int64) map[string]map[int64]map[string]float64 {
+	out := map[string]map[int64]map[string]float64{}
+	for id, byHour := range hours {
+		if providers[id] != "claude" {
+			continue
+		}
+		for hour, stat := range byHour {
+			if hour < minHour || stat == nil {
+				continue
+			}
+			var t AccountTotals
+			costs := t.addHour(stat, "claude")
+			m := map[string]float64{}
+			for key, mc := range costs {
+				if !mc.priced || mc.cost.Total <= 0 {
+					continue
+				}
+				model, _, _ := strings.Cut(key, "+")
+				m[model] = roundUSD(m[model] + mc.cost.Total)
+			}
+			if len(m) == 0 {
+				continue
+			}
+			if out[id] == nil {
+				out[id] = map[int64]map[string]float64{}
+			}
+			out[id][hour] = m
+		}
+	}
+	return out
 }
