@@ -405,6 +405,8 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-plot .gnow{stroke:var(--muted-foreground);stroke-width:1;opacity:.7}
 .tl-nowl{position:absolute;top:0;transform:translateX(-50%);z-index:1;font-size:11.5px;line-height:15px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;padding:0 4px;background:var(--card);border-radius:4px}
 .tl-leg i.proj{height:0;background:none;border-top:2px dashed var(--claude);border-radius:0}
+.tl-gap{position:absolute;z-index:1;height:8px;border:1.5px solid var(--muted-foreground);border-bottom:0;border-radius:2px 2px 0 0;opacity:.8;cursor:help}
+.tl-gap b{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;font-size:10.5px;font-weight:500;line-height:13px;white-space:nowrap;color:var(--muted-foreground)}
 .tl-leg i.use{height:5px;border-radius:1px;background:linear-gradient(90deg,var(--muted-foreground) 50%,color-mix(in srgb,var(--muted-foreground) 45%,transparent) 50%)}
 .tl-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--c);transform:translate(-50%,-50%);box-shadow:0 0 0 2px var(--card);pointer-events:none;z-index:2}
 .tl-dot.now{width:10px;height:10px;background:var(--claude)}
@@ -1368,13 +1370,17 @@ function renderTimeline(){
       +(near?"":`<div class="tl-capl" style="top:${Math.max(0,Y(refH)-18)}px" data-tip="${esc(refTip)}">recarga ${fmt1(refH)}%/h</div>`)}
   // Which account was spent, hour by hour: the recorded part from each account's weekly drops, the
   // projection from the simulation. Drawn as a strip on the baseline, faded in the projection.
-  const pastUse=[];
+  const pastUse=[],idle=[];
   if(past){const segsOf=accs.map(a=>{const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0).sort((x,y)=>x.t-y.t),sg=[];
       for(let k=1;k<q.length;k++)if(q[k-1].w>q[k].w&&q[k].t>q[k-1].t)sg.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w]);return sg});
     for(let h=Math.floor(F0/3600)*3600;h<t0;h+=3600){const s=Math.max(h,F0),e=Math.min(h+3600,t0);
       const by=segsOf.map(sg=>{let d=0;for(const[xs,xv,ys,yv]of sg){const ov=Math.min(ys,e)-Math.max(xs,s);if(ov>0)d+=(xv-yv)*ov/(ys-xs)}return d});
       let i=-1;by.forEach((d,k)=>{if(d>=.3&&(i<0||d>by[i]))i=k});
-      pastUse.push({a:s,b:e,i,by})}}
+      pastUse.push({a:s,b:e,i,by})}
+    // Stretches of 1h+ with no account's weekly dropping (no use at all), from the samples themselves.
+    const cov=segsOf.flat().map(g=>[g[0],g[2]]).sort((x,y)=>x[0]-y[0]);let at=F0;
+    for(const[a,b]of cov){if(a-at>=3600)idle.push([at,a]);at=Math.max(at,b)}
+    if(t0-at>=3600)idle.push([at,t0])}
   {const runs=[];
     const add=(a,b,i,fut)=>{const l=runs[runs.length-1];if(l&&l.i===i&&l.fut===fut&&Math.abs(l.b-a)<1)l.b=b;else runs.push({a,b,i,fut})};
     for(const u of pastUse)add(u.a,u.b,u.i,false);
@@ -1522,6 +1528,10 @@ function renderTimeline(){
     ov+=`<i class="tl-dot min" style="left:${P(tm).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
       +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(hm(tm))}</div>`}
   }
+  // Idle stretches: a bracket over the account strip with how long nothing was used.
+  for(const[a,b]of idle){if(b<=V0||a>=V1)continue;
+    const l=P(Math.max(a,V0))/100*W,r=P(Math.min(b,V1))/100*W,dur=fmtLeft((b-a)*1000).replace(" ","");
+    ov+=`<div class="tl-gap" style="left:${l.toFixed(1)}px;width:${Math.max(2,r-l).toFixed(1)}px;top:${BOT-17}px" data-tip="${esc(`Sem uso por ${fmtLeft((b-a)*1000)}\n${hm(a)} → ${b>=t0-60?"agora":hm(b)}`)}">${r-l>=34?`<b>${esc(dur)}</b>`:""}</div>`}
   plot.insertAdjacentHTML("beforeend",ov);
 
   const tip=$("#tlTip"),hl=$("#tlHover"),hd=$("#tlHdot");
