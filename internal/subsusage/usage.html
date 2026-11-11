@@ -1370,7 +1370,7 @@ function renderTimeline(){
       +(near?"":`<div class="tl-capl" style="top:${Math.max(0,Y(refH)-18)}px" data-tip="${esc(refTip)}">recarga ${fmt1(refH)}%/h</div>`)}
   // Which account was spent, hour by hour: the recorded part from each account's weekly drops, the
   // projection from the simulation. Drawn as a strip on the baseline, faded in the projection.
-  const pastUse=[],idle=[];
+  const pastUse=[],idle=[],pastRuns=[];
   if(past){const segsOf=accs.map(a=>{const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0).sort((x,y)=>x.t-y.t),sg=[];
       for(let k=1;k<q.length;k++)if(q[k-1].w>q[k].w&&q[k].t>q[k-1].t)sg.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w]);return sg});
     for(let h=Math.floor(F0/3600)*3600;h<t0;h+=3600){const s=Math.max(h,F0),e=Math.min(h+3600,t0);
@@ -1380,10 +1380,16 @@ function renderTimeline(){
     // Stretches of 1h+ with no account's weekly dropping (no use at all), from the samples themselves.
     const cov=segsOf.flat().map(g=>[g[0],g[2]]).sort((x,y)=>x[0]-y[0]);let at=F0;
     for(const[a,b]of cov){if(a-at>=3600)idle.push([at,a]);at=Math.max(at,b)}
-    if(t0-at>=3600)idle.push([at,t0])}
+    if(t0-at>=3600)idle.push([at,t0]);
+    // The strip uses the same samples: between consecutive sample times, the account dropping fastest.
+    const rated=segsOf.flatMap((sg,k)=>sg.map(g=>({a:g[0],b:g[2],k,r:(g[1]-g[3])/(g[2]-g[0])})));
+    const cuts=[...new Set(rated.flatMap(g=>[g.a,g.b]).concat([F0,t0]))].filter(x=>x>=F0&&x<=t0).sort((x,y)=>x-y);
+    for(let c=1;c<cuts.length;c++){const a=cuts[c-1],b=cuts[c];let i=-1,best=0;
+      for(const g of rated)if(g.a<b&&g.b>a&&g.r>best){best=g.r;i=g.k}
+      pastRuns.push({a,b,i})}}
   {const runs=[];
     const add=(a,b,i,fut)=>{const l=runs[runs.length-1];if(l&&l.i===i&&l.fut===fut&&Math.abs(l.b-a)<1)l.b=b;else runs.push({a,b,i,fut})};
-    for(const u of pastUse)add(u.a,u.b,u.i,false);
+    for(const u of pastRuns)add(u.a,u.b,u.i,false);
     for(const u of rec.use||[])add(Math.max(u.a,t0),u.b,u.i,true);
     svg+=runs.filter(r=>r.i>=0&&r.b>V0&&r.a<V1).map(r=>{const x1=X(Math.max(r.a,V0)),x2=X(Math.min(r.b,V1));
       return `<rect x="${x1.toFixed(1)}" y="${BOT-5}" width="${Math.max(.5,x2-x1).toFixed(1)}" height="5" fill="${ACC[accs[r.i].auth_id]}"${r.fut?` opacity=".45"`:""}/>`}).join("")}
