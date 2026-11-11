@@ -405,6 +405,7 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-plot .gnow{stroke:var(--muted-foreground);stroke-width:1;opacity:.7}
 .tl-nowl{position:absolute;top:0;transform:translateX(-50%);z-index:1;font-size:11.5px;line-height:15px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;padding:0 4px;background:var(--card);border-radius:4px}
 .tl-leg i.proj{height:0;background:none;border-top:2px dashed var(--claude);border-radius:0}
+.tl-leg i.use{height:5px;border-radius:1px;background:linear-gradient(90deg,var(--muted-foreground) 50%,color-mix(in srgb,var(--muted-foreground) 45%,transparent) 50%)}
 .tl-dot{position:absolute;width:8px;height:8px;border-radius:50%;background:var(--c);transform:translate(-50%,-50%);box-shadow:0 0 0 2px var(--card);pointer-events:none;z-index:2}
 .tl-dot.now{width:10px;height:10px;background:var(--claude)}
 .tl-dot.min{width:6px;height:6px;background:var(--card);border:1.5px solid var(--muted-foreground);box-shadow:none}
@@ -1365,6 +1366,21 @@ function renderTimeline(){
     const near=sr&&Math.abs(Y(safeH)-Y(refH))<22,refTip="Quanto as recargas semanais devolvem por hora. Acima dessa linha o total restante cai.";
     capLabel=(sr?`<div class="tl-capl safe" style="top:${Math.max(0,Math.min(Y(safeH),near?Y(refH):Infinity)-18)}px;right:auto;left:6px" data-tip="${esc("Gastando abaixo desta linha, o total não chega a 0% nos próximos 7 dias."+(near?"\n"+refTip:""))}">limite seguro ${fmt1(safeH)}%/h${near?`<span class="tl-capr"> · recarga ${fmt1(refH)}%/h</span>`:""}</div>`:"")
       +(near?"":`<div class="tl-capl" style="top:${Math.max(0,Y(refH)-18)}px" data-tip="${esc(refTip)}">recarga ${fmt1(refH)}%/h</div>`)}
+  // Which account was spent, hour by hour: the recorded part from each account's weekly drops, the
+  // projection from the simulation. Drawn as a strip on the baseline, faded in the projection.
+  const pastUse=[];
+  if(past){const segsOf=accs.map(a=>{const q=quota7Of(a.auth_id).filter(p=>p.w!=null&&p.t<=t0).sort((x,y)=>x.t-y.t),sg=[];
+      for(let k=1;k<q.length;k++)if(q[k-1].w>q[k].w&&q[k].t>q[k-1].t)sg.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w]);return sg});
+    for(let h=Math.floor(F0/3600)*3600;h<t0;h+=3600){const s=Math.max(h,F0),e=Math.min(h+3600,t0);
+      const by=segsOf.map(sg=>{let d=0;for(const[xs,xv,ys,yv]of sg){const ov=Math.min(ys,e)-Math.max(xs,s);if(ov>0)d+=(xv-yv)*ov/(ys-xs)}return d});
+      let i=-1;by.forEach((d,k)=>{if(d>=.3&&(i<0||d>by[i]))i=k});
+      pastUse.push({a:s,b:e,i,by})}}
+  {const runs=[];
+    const add=(a,b,i,fut)=>{const l=runs[runs.length-1];if(l&&l.i===i&&l.fut===fut&&Math.abs(l.b-a)<1)l.b=b;else runs.push({a,b,i,fut})};
+    for(const u of pastUse)add(u.a,u.b,u.i,false);
+    for(const u of rec.use||[])add(Math.max(u.a,t0),u.b,u.i,true);
+    svg+=runs.filter(r=>r.i>=0&&r.b>V0&&r.a<V1).map(r=>{const x1=X(Math.max(r.a,V0)),x2=X(Math.min(r.b,V1));
+      return `<rect x="${x1.toFixed(1)}" y="${BOT-5}" width="${Math.max(.5,x2-x1).toFixed(1)}" height="5" fill="${ACC[accs[r.i].auth_id]}"${r.fut?` opacity=".45"`:""}/>`}).join("")}
   const zNarrow=innerWidth<640,zDay=t=>(d=>fmtWd(d)+" "+d.getDate())(new Date(t*1000));
   const zlab=zv.map(z=>{const right=P(z.vs)>60;
     return `<div class="tl-zero" tabindex="0" style="top:${Y(cap)+8}px;${zNarrow?"right:4px":right?`right:${Math.max(0,100-P(z.ve)).toFixed(2)}%`:`left:calc(${P(z.vs).toFixed(2)}% + 8px)`}" data-tip="${esc(`Todas as contas sem cota de ${hm(z.s)} até ${hm(z.e)}${z.open?" (próximo reset, depois do fim do gráfico)":""}`)}">
@@ -1374,7 +1390,7 @@ function renderTimeline(){
   const minOn=!rateMode&&prc.length>1&&mk>0&&prc[mk][1]>.5;
 
   const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?Math.round(pastH/24)+" dias":pastH+"h";
-  const legend=past?`<span><i></i>Real (últimas ${pastLbl})</span><span><i class="proj"></i>Projeção</span>`:`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
+  const legend=past?`<span><i></i>Real (últimas ${pastLbl})</span><span><i class="proj"></i>Projeção</span><span data-tip="${esc("Faixa colorida embaixo: a conta gasta em cada hora (cheia no passado, clara na projeção).")}" tabindex="0"><i class="use"></i>Conta usada</span>`:`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
   const rate=br.ok
     ?`<span data-tip="${esc(paceTipFull(br)+`\n≈ ${Math.round(br.total*sm)}%/dia`)}" tabindex="0">gastando <b>~${fmt1(br.total*sm/24)}%/h</b></span>${sm!==1?` <span class="tl-scen">${esc(SCEN[tlo.scen].l.toLowerCase())}</span>`:""}`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
@@ -1522,6 +1538,9 @@ function renderTimeline(){
       hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
       tip.innerHTML=`<div class="d">${esc(hm(t))} · real</div>
         <div class="r tot"><span>Total real</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
+        <div class="d" style="margin:6px 0 2px">Usada nessa hora</div>
+        ${(u=>{const l=u?u.by.map((d,k)=>[d,k]).filter(p=>p[0]>=.1).sort((x,y)=>y[0]-x[0]):[];
+          return l.length?l.map(([d,k])=>`<div class="r"><span><i class="adot" style="--c:${ACC[accs[k].auth_id]}"></i>${esc(nm(accs[k]).split("@")[0])}</span><b class="tabular">−${fmt1(d)}%</b></div>`).join(""):`<div class="r"><span>Nenhuma conta gasta</span><b></b></div>`})(pastUse.find(u=>t>=u.a&&t<u.b))}
         <div class="d" style="margin:6px 0 0">${esc(fmtLeft((t0-t)*1000))} atrás</div>`;
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
       let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
