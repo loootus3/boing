@@ -23,8 +23,10 @@ type modelPrice struct {
 	LongCacheRead float64
 }
 
-// Prices from the claude-api reference (cached 2026-10-06). Keys are normalized model IDs.
+// Prices from the claude-api reference (cached 2026-11-03). Keys are normalized model IDs.
 var modelPrices = map[string]modelPrice{
+	"claude-fable-5-2":  {Input: 8, Output: 40, CacheRead: 0.20, FastMultiplier: 2},
+	"claude-mythos-5-2": {Input: 8, Output: 40, CacheRead: 0.20, FastMultiplier: 2},
 	"claude-fable-5-1":  {Input: 10, Output: 50, CacheRead: 0.25},
 	"claude-mythos-5-1": {Input: 10, Output: 50, CacheRead: 0.25},
 	"claude-fable-5":    {Input: 10, Output: 50, CacheRead: 1},
