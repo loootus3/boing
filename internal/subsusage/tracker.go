@@ -188,8 +188,13 @@ func (e *Entry) resetInfo() coreauth.ResetInfo {
 			info.Exhausted = true
 		}
 	}
-	if w := e.weekly(); w != nil && w.ResetAt != nil {
-		info.ResetAt = *w.ResetAt
+	if w := e.weekly(); w != nil {
+		if w.ResetAt != nil {
+			info.ResetAt = *w.ResetAt
+		}
+		if w.FableLimitPercent != nil && *w.FableLimitPercent >= 100 && (w.FableResetAt == nil || w.FableResetAt.After(now)) {
+			info.FableExhausted = true
+		}
 	}
 	return info
 }

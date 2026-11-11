@@ -85,3 +85,27 @@ func TestMarkSpentHidesGrantUntilRefetch(t *testing.T) {
 		t.Fatal("want error without a manager")
 	}
 }
+
+func TestResetInfoFableExhausted(t *testing.T) {
+	now := time.Now()
+	future, past := now.Add(time.Hour), now.Add(-time.Hour)
+	pct := func(v float64) *float64 { return &v }
+	for _, c := range []struct {
+		name  string
+		limit *float64
+		reset *time.Time
+		want  bool
+	}{
+		{"full, resets later", pct(100), &future, true},
+		{"full, already reset", pct(100), &past, false},
+		{"full, no reset time", pct(100), nil, true},
+		{"room left", pct(99), &future, false},
+		{"no fable data", nil, &future, false},
+	} {
+		e := &Entry{Windows: []Window{{Kind: "weekly", UsedPercent: 50, FableLimitPercent: c.limit, FableResetAt: c.reset}}}
+		info := e.resetInfo()
+		if info.FableExhausted != c.want || info.Exhausted {
+			t.Errorf("%s: got %+v", c.name, info)
+		}
+	}
+}

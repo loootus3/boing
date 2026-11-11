@@ -84,3 +84,42 @@ func TestPreferModelAuthsSkipsExhausted(t *testing.T) {
 		t.Fatalf("got %v", got)
 	}
 }
+
+func TestSoonestResetSkipsFableExhaustedForFable(t *testing.T) {
+	prev := resetInfoProvider.Load()
+	fn := func(id string) (ResetInfo, bool) { return ResetInfo{FableExhausted: id == "spent"}, id == "spent" }
+	SetResetInfoProvider(fn)
+	t.Cleanup(func() {
+		if prev != nil {
+			resetInfoProvider.Store(prev)
+		} else {
+			SetResetInfoProvider(nil)
+		}
+	})
+	s := &SoonestResetSelector{}
+	ctx := context.WithValue(context.Background(), prevalidatedAuthCandidatesKey{}, true)
+	spent, next := fableAuth("spent", 1, nil), fableAuth("next", 2, nil)
+	pick := func(model string, auths ...*Auth) string {
+		got, err := s.Pick(ctx, "claude", model, cliproxyexecutor.Options{}, auths)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.ID
+	}
+	if got := pick("claude-fable-5-2", spent, next); got != "next" {
+		t.Fatalf("fable picked %s", got)
+	}
+	// Other models still use the account; with no alternative, Fable keeps it rather than failing here.
+	if got := pick("claude-fable-5-2", spent); got != "spent" {
+		t.Fatalf("only account: picked %s", got)
+	}
+	plain := &Auth{ID: "spent", Provider: "claude", Attributes: map[string]string{}}
+	if got := pick("claude-opus-5-5", plain); got != "spent" {
+		t.Fatalf("opus picked %s", got)
+	}
+	// Every ranked account spent: Fable falls to an account outside the order, any letter case.
+	other := &Auth{ID: "other", Provider: "claude", Attributes: map[string]string{}}
+	if got := pick("Claude-Fable-5-2", spent, other); got != "other" {
+		t.Fatalf("fallback picked %s", got)
+	}
+}

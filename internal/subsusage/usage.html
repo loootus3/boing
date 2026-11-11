@@ -863,11 +863,16 @@ function winFc(a,w,now,pf){
   if(w.kind==="fable"){
     const wk=winFc(a,w.wk,now,pf),dur=(w.duration_sec||7*DAY)*1000,el=dur-(reset-now);
     let own=null;
-    // Measured pace from the Fable samples (`f`) of the last ~3h, like the 5h window; until there are
+    // The pool simulation runs Fable on its own allowance and in the Fable order, like the router: when it
+    // has the account, use it, so the ring, the card and the charts agree.
+    const fi=pf&&pf.br.ok&&pf.info.fable&&pf.info.fable[a.auth_id];
+    if(fi&&reset>now)own=fi.zero!=null?{zero:fi.zero*1000}:{before:fi.before};
+    // Otherwise the measured pace from the Fable samples (`f`) of the last ~3h, like the 5h window; until there are
     // enough of them, the average of the window so far.
     const since=Math.max(now/1000-3*3600,(reset-dur)/1000),all=quota7Of(a.auth_id);
     const pts=(all.length?all:quotaOf(a.auth_id)).filter(p=>p.f!=null&&p.t>=since),st=burnStats(pts,"f",since);
-    if(reset>now&&pts.length>=3&&st.span>=1200){const rate=st.drop/st.span/1000;
+    if(own);
+    else if(reset>now&&pts.length>=3&&st.span>=1200){const rate=st.drop/st.span/1000;
       own=rate>0&&left/rate<reset-now?{zero:now+left/rate}:{before:Math.max(0,left-rate*(reset-now))}}
     else if(reset>now){
       // No Fable samples yet: the weekly window's drop over the last ~3h times Fable's share of this
@@ -1024,6 +1029,15 @@ function accountForecast(a,now,pf){
 }
 // Order the router drains accounts in: normal-mode accounts first, "last"-mode ones only when every
 // normal one is empty; within each group the soonest weekly reset first. Used by the runway and the chart.
+// Fable's share of the proxy's Claude cost on these accounts over the last 7 days, weighted like the pace
+// (half-life PACE_HALF_LIFE_H). 0 without per-model history.
+function fableShareOf(accs,now){
+  const hm=(state.hist||{}).hour_models;if(!hm)return 0;
+  const k=Math.LN2/(PACE_HALF_LIFE_H*3600),t=now/1000;let f=0,s=0;
+  for(const a of accs){const m=hm[a.auth_id];if(!m)continue;
+    for(const[h,c]of Object.entries(m)){const age=t-(+h+1800);if(age<-1800||age>7*DAY)continue;const wt=Math.exp(-k*Math.max(0,age));
+      for(const[mk,v]of Object.entries(c)){s+=v*wt;if(/fable/.test(mk))f+=v*wt}}}
+  return s>0?f/s:0}
 const useOrder=(x,y)=>(x.last-y.last)||(x.reset-y.reset);
 // Simulates the provider's account pool hour by hour: the daily burn is drawn in useOrder order
 // (re-evaluated every hour, since resets change it) and accounts refill to 100% at reset. Returns hours
@@ -1045,14 +1059,21 @@ function simulate(accs,perHour,now,rec,info,ext){
   const R=r5Of(),t0=now/1000;
   const pool=accs.map((a,i)=>{const w=weeklyOf(a),sh=shortOf(a),k5=R&&sh?(R.by[a.auth_id]||R.pool):0,sr=sh&&sh.reset_at?Date.parse(sh.reset_at)/1000:0;
     return{a,i,last:a.mode==="last"?1:0,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY,
-      k5,s5:!k5?Infinity:sr>t0?Math.max(0,100-clampPct(sh.used_percent)):100,t5:k5&&sr>t0?sr:null,d5:(sh&&sh.duration_sec)||5*3600}});
+      k5,s5:!k5?Infinity:sr>t0?Math.max(0,100-clampPct(sh.used_percent)):100,t5:k5&&sr>t0?sr:null,d5:(sh&&sh.duration_sec)||5*3600,
+      // Fable's own weekly allowance, in weekly % (allowance × its share left); Infinity when the account reports none.
+      ...(fa=>({fallow:fa,fab:fa?(100-clampPct(w.fable_limit_percent))/100*fa:Infinity,fres:fa?Date.parse(w.fable_reset_at||w.reset_at)/1000:Infinity,rank:a.fable_rank||0}))
+        (w.fable_allowance>0&&w.fable_limit_percent!=null?w.fable_allowance:0)}});
+  const fsh=perHour>0?fableShareOf(accs,now):0;
   // Weekly % an account can still give before its 5h window blocks it; spending also opens that window.
   const room=p=>p.k5?Math.min(p.left,p.s5/p.k5):p.left;
   const spend=(p,take,from)=>{p.left-=take;if(p.k5&&take>0){p.s5=Math.max(0,p.s5-take*p.k5);if(p.t5==null)p.t5=from+p.d5}};
   const cap=60*24,hz=7*24,total=()=>pool.reduce((s,p)=>s+p.left,0);
   let t=t0,first=Infinity;
-  const IH=8*24,infoDone=h=>!info||h>=IH||pool.every(p=>p.fr);
-  if(info)for(const p of pool)if(p.left<=1e-9)p.zero=t0;
+  const IH=8*24,infoDone=h=>!info||h>=IH||pool.every(p=>p.fr&&(p.ffr||!p.fallow));
+  // Fable's allowance gets the same {before, at, zero} in info.fable[auth_id] (not enumerable, so code that walks
+  // info sees only the weekly windows).
+  if(info&&!info.fable)Object.defineProperty(info,"fable",{value:{},enumerable:false});
+  if(info)for(const p of pool){if(p.left<=1e-9)p.zero=t0;if(p.fallow&&p.fab<=1e-9)p.fzero=t0}
   const lefts=()=>{const o=new Array(accs.length).fill(0);for(const p of pool)o[p.i]=p.left;return o};
   const push=(tt,v,l)=>{rec.ts.push(tt);rec.tot.push(v);rec.lefts.push(l||lefts())},lastT=()=>rec.ts[rec.ts.length-1];
   pool.sort(useOrder);
@@ -1063,6 +1084,9 @@ function simulate(accs,perHour,now,rec,info,ext){
     for(const p of pool)while(p.reset<=t){
       if(info&&!p.fr&&h<IH){p.fr=true;info[p.a.auth_id]={before:p.left,at:p.reset,zero:p.zero==null?null:p.zero}}
       evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left,before:p.left});p.left=100;p.reset+=p.period}
+    for(const p of pool)while(p.fres<=t){
+      if(info&&!p.ffr&&h<IH){p.ffr=true;info.fable[p.a.auth_id]={before:p.fab/p.fallow*100,at:p.fres,zero:p.fzero==null?null:p.fzero}}
+      p.fab=p.fallow;p.fres+=p.period}
     if(rec&&h<hz&&evs.length){
       evs.sort((x,y)=>x.at-y.at);let cur=rec.tot[rec.tot.length-1];const l=lefts();for(const e of evs)l[e.i]=e.before;
       for(const e of evs){const ta=Math.min(t-2,Math.max(e.at,lastT()+2));push(ta-1,cur,l.slice());cur+=e.gain;l[e.i]=100;push(ta,cur,l.slice());e.top=cur}
@@ -1073,14 +1097,30 @@ function simulate(accs,perHour,now,rec,info,ext){
     if(ext)for(const p of pool){const e=ext[p.a.auth_id];if(!(e>0)||p.left<=1e-9)continue;const take=Math.min(room(p),e);
       if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+take/e*3600;
       spend(p,take,t-3600)}
-    if(rec&&h<hz){const u=pool.find(p=>room(p)>1e-9);rec.use.push({a:t-3600,b:t,i:u?u.i:-1})}
-    for(const p of pool){if(need<=0)break;const take=Math.min(room(p),need);if(!(take>0))continue;
-      if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+(perHour-need+take)/perHour*3600;
-      spend(p,take,t-3600);need-=take}
+    // The account the router drains first this hour (the strip under the chart); with Fable in the mix, the one
+    // that gives the most, ties in useOrder.
+    const u0=pool.find(p=>room(p)>1e-9);
+    let drawn=0;const took=new Array(accs.length).fill(0);
+    const draw=(p,take)=>{if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+(drawn+take)/perHour*3600;
+      spend(p,take,t-3600);drawn+=take;took[p.i]+=take};
+    // Fable has its own weekly allowance on each account. Its part of the pace (fsh) goes to the Fable order
+    // first (fable_rank), then to the other accounts in useOrder, each only while its allowance lasts, like the
+    // router. Fable demand no account can take is not served (those requests fail): it drains nothing.
+    let needF=perHour*fsh;need=perHour-needF;
+    if(needF>0)for(const p of [...pool.filter(p=>p.rank>0).sort((x,y)=>x.rank-y.rank),...pool.filter(p=>!(p.rank>0))]){
+      if(needF<=1e-12)break;const take=Math.min(room(p),p.fab,needF);if(!(take>0))continue;
+      if(p.fallow){p.fab-=take;if(info&&!p.ffr&&p.fzero==null&&p.fab<=1e-9)p.fzero=t-3600+(drawn+take)/perHour*3600}
+      draw(p,take);needF-=take}
+    for(const p of pool){if(need<=0)break;const take=Math.min(room(p),need);if(!(take>0))continue;draw(p,take);need-=take}
+    if(rec&&h<hz){let i=u0?u0.i:-1;
+      if(fsh>0){let best=null;for(const p of pool)if(took[p.i]>1e-9&&(!best||took[p.i]>took[best.i]+1e-9))best=p;if(best)i=best.i}
+      rec.use.push({a:t-3600,b:t,i})}
     // Outside-the-proxy use alone can also empty the pool (the router's share may be 0).
-    if(first===Infinity&&need<=1e-9&&ext&&total()<=1e-9)first=h+1;
-    if(need>1e-9&&first===Infinity&&total()<=1e-9){
-      first=h+(perHour-need)/perHour;
+    // Fable demand left unserved while weekly quota remains does not end the runway; with the pool empty, any does.
+    const unserved=perHour-drawn;
+    if(first===Infinity&&unserved<=1e-9&&ext&&total()<=1e-9)first=h+1;
+    if(unserved>1e-9&&first===Infinity&&total()<=1e-9){
+      first=h+drawn/perHour;
       if(rec&&h<hz)push(Math.min(t-1,Math.max(lastT()+1,t0+first*3600)),0);
     }
     if(rec&&h<hz){for(const e of evs)rec.events.push(e);push(t,total())}

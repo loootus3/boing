@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -16,6 +17,26 @@ type ResetInfo struct {
 	ResetAt time.Time
 	// Exhausted reports that at least one window is fully used (>= 100%).
 	Exhausted bool
+	// FableExhausted reports that the credential's own weekly Fable allowance is fully used, so
+	// Fable requests would be refused while other models still work.
+	FableExhausted bool
+}
+
+// isFableModel reports whether a model draws on the Fable-scoped weekly allowance.
+func isFableModel(model string) bool {
+	return strings.Contains(strings.ToLower(model), "fable")
+}
+
+// withoutFableExhausted drops the credentials whose Fable allowance is used up.
+func withoutFableExhausted(auths []*Auth) []*Auth {
+	out := make([]*Auth, 0, len(auths))
+	for _, a := range auths {
+		if info, ok := lookupResetInfo(a.ID); ok && info.FableExhausted {
+			continue
+		}
+		out = append(out, a)
+	}
+	return out
 }
 
 // ResetInfoFunc returns the latest known ResetInfo for an auth ID.
@@ -97,6 +118,13 @@ func (s *SoonestResetSelector) Pick(ctx context.Context, provider, model string,
 	}
 	if len(usable) == 0 {
 		return nil, &Error{Code: "auth_unavailable", Message: "all available credentials are set to not be used", HTTPStatus: 503}
+	}
+	// Fable has its own weekly allowance: a credential that used all of it would only answer 429,
+	// so it is skipped for Fable while another one still has room.
+	if isFableModel(model) {
+		if rest := withoutFableExhausted(usable); len(rest) > 0 {
+			usable = rest
+		}
 	}
 	// A model with its own credential order (prefer_models / prefer_rank) is served by the
 	// first available credential of that order, from any priority tier.
