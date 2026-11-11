@@ -802,17 +802,53 @@ function ring(left,o){
     <circle class="trk" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${sw}"/>${fab}${arc}${tick}
     <text x="${c}" y="${has&&size>=80?c-6:c}" text-anchor="middle" dominant-baseline="central" font-size="${(size*.25).toFixed(1)}"${has?` data-n="${l}" data-f="pct"`:""}>${txt}</text>${has&&size>=80?`<text class="rsub" x="${c}" y="${c+15}" text-anchor="middle" dominant-baseline="central" font-size="10.5">restante</text>`:""}</svg></span>`;
 }
-// Remaining %, even-pace position, hover text and pace icon of one window.
-function winInfo(w,now){
+// Forecast of one window at the current pace: {zero: ms when it runs out} or {before: % left at the reset};
+// null when no data supports one. The weekly window reads the shared pool simulation and the 5h window its
+// last ~2h of samples. Fable has no samples of its own, so it uses the average of its window so far (avg),
+// and carries the weekly forecast in `wk` because an empty weekly window stops Fable too.
+function winFc(a,w,now,pf){
+  const reset=w.reset_at?Date.parse(w.reset_at):0,left=100-clampPct(w.used_percent);
+  if(w.kind==="fable"){
+    const wk=winFc(a,w.wk,now,pf),dur=(w.duration_sec||7*DAY)*1000,el=dur-(reset-now);
+    let own=null;
+    if(reset>now&&el>=6*3600e3&&el<=dur){const rate=(100-left)/el;// % per ms
+      own=rate>0&&left/rate<reset-now?{zero:now+left/rate}:{before:Math.max(0,left-rate*(reset-now))};own.avg=1}
+    return own||wk?{...own,wk}:null}
+  if(w.kind==="short"){
+    if(!(reset>now))return null;
+    const since=Math.max(now/1000-2*3600,reset/1000-(w.duration_sec||5*3600)),all=quotaOf(a.auth_id);
+    const pts=(all.length?all:quota7Of(a.auth_id)).filter(p=>p.s!=null&&p.t>=since),st=burnStats(pts,"s",since);
+    if(pts.length<3||st.span<600)return null;
+    const rate=st.drop/st.span/1000;// % per ms
+    return rate>0&&left/rate<reset-now?{zero:now+left/rate}:{before:Math.max(0,left-rate*(reset-now))}}
+  if(w!==weeklyOf(a))return null;
+  const f=pf&&pf.br.ok&&pf.info[a.auth_id];
+  return f?(f.zero!=null?{zero:f.zero*1000}:{before:f.before}):null;
+}
+// Remaining %, even-pace position, hover text and pace icon of one window. The hover text leads with the
+// forecast `fc` (see winFc) or, once the window is spent, with the wait for the reset.
+function winInfo(w,now,fc){
   const used=clampPct(w.used_percent),left=Math.round(100-used),reset=w.reset_at?new Date(w.reset_at):null;
-  let pace=null,icon="",tip=`${w.label}: ${left}% restante`;
+  let pace=null,icon="";
   if(reset&&w.duration_sec>0){
     pace=Math.max(0,Math.min(100,(reset-now)/(w.duration_sec*10)));
     const gap=used-(100-pace);icon=gap>5?ICON_UP:gap<-5?ICON_DOWN:ICON_GAUGE;
-    tip+=` · ${Math.round(pace)}% da janela restante\nO traço é onde estaria gastando por igual.`;
   }
-  if(reset)tip+=`\nReseta ${fmtDate(reset)} · em ${fmtLeft(reset-now)}`;
-  return{used,left,reset,pace,icon,tip};
+  const fab=w.kind==="fable",wk=fab?w.wk:null,wkLeft=wk?Math.round(100-clampPct(wk.used_percent)):null;
+  const at=d=>fmtShort(new Date(d)).replace(", "," "),back=d=>d?` · volta em ${fmtLeft(d-now)} (${at(d)})`:"";
+  const run=z=>z-now<=60000?"agora":`em ~${fmtLeft(z-now)} (${at(z)})`,L=[];
+  if(left<=0)L.push("Esgotado"+back(reset));
+  else if(fab&&wkLeft<=0)L.push("Semanal esgotado"+back(wk.reset_at?new Date(wk.reset_at):null),`${left}% do Fable restante`);
+  else{
+    const wz=fab&&fc&&fc.wk&&fc.wk.zero!=null?fc.wk.zero:null,avg=fc&&fc.avg?" · ritmo médio da janela":"";
+    if(wz!=null&&(fc.zero==null||wz<fc.zero))L.push(`Acaba com o semanal ${run(wz)}`);
+    else if(fc&&fc.zero!=null)L.push(`Acaba ${run(fc.zero)}${avg}`);
+    else if(fc&&fc.before!=null)L.push(`Dura até o reset · sobra ~${Math.round(fc.before)}%${avg}`);
+    L.push(`${left}% restante`+(reset?` · reseta em ${fmtLeft(reset-now)} (${at(reset)})`:" · janela não iniciada"));
+  }
+  if(fab){if(wk.fable_percent!=null)L.push(`Gastou ${fmt1(wk.fable_percent)}% do semanal`+(wk.fable_allowance!=null?` (teto ${Math.round(wk.fable_allowance)}%)`:"")+(wkLeft>0&&wkLeft<left?` · semanal em ${wkLeft}%`:""))}
+  else if(w.fable_percent!=null)L.push(`Fable gastou ${fmt1(w.fable_percent)}% do semanal`);
+  return{used,left,reset,pace,icon,tip:L.join("\n")};
 }
 
 /* first-render number ease-in */
@@ -1668,29 +1704,16 @@ function renderTimeline(){
 let tlResize=0;addEventListener("resize",()=>{clearTimeout(tlResize);tlResize=setTimeout(()=>{if(state.data.accounts.length)renderTimeline()},150)});
 
 /* ---- accounts ---- */
-// Hover text for Fable's part of a weekly window (the dashed arc).
-function fableTip(w){
-  if(w.fable_percent==null)return"";
-  let t=`\nTracejado: Fable, ${fmt1(w.fable_percent)}% do semanal`;
-  if(w.fable_allowance!=null)t+=`\nO Fable pode usar até ${Math.round(w.fable_allowance)}% do semanal`+(w.fable_limit_percent!=null?` (${Math.round(w.fable_limit_percent)}% desse limite usado)`:"");
-  return t}
 // Fable's own weekly allowance as a window of its own, built from the weekly window's Fable fields.
 function fableWin(wk){
   if(!wk||wk.fable_limit_percent==null)return null;
   return{kind:"fable",label:"Fable",used_percent:wk.fable_limit_percent,reset_at:wk.fable_reset_at||wk.reset_at,duration_sec:wk.duration_sec||604800,wk};
 }
-function fableOwnTip(w){
-  const wk=w.wk,wl=Math.round(100-clampPct(wk.used_percent));
-  let t="";
-  if(wk.fable_allowance!=null)t+=`\nLimite próprio do Fable: até ${Math.round(wk.fable_allowance)}% do semanal`;
-  if(wk.fable_percent!=null)t+=`\nUsado com Fable: ${fmt1(wk.fable_percent)}% do semanal`;
-  if(wl<Math.round(100-clampPct(w.used_percent)))t+=`\nO Fable também gasta o semanal, que só tem ${wl}% restante.`;
-  return t}
-function ringBlock(w,acc,now,st){
-  const i=winInfo(w,now),l=lvl(i.left),fab=w.kind==="fable";
-  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip+(fab?fableOwnTip(w):fableTip(w)),color:acc,keep:1,fable:fab?null:w.fable_percent})}
+function ringBlock(w,acc,now,st,fc){
+  const i=winInfo(w,now,fc),l=lvl(i.left),fab=w.kind==="fable";
+  return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip,color:acc,keep:1,fable:fab?null:w.fable_percent})}
     <div class="rl">${esc(w.label)}${l?`<span class="chip ${l}">${ICON_ALERT}${i.left<=0?"esgotada":l==="crit"?"crítico":"baixo"}</span>`:""}</div>
-    <div class="rs tabular"><span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"janela não iniciada"}</span>${st?`<span class="pc ${st.c}" tabindex="0" data-tip="${esc(st.tip)}">${st.t}</span>`:i.reset&&i.pace!=null&&i.left>0?(d=>`<span class="pc ${d<-5?"fast":""}" tabindex="0" data-tip="${esc("Comparado com o traço no anel: onde você estaria gastando por igual até o reset.")}">${d<-5?"acima do ritmo ideal":d>5?"abaixo do ritmo ideal":"no ritmo ideal"}</span>`)(i.left-i.pace):""}</div></div>`;
+    <div class="rs tabular"><span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"janela não iniciada"}</span>${st?`<span class="pc ${st.c}" tabindex="0" data-tip="${esc(st.tip)}">${st.t}</span>`:i.reset&&i.pace!=null&&i.left>0?(d=>`<span class="pc ${d<-5?"fast":""}">${d<-5?"acima do ritmo ideal":d>5?"abaixo do ritmo ideal":"no ritmo ideal"}</span>`)(i.left-i.pace):""}</div></div>`;
 }
 function modelRow(w,acc,now){
   const i=winInfo(w,now),l=lvl(i.left);
@@ -1764,7 +1787,7 @@ function renderAccounts(){
       // has not started still arrives, without a reset time.
       // Weekly and Fable rings only; the 5h window still counts for the "no limite" badge.
       const fw=fableWin(wk);
-      if(wk)h+=`<div class="rings${fw?"":" solo"}">${ringBlock(wk,ACC[a.auth_id],now,wst)}${fw?ringBlock(fw,ACC[a.auth_id],now):""}</div>`;
+      if(wk)h+=`<div class="rings${fw?"":" solo"}">${ringBlock(wk,ACC[a.auth_id],now,wst,winFc(a,wk,now,pf))}${fw?ringBlock(fw,ACC[a.auth_id],now,null,winFc(a,fw,now,pf)):""}</div>`;
       else if(loading)h+=`<div class="rings">${noRing("Semanal","carregando")}${noRing("Fable","carregando")}</div>`;
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
@@ -1978,8 +2001,8 @@ function renderModal(){
     else{fkey="Sobra no reset";fv=`~${Math.round(f.before)}%`;fs="no ritmo atual";fc="good"}}
   const ownTxt=own.measured!=null?`${fmt1(own.measured/24)}%/h`:"—";
   const r3=recentUse(quota7Of(a.auth_id),now/1000,3);
-  const stats=stat("Semanal",wl!=null?wl+"%":"—",rs(wk),wk?winInfo(wk,now).tip:"",wl!=null?lvl(wl):"")
-    +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"esta conta não tem limite de 5h",sh?winInfo(sh,now).tip:"",sl!=null?lvl(sl):"")
+  const stats=stat("Semanal",wl!=null?wl+"%":"—",rs(wk),wk?winInfo(wk,now,winFc(a,wk,now,pf)).tip:"",wl!=null?lvl(wl):"")
+    +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"esta conta não tem limite de 5h",sh?winInfo(sh,now,winFc(a,sh,now,pf)).tip:"",sl!=null?lvl(sl):"")
     +stat(fkey,fv,fs,pf.br.ok?paceTipFull(pf.br):"",fc)
     +stat("Ritmo semanal",ext>=.05?`${fmt1((own.measured||0)/24)}<small> + ${fmt1(ext/24)}</small>`:r3.n>=2&&r3.drop>0?fmt1(r3.perHour)+"%/h":ownTxt,ext>=.05?"%/h pelo proxy + no app/site":r3.n>=2&&r3.drop>0?`últimas 3h · média de 24h: ${ownTxt}`:"média de 24h",
       `Queda do % semanal desta conta, ponderada pelas últimas ~24h (meia-vida ${PACE_HALF_LIFE_H}h).`+(ext>=.05?"\nFora do proxy: quedas sem requisições do proxy nesta conta (apps do Claude com o mesmo login).":""));
@@ -2002,9 +2025,9 @@ function renderModal(){
       ${mx>0&&vals.length>8?`<div class="md-max">máx. ${esc(fmtMetric(mx))}</div>`:""}</div>`}
   const modeTxt={normal:"Normal",last:"Por último",off:"Não usar"}[mode]||mode;
   // The account's limits as small rings in the header: weekly, 5h (only when the account has one) and Fable.
-  const fw=fableWin(wk),lim=(w,name,tip)=>{const i=winInfo(w,now);
-    return `<div class="md-lim">${ring(i.reset||w.kind==="fable"?i.left:null,{size:40,stroke:4,color:c,keep:1,pace:i.pace,tip})}<div class="ln">${name}</div></div>`};
-  const lims=[wk&&lim(wk,"Semanal",winInfo(wk,now).tip+fableTip(wk)),sh&&lim(sh,"5h",winInfo(sh,now).tip),fw&&lim(fw,"Fable",winInfo(fw,now).tip+fableOwnTip(fw))].filter(Boolean);
+  const fw=fableWin(wk),lim=(w,name)=>{const i=winInfo(w,now,winFc(a,w,now,pf));
+    return `<div class="md-lim">${ring(i.reset||w.kind==="fable"?i.left:null,{size:40,stroke:4,color:c,keep:1,pace:i.pace,tip:i.tip})}<div class="ln">${name}</div></div>`};
+  const lims=[wk&&lim(wk,"Semanal"),sh&&lim(sh,"5h"),fw&&lim(fw,"Fable")].filter(Boolean);
   // Claude reset credits, one row per kind (5h, weekly, Fable, full); using one asks for confirmation first.
   let rsec="";const rc=a.reset_credits;
   if(rc){const opts=rc.options||[];
