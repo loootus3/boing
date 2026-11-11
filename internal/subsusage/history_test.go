@@ -233,3 +233,13 @@ func TestMarkProxied(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordQuotaKeepsFableRemaining(t *testing.T) {
+	h := &History{data: historyData{Quota: map[string][]quotaPoint{}, Providers: map[string]string{}}}
+	used := 60.0
+	h.recordQuota(&Entry{AuthID: "a", Provider: "claude", Windows: []Window{{Kind: "weekly", UsedPercent: 44, FableLimitPercent: &used}}}, time.Unix(1000, 0))
+	p := h.data.Quota["a"]
+	if len(p) != 1 || p[0].Fable == nil || *p[0].Fable != 40 || *p[0].Weekly != 56 {
+		t.Fatalf("got %+v", p)
+	}
+}

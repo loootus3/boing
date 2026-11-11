@@ -122,6 +122,8 @@ type quotaPoint struct {
 	T      int64    `json:"t"`
 	Short  *float64 `json:"s,omitempty"`
 	Weekly *float64 `json:"w,omitempty"`
+	// Fable is the remaining % of Fable's own weekly allowance, when the account reports one.
+	Fable *float64 `json:"f,omitempty"`
 	// Proxy is set only in views: the proxy routed requests to the credential between the previous
 	// sample and this one (hour resolution, see markProxied). A weekly drop without it was spent
 	// outside the proxy, e.g. in the Claude apps signed in to the same account.
@@ -362,6 +364,13 @@ func (h *History) recordQuota(e *Entry, now time.Time) {
 			if point.Weekly == nil {
 				v := remaining
 				point.Weekly = &v
+				if w.FableLimitPercent != nil {
+					f := 100 - *w.FableLimitPercent
+					if f < 0 {
+						f = 0
+					}
+					point.Fable = &f
+				}
 			}
 		}
 	}

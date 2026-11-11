@@ -860,7 +860,13 @@ function winFc(a,w,now,pf){
   if(w.kind==="fable"){
     const wk=winFc(a,w.wk,now,pf),dur=(w.duration_sec||7*DAY)*1000,el=dur-(reset-now);
     let own=null;
-    if(reset>now&&el>=6*3600e3&&el<=dur){const rate=(100-left)/el;// % per ms
+    // Measured pace from the Fable samples (`f`) of the last ~3h, like the 5h window; until there are
+    // enough of them, the average of the window so far.
+    const since=Math.max(now/1000-3*3600,(reset-dur)/1000),all=quota7Of(a.auth_id);
+    const pts=(all.length?all:quotaOf(a.auth_id)).filter(p=>p.f!=null&&p.t>=since),st=burnStats(pts,"f",since);
+    if(reset>now&&pts.length>=3&&st.span>=1200){const rate=st.drop/st.span/1000;
+      own=rate>0&&left/rate<reset-now?{zero:now+left/rate}:{before:Math.max(0,left-rate*(reset-now))}}
+    else if(reset>now&&el>=6*3600e3&&el<=dur){const rate=(100-left)/el;// % per ms
       own=rate>0&&left/rate<reset-now?{zero:now+left/rate}:{before:Math.max(0,left-rate*(reset-now))};own.avg=1}
     return own||wk?{...own,wk}:null}
   if(w.kind==="short"){
@@ -920,9 +926,10 @@ function winViz(a,w,now,i,fc,color,label,has){
       v.pj=[fx.at,z!=null?i.left*(1-d/(z-now)):b!=null?i.left-(i.left-b)*d/(reset-now):i.left];v.st=fx.at;if(wkReset)v.rs=wkReset}
     else{v.pj=[fx.at,0];v.st=fx.at}}
   else if(fx&&fx.k==="before")v.pj=[reset,fx.v];
-  // Fable has no samples: its past is drawn as the window's average, the same pace its forecast uses.
-  if(fab){v.pm=1;return JSON.stringify(v)}
-  const key=w.kind==="short"?"s":"w",A=quotaOf(a.auth_id),B=quota7Of(a.auth_id);
+  const key=fab?"f":w.kind==="short"?"s":"w",A=quotaOf(a.auth_id),B=quota7Of(a.auth_id);
+  // Fable samples (`f`) only exist since they started being recorded: without at least two in the
+  // window, its past is drawn as the window's average, the same pace its forecast then uses.
+  if(fab&&(B.length?B:A).filter(p=>p.f!=null&&p.t*1000>=t0).length<2){v.pm=1;return JSON.stringify(v)}
   const pts=(key==="s"?(A.length?A:B):(B.length?B:A)).filter(p=>p[key]!=null&&p.t*1000>=t0&&p.t*1000<=now).sort((x,y)=>x.t-y.t);
   const step=Math.max(1,Math.ceil(pts.length/40));
   v.p=pts.filter((p,k)=>k%step===0||k===pts.length-1).map(p=>[Math.round(p.t),Math.round(p[key]*10)/10]);
