@@ -205,6 +205,26 @@ func Register(engine *gin.Engine, h Handlers) {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	}))
+	// {"auth_id": "...", "kind": "session"|"weekly"|"fable"|"full"} spends one Claude reset credit
+	// of that kind on the account. The page asks for confirmation first.
+	g.POST("/api/reset", requireUIHeader(func(c *gin.Context) {
+		body, ok := readBody(c)
+		if !ok {
+			return
+		}
+		authID := strings.TrimSpace(ojson.GetBytes(body, "auth_id").String())
+		kind := strings.TrimSpace(ojson.GetBytes(body, "kind").String())
+		if authID == "" || kind == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "auth_id and kind are required"})
+			return
+		}
+		outcome, warning, err := t.RedeemResetCredit(c.Request.Context(), authID, kind)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"outcome": outcome, "warning": warning})
+	}))
 	g.GET("/api/history", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, DefaultHistory().ViewWith(c.Query("range"), c.Query("heat"), time.Now().In(queryLocation(c.Query("tz")))))

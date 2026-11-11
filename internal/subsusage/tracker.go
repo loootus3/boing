@@ -136,6 +136,8 @@ type Entry struct {
 	LimitReached bool `json:"limit_reached"`
 	// RetryAt is set while the credential is backing off after an upstream rate limit.
 	RetryAt *time.Time `json:"retry_at,omitempty"`
+	// ResetCredits is the Claude reset-credit balance; nil when the account is not eligible.
+	ResetCredits *ResetCredits `json:"reset_credits,omitempty"`
 }
 
 // MetadataUsageName is the auth-file metadata key holding the account name chosen on the /usage page.
@@ -210,6 +212,10 @@ type Tracker struct {
 	lastFetch map[string]time.Time
 	// rawUsage holds the last successful Claude usage body per auth ID, guarded by mu.
 	rawUsage map[string]cachedBody
+	// resetLocks serializes reset-credit redemptions per auth ID; resetPending holds the
+	// idempotency key of an unsettled redemption. Both guarded by mu.
+	resetLocks   map[string]*sync.Mutex
+	resetPending map[string]string
 
 	// Test seams; nil means the production implementation.
 	fetchFn    func(ctx context.Context, a *coreauth.Auth) (*Entry, error)
@@ -430,6 +436,7 @@ func (t *Tracker) refreshAuths(ctx context.Context, force bool, auths []*coreaut
 				e.Windows = prev.Windows
 				e.DataAt = prev.DataAt
 				e.LimitReached = prev.LimitReached
+				e.ResetCredits = prev.ResetCredits
 				if e.Plan == "" {
 					e.Plan = prev.Plan
 				}

@@ -515,6 +515,12 @@ body.modal-open .live i::after,body.modal-open .cr-n em.use::after{animation:non
 .md-stat .s{font-size:11.5px;line-height:1.4;color:var(--muted-foreground)}
 .md-stat.crit .v{color:var(--error-foreground)}.md-stat.low .v,.md-stat.warn .v{color:var(--warning-foreground)}.md-stat.good .v{color:var(--success-foreground)}
 .md-sec{display:flex;flex-direction:column;gap:10px}
+.md-rs{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:10px;font-size:13px}
+.md-rs-t{min-width:0}.md-rs-t span{color:var(--muted-foreground)}
+.md-rs-d{font-size:12px;color:var(--muted-foreground);margin-top:4px}
+.md-rs-b{display:flex;gap:6px;flex:none}
+.btn.danger{background:var(--st-crit);color:#fff;border-color:transparent}.btn.danger:hover{filter:brightness(1.1);background:var(--st-crit)}
+.md-rs-msg{font-size:12.5px;color:var(--foreground)}.md-rs-msg.err{color:var(--st-crit)}
 .fo{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin:-4px 0 12px;font-size:12.5px;color:var(--muted-foreground)}
 .fo .fo-l{font-weight:600;color:var(--foreground);margin-right:2px}
 .fo-c{display:inline-flex;align-items:center;gap:2px;padding:2px 2px 2px 8px;border:1px solid var(--border);border-radius:999px;color:var(--foreground);background:var(--card)}
@@ -1791,12 +1797,14 @@ function renderAccounts(){
 
 /* ---- account detail modal ---- */
 let modalId=null,mdRange="week";
+// Reset credits in the modal: the kind awaiting confirmation, the kind being redeemed and the last result.
+let rsAsk=null,rsBusy=null,rsBusyId=null,rsMsg=null;
 function openAccModal(id){
-  if(id!==modalId)mdz=null;modalId=id;$("#accModal").hidden=false;document.body.classList.add("modal-open");hideTip();
+  if(id!==modalId){mdz=null;rsAsk=null;rsMsg=null}modalId=id;$("#accModal").hidden=false;document.body.classList.add("modal-open");hideTip();
   $("#mdBody").dataset.key="";renderModal();
   const c=$("#accModal .md-close");if(c)c.focus({preventScroll:true})}
 function closeAccModal(){
-  if(!modalId)return;const id=modalId;modalId=null;mdChart=null;mdPanEnd();$("#accModal").hidden=true;document.body.classList.remove("modal-open");hideTip();
+  if(!modalId)return;const id=modalId;modalId=null;rsAsk=null;rsMsg=null;mdChart=null;mdPanEnd();$("#accModal").hidden=true;document.body.classList.remove("modal-open");hideTip();
   // The page behind was not re-rendered while the dialog was open.
   if(state.behind){state.behind=false;renderAll()}
   const card=[...document.querySelectorAll(".acct-more[data-open]")].find(c=>c.dataset.open===id);if(card)card.focus({preventScroll:true})}
@@ -1806,6 +1814,8 @@ addEventListener("keydown",e=>{if(!modalId)return;
   if(e.key==="Tab"){const f=[...$("#accModal").querySelectorAll("button,select,[tabindex]:not([tabindex='-1'])")].filter(x=>x.offsetParent);if(!f.length)return;
     const i=f.indexOf(document.activeElement),n=e.shiftKey?(i<=0?f.length-1:i-1):(i<0||i===f.length-1?0:i+1);e.preventDefault();f[n].focus()}});
 $("#accModal").addEventListener("click",e=>{if(e.target.closest("[data-close]")){closeAccModal();return}
+  const rb=e.target.closest("[data-rs],[data-rs-ok],[data-rs-no]");
+  if(rb){if(rsBusy)return;if(rb.dataset.rs){rsAsk=rb.dataset.rs;rsMsg=null;renderModal()}else if(rb.dataset.rsOk)useReset(modalId,rb.dataset.rsOk);else{rsAsk=null;renderModal()}return}
   const z=e.target.closest("[data-mdz]");if(z&&(mdz||z.dataset.mdz!==mdRange)){const prev=mdRange;mdz=null;mdRange=z.dataset.mdz;
     // The "hist" preset changes the data source, so the chart (and its F0/F1) is rebuilt instead of redrawn.
     if(mdChart&&(prev==="hist")===(mdRange==="hist"))mdChart.draw();else renderModal()}});
@@ -1995,9 +2005,17 @@ function renderModal(){
   const fw=fableWin(wk),lim=(w,name,tip)=>{const i=winInfo(w,now);
     return `<div class="md-lim">${ring(i.reset||w.kind==="fable"?i.left:null,{size:40,stroke:4,color:c,keep:1,pace:i.pace,tip})}<div class="ln">${name}</div></div>`};
   const lims=[wk&&lim(wk,"Semanal",winInfo(wk,now).tip+fableTip(wk)),sh&&lim(sh,"5h",winInfo(sh,now).tip),fw&&lim(fw,"Fable",winInfo(fw,now).tip+fableOwnTip(fw))].filter(Boolean);
+  // Claude reset credits, one row per kind (5h, weekly, Fable, full); using one asks for confirmation first.
+  let rsec="";const rc=a.reset_credits;
+  if(rc){const opts=rc.options||[];
+    const rows=opts.map(o=>{const mine=rsBusyId===a.auth_id,ask=rsAsk===o.kind&&!rsBusy,busy=mine&&rsBusy===o.kind,
+      exp=o.expires_at?` · expira em ${fmtLeft(new Date(o.expires_at)-now)}`:"";
+      return `<div class="md-rs"><div class="md-rs-t"><b>${esc(o.label)}</b><span> · ${o.available} ${o.available===1?"disponível":"disponíveis"}${exp}</span>${ask?`<div class="md-rs-d">${esc(o.description)} Não dá para desfazer.</div>`:""}</div><div class="md-rs-b">${ask?`<button type="button" class="btn sm" data-rs-no>Cancelar</button><button type="button" class="btn sm danger" data-rs-ok="${esc(o.kind)}">Usar reset</button>`:`<button type="button" class="btn sm" data-rs="${esc(o.kind)}"${rsBusy?" disabled":""}>${busy?"Usando…":"Usar"}</button>`}</div></div>`}).join("");
+    rsec=`<div class="md-sec"><div class="md-h"><span>Créditos de reset</span>${opts.length?"":"<span>nenhum crédito disponível</span>"}</div>${rows}${rsMsg?`<div class="md-rs-msg${rsMsg.err?" err":""}">${esc(rsMsg.text)}</div>`:""}</div>`}
   const markup=`<div class="md-head">${who(email,c,a.name)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">Prioridade: ${esc(modeTxt)}</span>${lims.length?`<div class="md-lims">${lims.join("")}</div>`:""}
       <button type="button" class="md-close" data-close aria-label="Fechar">${ICON_CLOSE}</button></div>
     <div class="md-stats">${stats}</div>
+    ${rsec}
     <div class="md-sec"><div class="md-h"><span>Restante semanal · real e projeção</span>${ext>=.05?`<span>inclui ~${fmt1(ext)}%/dia fora do proxy</span>`:""}</div>${chart.html}</div>
     ${act}`;
   if(body.dataset.key===markup)return;
@@ -2317,6 +2335,20 @@ for(const ev of["pointerup","pointercancel"])addEventListener(ev,()=>{pointerDow
 // Names saved but maybe not yet in a poll response: applied over every load until the save settles.
 const nameOv={};
 const applyNames=data=>{for(const[id,n]of Object.entries(nameOv)){const x=(data.accounts||[]).find(a=>a.auth_id===id);if(x){if(n)x.name=n;else delete x.name}}};
+async function useReset(id,kind){
+  if(rsBusy)return;rsAsk=null;rsBusy=kind;rsBusyId=id;rsMsg=null;renderModal();
+  let res;const msgs={reset:"Reset aplicado: os limites foram liberados.",nothing_to_reset:"Nada para resetar agora: a conta não está limitada. O crédito não foi usado.",
+    no_credit:"Sem crédito desse tipo nesta conta.",already_redeemed:"Esse crédito já tinha sido usado; reset confirmado."};
+  try{
+    if(DEMO)throw new Error("indisponível no modo demo");
+    const r=await fetch("/usage/api/reset",{method:"POST",headers:{"X-Usage-UI":"1","Content-Type":"application/json"},body:JSON.stringify({auth_id:id,kind})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||("HTTP "+r.status));
+    res={text:j.warning||msgs[j.outcome]||j.outcome};
+  }catch(e){res={text:"Falha no reset: "+e.message,err:1}}
+  rsBusy=null;rsBusyId=null;if(modalId===id)rsMsg=res;else toast(res.text,res.err);
+  await load(false);if(modalId===id)renderModal();
+}
 async function setName(authId,name){
   const a=(state.data.accounts||[]).find(x=>x.auth_id===authId),prev=a?a.name:undefined;
   nameOv[authId]=name;applyNames(state.data);

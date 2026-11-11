@@ -55,13 +55,14 @@ func (t *Tracker) fetchClaude(ctx context.Context, authID, token string, entry *
 		"anthropic-beta": "oauth-2025-04-20",
 		"User-Agent":     claudeUserAgent,
 	}
-	body, err := t.get(ctx, claudeUsageURL, headers)
+	body, err := t.get(ctx, claudeUsagePollURL, headers)
 	if err != nil {
 		return err
 	}
 	if errParse := parseClaudeUsage(body, entry); errParse != nil {
 		return errParse
 	}
+	entry.ResetCredits = parseResetCredits(body, time.Now())
 	t.storeRawUsage(authID, body)
 	// The plan comes from the profile endpoint, which is only called when the cached plan is
 	// missing or older than planTTL. Failures there are not fatal and keep the previous plan.
