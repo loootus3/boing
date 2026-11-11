@@ -503,6 +503,11 @@ body.modal-open .live i::after,body.modal-open .cr-n em.use::after{animation:non
 .md-close:focus:not(:focus-visible){outline:none}
 .md-close:hover{background:var(--accent);color:var(--foreground)}
 .md-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.md-stat.md-lims{grid-column:span 2;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-around;gap:8px;padding-top:8px;padding-bottom:8px}
+.md-lim{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;text-align:center}
+.md-lim .ring{padding:2px}
+.md-lim .ln{font-size:12.5px;font-weight:600;color:var(--foreground)}
+.md-lim .ls{font-size:11.5px;color:var(--muted-foreground);white-space:nowrap}
 .md-stat{padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(180deg,var(--surf-a),var(--surf-b));display:flex;flex-direction:column;gap:2px;min-width:0}
 .md-stat .k{font-size:12px;color:var(--muted-foreground)}
 .md-stat .v{font-size:20px;font-weight:600;line-height:1.25;letter-spacing:-.02em;text-wrap:balance}
@@ -1963,8 +1968,11 @@ function renderModal(){
     else{fkey="Sobra no reset";fv=`~${Math.round(f.before)}%`;fs="no ritmo atual";fc="good"}}
   const ownTxt=own.measured!=null?`${fmt1(own.measured/24)}%/h`:"—";
   const r3=recentUse(quota7Of(a.auth_id),now/1000,3);
-  const stats=stat("Semanal",wl!=null?wl+"%":"—",rs(wk),wk?winInfo(wk,now).tip:"",wl!=null?lvl(wl):"")
-    +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"esta conta não tem limite de 5h",sh?winInfo(sh,now).tip:"",sl!=null?lvl(sl):"")
+  // The account's limits as small rings: weekly, 5h (only when the account has one) and Fable.
+  const fw=fableWin(wk),lim=(w,name,tip)=>{const i=winInfo(w,now);
+    return `<div class="md-lim">${ring(i.reset||w.kind==="fable"?i.left:null,{size:52,stroke:6,color:c,keep:1,pace:i.pace,tip})}<div><div class="ln">${name}</div><div class="ls">${i.reset?"reseta em "+fmtLeft(i.reset-now):"não iniciada"}</div></div></div>`};
+  const lims=[wk&&lim(wk,"Semanal",winInfo(wk,now).tip+fableTip(wk)),sh&&lim(sh,"5h",winInfo(sh,now).tip),fw&&lim(fw,"Fable",winInfo(fw,now).tip+fableOwnTip(fw))].filter(Boolean);
+  const stats=(lims.length?`<div class="md-stat md-lims">${lims.join("")}</div>`:stat("Semanal","—",rs(wk),"",""))
     +stat(fkey,fv,fs,pf.br.ok?paceTipFull(pf.br):"",fc)
     +stat("Ritmo semanal",ext>=.05?`${fmt1((own.measured||0)/24)}<small> + ${fmt1(ext/24)}</small>`:r3.n>=2&&r3.drop>0?fmt1(r3.perHour)+"%/h":ownTxt,ext>=.05?"%/h pelo proxy + no app/site":r3.n>=2&&r3.drop>0?`últimas 3h · média de 24h: ${ownTxt}`:"média de 24h",
       `Queda do % semanal desta conta, ponderada pelas últimas ~24h (meia-vida ${PACE_HALF_LIFE_H}h).`+(ext>=.05?"\nFora do proxy: quedas sem requisições do proxy nesta conta (apps do Claude com o mesmo login).":""));
