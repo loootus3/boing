@@ -1386,7 +1386,12 @@ function renderTimeline(){
     const cuts=[...new Set(rated.flatMap(g=>[g.a,g.b]).concat([F0,t0]))].filter(x=>x>=F0&&x<=t0).sort((x,y)=>x-y);
     for(let c=1;c<cuts.length;c++){const a=cuts[c-1],b=cuts[c];let i=-1,best=0;
       for(const g of rated)if(g.a<b&&g.b>a&&g.r>best){best=g.r;i=g.k}
-      pastRuns.push({a,b,i})}}
+      pastRuns.push({a,b,i})}
+    // Usage arrives in whole percents, so a slow drain skips samples: only a pause of 1h+ (the idle
+    // brackets) stays blank, shorter ones take the colour of the account around them.
+    const mr=[];for(const r of pastRuns){const l=mr[mr.length-1];if(l&&l.i===r.i)l.b=r.b;else mr.push({...r})}
+    mr.forEach((r,k)=>{if(r.i<0&&r.b-r.a<3600){const n=mr[k-1]&&mr[k-1].i>=0?mr[k-1]:mr[k+1];if(n&&n.i>=0)r.i=n.i}});
+    pastRuns.length=0;pastRuns.push(...mr)}
   {const runs=[];
     const add=(a,b,i,fut)=>{const l=runs[runs.length-1];if(l&&l.i===i&&l.fut===fut&&Math.abs(l.b-a)<1)l.b=b;else runs.push({a,b,i,fut})};
     for(const u of pastRuns)add(u.a,u.b,u.i,false);
@@ -1556,7 +1561,7 @@ function renderTimeline(){
         <div class="r tot"><span>Total real</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
         <div class="d" style="margin:6px 0 2px">Usada nessa hora</div>
         ${(u=>{const l=u?u.by.map((d,k)=>[d,k]).filter(p=>p[0]>=.1).sort((x,y)=>y[0]-x[0]):[];
-          return l.length?l.map(([d,k])=>`<div class="r"><span><i class="adot" style="--c:${ACC[accs[k].auth_id]}"></i>${esc(nm(accs[k]).split("@")[0])}</span><b class="tabular">−${fmt1(d)}%</b></div>`).join(""):`<div class="r"><span>Nenhuma conta gasta</span><b></b></div>`})(pastUse.find(u=>t>=u.a&&t<u.b))}
+          return l.length?l.map(([d,k])=>`<div class="r"><span><i class="adot" style="--c:${ACC[accs[k].auth_id]}"></i>${esc(nm(accs[k]).split("@")[0])}</span><b class="tabular">−${fmt1(d)}%</b></div>`).join(""):(r=>r&&r.i>=0?`<div class="r"><span><i class="adot" style="--c:${ACC[accs[r.i].auth_id]}"></i>${esc(nm(accs[r.i]).split("@")[0])}</span><b class="tabular">&lt;1%</b></div>`:`<div class="r"><span>Nenhuma conta gasta</span><b></b></div>`)(pastRuns.find(r=>t>=r.a&&t<r.b))})(pastUse.find(u=>t>=u.a&&t<u.b))}
         <div class="d" style="margin:6px 0 0">${esc(fmtLeft((t0-t)*1000))} atrás</div>`;
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
       let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
