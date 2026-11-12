@@ -475,7 +475,7 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-menu input{margin:0;accent-color:var(--claude)}
 .tl-menu-n{padding:4px 8px 2px;font-size:11px;color:var(--muted-foreground)}
 .tl-stats.two{grid-template-columns:1fr 1fr}
-.tl-stats{order:-1;display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px 20px;align-items:start;padding:0 0 16px;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
+.tl-stats{order:-1;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px 20px;align-items:start;padding:0 0 16px;border-bottom:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
 .tl-st{min-width:0}
 .tl-st .k{font-size:12px;color:var(--muted-foreground)}
 .tl-st .v{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -485,7 +485,7 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-chip.past{background:var(--card);border-style:dashed}
 @media (max-width:760px){.tl-stats{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.tl-st.lead{grid-column:1/-1;order:-1}.tl-ctl .spacer{display:none}}
 /* compact strip: label, value and detail on one line per item */
-.tl-stats.mini{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 24px;padding:0 0 12px}
+.tl-stats.mini{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);gap:6px 24px;padding:0 0 12px}
 .tl-stats.mini .tl-st{display:flex;align-items:baseline;gap:8px;min-width:0;white-space:nowrap}
 .tl-stats.mini .k{flex:none}.tl-stats.mini .v{flex:none;font-size:14px;align-self:center}
 .tl-stats.mini .s{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
@@ -1718,7 +1718,17 @@ function renderTimeline(){
         `${faName}${left!=null?`: ${left}% do semanal agora`:""}\nZera em ${fmtLeft(f.zero*1000-now)} (${hm(f.zero)}), ${fmtLeft((f.at-f.zero)*1000)} antes da recarga (${hm(f.at)}).\nÉ o esperado com várias contas: o proxy passa para a próxima.`+(dryNow?`\n${dryNow} conta${dryNow>1?"s":""} já esgotada${dryNow>1?"s":""} até a recarga.`:""))})();
   const refItem=stItem("Próxima recarga",nxt?`<i class="adot" style="--c:${ACC[nxt.a.auth_id]}"></i>+${Math.round((nxt.gain))}%`:"—",nxt?`${esc(nm(nxt.a).split("@")[0])} · ${esc(hm(nxt.at))}`:"nenhuma nos próximos 7 dias",
     nxt?`${nm(nxt.a).split("@")[0]} recarrega ${hm(nxt.at)} (em ${fmtLeft(nxt.at*1000-now)}): +${Math.round(nxt.gain)}% na capacidade somada.`:"");
-  const stats=`<div class="tl-stats${fullStats?"":" mini"}">${lead}${dryItem}${refItem}</div>`;
+  // Spent in the visible window, only up to now: the sum of each shown account's weekly drops (resets are rises, so
+  // they are skipped); each account counts 100%.
+  const sp0=V0,sp1=Math.min(V1,t0);let spentItem;
+  if(sp1-sp0<60)spentItem=stItem("Total gasto","—","período só no futuro","O período escolhido ainda não aconteceu: só tem projeção.");
+  else{const per=accs.map(a=>{const q=quota7Of(a.auth_id).filter(p=>p.w!=null).sort((x,y)=>x.t-y.t);let d=0;
+      for(let k=1;k<q.length;k++){const[x,y]=[q[k-1],q[k]];if(x.w>y.w&&y.t>x.t){const ov=Math.min(y.t,sp1)-Math.max(x.t,sp0);if(ov>0)d+=(x.w-y.w)*ov/(y.t-x.t)}}return[a,d]});
+    const spentTot=per.reduce((x,[,d])=>x+d,0),hrs=(sp1-sp0)/3600;
+    spentItem=stItem("Total gasto",`${fmt1(spentTot)}%`,`desde ${esc(hm(sp0))}${sp1<t0-60?" até "+esc(hm(sp1)):""} · ~${fmt1(spentTot/Math.max(hrs,1/60))}%/h`,
+      `Gasto de verdade no período do gráfico (${hm(sp0)} → ${sp1<t0-60?hm(sp1):"agora"}), sem a projeção.\nCada conta vale 100%; o total soma as contas mostradas.\n`
+      +per.filter(([,d])=>d>=.05).sort((x,y)=>y[1]-x[1]).map(([a,d])=>`${nm(a).split("@")[0]}: ${fmt1(d)}%`).join("\n"))}
+  const stats=`<div class="tl-stats${fullStats?"":" mini"}">${lead}${dryItem}${refItem}${spentItem}</div>`;
 
   // Advice: the pace that lasts the week, and quota that a reset will throw away.
   let advice="";
