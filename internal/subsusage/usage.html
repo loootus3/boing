@@ -501,6 +501,7 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
   .tl-card{--ph:240px}
   .tl-ctl .spacer{display:none}
   .tl-nav button{width:34px;height:34px}.tl-nav button.tl-reset{width:auto}
+  .tl-zg{flex-wrap:wrap;row-gap:8px;min-width:0}.tl-zg>.seg{flex:1 1 100%;min-width:0}.tl-nav{flex:1 1 100%;justify-content:flex-end}.tl-nav button.tl-reset{margin-right:auto}
 }
 
 /* account detail modal */
@@ -1663,8 +1664,8 @@ function renderTimeline(){
   let mk=0;for(let k=1;k<prc.length;k++)if(prc[k][1]<prc[mk][1]-.05)mk=k;
   const minOn=!rateMode&&prc.length>1&&mk>0&&prc[mk][1]>.5;
 
-  const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?Math.round(pastH/24)+" dias":pastH+"h";
-  const legend=past?`<span><i></i>Real (últimas ${pastLbl})</span><span><i class="proj"></i>Projeção</span><span data-tip="${esc("Faixa colorida embaixo: a conta gasta em cada hora (cheia no passado, clara na projeção).")}" tabindex="0"><i class="use"></i>Conta usada</span>`:`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
+  const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?"últimos "+Math.round(pastH/24)+" dias":"últimas "+pastH+"h";
+  const legend=past?`<span><i></i>Real (${pastLbl})</span><span><i class="proj"></i>Projeção</span><span data-tip="${esc("Faixa colorida embaixo: a conta gasta em cada hora (cheia no passado, clara na projeção).")}" tabindex="0"><i class="use"></i>Conta usada</span>`:`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
   const rate=br.ok
     ?`<span data-tip="${esc(paceTipFull(br)+`\n≈ ${Math.round(br.total*sm)}%/dia`)}" tabindex="0">gastando <b>~${fmt1(br.total*sm/24)}%/h</b></span>${sm!==1?` <span class="tl-scen">${esc(SCEN[tlo.scen].l.toLowerCase())}</span>`:""}`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
@@ -1849,7 +1850,7 @@ function renderTimeline(){
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
       let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
       tip.style.left=lx+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"}}
-  plot.onpointerleave=()=>{if((drag&&drag.on)||tlPan)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
+  plot.onpointerleave=ev=>{if(ev&&ev.pointerType==="touch")return;if((drag&&drag.on)||tlPan)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
   // Keyboard: ←/→ move the cursor by 1h (shift: 6h), Home/End jump, Esc hides it.
   let kt=null;
   const kshow=()=>{const r=plot.getBoundingClientRect();plot.onpointermove({clientX:r.left+(kt-V0)/VS*r.width,clientY:r.top+20})};
@@ -2188,11 +2189,12 @@ function accChart(a,i,rec,now,f){
         <div class="d" style="margin:6px 0 0">${past?fmtLeft((t0-t)*1000)+" atrás":"em "+fmtLeft((t-t0)*1000)}</div>`;
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;
       tip.style.left=Math.max(0,lx)+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"};
-    plot.onpointerleave=hide;
+    plot.onpointerleave=ev=>{if(ev&&ev.pointerType==="touch")return;hide()};plot.dataset.touchTip="1";
     // Brush to zoom (mouse/pen); zoomed, a drag pans and shift+drag still draws a brush. Touch keeps scrolling.
     plot.onpointerdown=ev=>{if(ev.button!==0)return;
       if(zoomed&&!ev.shiftKey){mdPan={id:ev.pointerId,x0:ev.clientX,v0:V0,vs:VS,W:plot.clientWidth||1,moved:false};hide();return}
-      if(ev.pointerType==="touch")return;
+      // A tap shows the value under the finger (real before now, projection after).
+      if(ev.pointerType==="touch"){plot.onpointermove(ev);return}
       drag={x0:Math.max(0,Math.min(plot.clientWidth,ev.clientX-plot.getBoundingClientRect().left)),x:0,on:false,id:ev.pointerId}};
     plot.addEventListener("pointermove",ev=>{if(!drag)return;
       if(!drag.on&&ev.buttons===0){drag=null;return}
@@ -2813,6 +2815,9 @@ function startRename(id){
 // Whether a pointer is pressed, so a click-away from the rename field can land before the cards are rebuilt.
 let pointerDown=false;
 addEventListener("pointerdown",()=>{pointerDown=true},true);
+// Touch: a chart tip stays after the finger lifts; a tap outside the chart hides it.
+addEventListener("pointerdown",e=>{if(e.pointerType!=="touch")return;
+  for(const p of document.querySelectorAll("#tlPlot,[data-touch-tip]"))if(!p.contains(e.target)&&p.onpointerleave)p.onpointerleave()},true);
 for(const ev of["pointerup","pointercancel"])addEventListener(ev,()=>{pointerDown=false},true);
 // Names saved but maybe not yet in a poll response: applied over every load until the save settles.
 const nameOv={};
