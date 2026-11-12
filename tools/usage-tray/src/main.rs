@@ -141,6 +141,7 @@ fn ensure_installed() -> bool {
         alert("Não consegui criar a pasta do app em %LOCALAPPDATA%.");
         return false;
     }
+    let first_install = !target.exists();
     let mut copied = false;
     for _ in 0..12 {
         thread::sleep(Duration::from_millis(400));
@@ -153,8 +154,13 @@ fn ensure_installed() -> bool {
         alert("Não consegui atualizar o app: feche o Uso Claude pelo menu da bandeja (Sair) e abra de novo.");
         return false;
     }
-    autostart_set(true, &target);
-    let _ = Command::new(&target).spawn();
+    // Autostart is turned on once, at the first install; updates keep the user's choice.
+    if first_install {
+        autostart_set(true, &target);
+    }
+    if Command::new(&target).spawn().is_err() {
+        alert("Instalei o app, mas não consegui abri-lo. Abra o Uso Claude pelo menu Iniciar ou pela pasta %LOCALAPPDATA%\\UsageTray.");
+    }
     false
 }
 
@@ -329,11 +335,16 @@ fn main() {
     let mut visible = false;
     let mut anchor = (0, 0);
     let mut hidden_at = Instant::now();
-    let mut blur_check: Option<Instant> = None;
+    // Whether the popup has held the foreground since it was shown: it hides when another window takes it over.
+    // Polled while visible, since focus moving between the window and its WebView child sends no reliable event.
+    let mut had_fg = false;
+    // Whether the popup was open when the tray button went down: that click closes it and must not reopen it.
+    let mut open_at_press = false;
 
     event_loop.run(move |event, _, control_flow| {
         let now = Instant::now();
-        *control_flow = ControlFlow::WaitUntil(blur_check.unwrap_or(now + Duration::from_secs(30)));
+        *control_flow =
+            ControlFlow::WaitUntil(now + if visible { Duration::from_millis(200) } else { Duration::from_secs(30) });
 
         let mut hide = |visible: &mut bool, hidden_at: &mut Instant| {
             if *visible {
@@ -355,14 +366,20 @@ fn main() {
             }
             Event::UserEvent(UserEvent::Tray(TrayIconEvent::Click {
                 button: MouseButton::Left,
+                button_state: MouseButtonState::Down,
+                ..
+            })) => open_at_press = visible,
+            Event::UserEvent(UserEvent::Tray(TrayIconEvent::Click {
+                button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
                 rect,
                 ..
             })) => {
-                if visible {
+                if visible || open_at_press {
+                    // The press may already have hidden it (the taskbar took the foreground).
                     hide(&mut visible, &mut hidden_at);
-                } else if hidden_at.elapsed() > Duration::from_millis(400) {
-                    // The click that hid the popup (focus moved to the taskbar) must not reopen it.
+                    open_at_press = false;
+                } else {
                     anchor = (
                         rect.position.x as i32 + rect.size.width as i32 / 2,
                         rect.position.y as i32 + rect.size.height as i32 / 2,
@@ -374,11 +391,11 @@ fn main() {
                     window.set_visible(true);
                     window.set_focus();
                     visible = true;
-                    blur_check = None;
+                    had_fg = false;
                 }
             }
             Event::UserEvent(UserEvent::Ipc(msg)) => {
-                if let Some(h) = msg.strip_prefix("h:").and_then(|h| h.parse::<f64>().ok()) {
+                if let Some(h) = msg.strip_prefix("h:").and_then(|h| h.parse::<f64>().ok()).filter(|h| h.is_finite()) {
                     window.set_inner_size(LogicalSize::new(WIDTH, h.clamp(120.0, 900.0)));
                     if visible {
                         place(&window, anchor);
@@ -419,21 +436,16 @@ fn main() {
                 }
             }
             Event::UserEvent(UserEvent::Quit) => *control_flow = ControlFlow::Exit,
-            Event::WindowEvent { event: WindowEvent::Focused(false), .. } => {
-                // Focus moving into the WebView also blurs the window: hide only if another window took over.
-                blur_check = Some(now + Duration::from_millis(150));
-                *control_flow = ControlFlow::WaitUntil(now + Duration::from_millis(150));
-            }
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => hide(&mut visible, &mut hidden_at),
             _ => {}
         }
 
-        if let Some(at) = blur_check {
-            if Instant::now() >= at {
-                blur_check = None;
-                if visible && unsafe { GetForegroundWindow() } as isize != hwnd {
-                    hide(&mut visible, &mut hidden_at);
-                }
+        if visible {
+            let ours = unsafe { GetForegroundWindow() } as isize == hwnd;
+            if ours {
+                had_fg = true;
+            } else if had_fg {
+                hide(&mut visible, &mut hidden_at);
             }
         }
         if !visible && webview.is_some() && hidden_at.elapsed() > DROP_AFTER {
