@@ -781,7 +781,7 @@ body.mini{overflow:hidden}
   <section class="blk" id="secTray">
     <div class="card dl-card"><div class="dl-t"><b>App da bandeja para Windows</b>
       <div class="sub">Fica no canto da barra de tarefas: um clique mostra a capacidade semanal, a conta em uso e o gráfico, sem abrir esta página. Já vem apontando para este servidor.</div></div>
-      <a class="btn" href="/usage/download/tray" download="UsageTray.exe"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Baixar</a></div>
+      <a class="btn" id="trayDl" href="/usage/download/tray" download="UsageTray.exe"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Baixar</a></div>
   </section>
 </main>
 <div id="mini" hidden></div>
@@ -3177,6 +3177,7 @@ if(MINI){document.body.classList.add("mini","ready");
   addEventListener("keydown",e=>{if(e.key==="Escape")miniPost("hide")});
   // The app shows the popup again later: refresh at once instead of waiting for the next poll.
   addEventListener("focus",()=>load(false,true))}
+{const t=$("#trayDl");if(t)t.href="/usage/download/tray?base="+encodeURIComponent(location.origin)}
 if(!MINI&&(!DEMO||DEMO_MODE==="loading"))renderSkeleton();
 load(false);setInterval(()=>{if(!document.hidden)load(false,true)},45000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)load(false,true)});
