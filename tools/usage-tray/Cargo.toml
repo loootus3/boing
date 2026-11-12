@@ -1,0 +1,29 @@
+[package]
+name = "usage-tray"
+version = "0.1.0"
+edition = "2021"
+description = "Tray popup for the CLIProxyAPI /usage dashboard (Windows)"
+publish = false
+
+[dependencies]
+tao = "0.30"
+wry = "0.46"
+tray-icon = "0.19"
+ureq = { version = "2", default-features = false, features = ["json"] }
+serde_json = "1"
+winreg = "0.52"
+windows-sys = { version = "0.59", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_System_Threading",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_Graphics_Gdi",
+  "Win32_Graphics_Dwm",
+] }
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

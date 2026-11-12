@@ -657,6 +657,36 @@ body.modal-open .live i::after,body.modal-open .cr-n em.use::after{animation:non
 .meter i,.rate .bar i{transform-origin:left}
 body:not(.ready) .segbar>i:not(.track),body:not(.ready) .meter i,body:not(.ready) .rate .bar i{animation:grow .5s cubic-bezier(.2,.7,.2,1) both}
 body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
+
+/* download card */
+.dl-card{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px}
+.dl-t{min-width:0;display:flex;flex-direction:column;gap:4px}.dl-t b{font-size:14px}
+@media (max-width:640px){.dl-card{flex-direction:column;align-items:stretch}.dl-card .btn{justify-content:center}}
+/* mini view (?mini) for the tray app */
+body.mini .topbar,body.mini main,body.mini .modal{display:none!important}
+body.mini{overflow:hidden}
+#mini{padding:14px 14px 10px;display:flex;flex-direction:column;gap:10px;-webkit-user-select:none;user-select:none}
+.mn-h{display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+.mn-k{font-size:12px;color:var(--muted-foreground)}
+.mn-n{font-size:30px;font-weight:650;line-height:1.05;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.mn-n small{font-size:12px;font-weight:400;letter-spacing:0;color:var(--muted-foreground);margin-left:6px}
+.mn-use{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:0;max-width:52%}
+.mn-use b{display:flex;align-items:center;gap:6px;font-size:13px;min-width:0;max-width:100%}
+.mn-use b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#mini .segbar{height:14px;margin:0}
+.mn-ch svg{display:block;width:100%;height:86px;overflow:visible}
+.mn-x{display:flex;justify-content:space-between;font-size:11px;color:var(--muted-foreground);margin-top:3px}
+.mn-sum{font-size:12px;color:var(--muted-foreground);line-height:1.45}.mn-sum b{color:var(--foreground);font-weight:600}
+.mn-tg{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:28px;border:0;border-top:1px solid var(--border);background:none;color:var(--muted-foreground);font:inherit;font-size:12px;cursor:pointer;padding:6px 0 0}
+.mn-tg:hover{color:var(--foreground)}.mn-tg svg{transform:rotate(90deg);transition:transform .15s}.mn-tg[aria-expanded="true"] svg{transform:rotate(-90deg)}
+.mn-accs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
+.mn-acc{display:flex;align-items:center;gap:8px;min-width:0}.mn-acc .ring{flex:none}
+.mn-ai{min-width:0}.mn-ai .nm{font-size:12.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mn-ai .rs{font-size:11px;color:var(--muted-foreground);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mn-ft{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted-foreground)}
+.mn-ft button{border:0;background:none;padding:2px 0;font:inherit;color:var(--muted-foreground);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.mn-ft button:hover{color:var(--foreground)}
+.mn-err{font-size:12.5px;color:var(--error-foreground)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 .rs .pc.ok{color:var(--muted-foreground)}
 .cap-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 12px}
@@ -747,7 +777,14 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
       <div class="act-ctl"><div class="seg" id="heatWin" role="group" aria-label="Janela do mapa de calor"><button data-v="28d">4 semanas</button><button data-v="all">Tempo todo</button></div></div></div>
     <div class="card heat-card" id="heat"></div>
   </section>
+
+  <section class="blk" id="secTray">
+    <div class="card dl-card"><div class="dl-t"><b>App da bandeja para Windows</b>
+      <div class="sub">Fica no canto da barra de tarefas: um clique mostra a capacidade semanal, a conta em uso e o gráfico, sem abrir esta página. Já vem apontando para este servidor.</div></div>
+      <a class="btn" href="/usage/download/tray" download="UsageTray.exe"><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Baixar</a></div>
+  </section>
 </main>
+<div id="mini" hidden></div>
 <div class="modal" id="accModal" hidden><div class="md-bg" data-close></div>
   <div class="md-card" role="dialog" aria-modal="true" aria-label="Detalhes da conta"><div id="mdBody"></div></div></div>
 <script>
@@ -2578,7 +2615,7 @@ function forecastSnapshot(now){
 }
 let fcPostedHour=0;
 // Once an hour per tab; the server keeps the first post of each hour, so other tabs and repeats are harmless.
-function postForecast(){
+function postForecast(){if(MINI)return;
   if(DEMO)return;const now=Date.now(),hour=Math.floor(now/3600e3);
   if(hour===fcPostedHour||!state.data||now-state.dataNow>10*60e3)return;
   const snap=forecastSnapshot(now);if(!snap)return;fcPostedHour=hour;
@@ -2661,7 +2698,7 @@ function renderHealth(){
     ${chips?`<div class="hl-row"><span class="hl-k">Erros na Anthropic</span>${chips}</div>`:""}
     ${accs?`<div class="hl-row"><span class="hl-k">Por conta</span>${accs}</div>`:""}`;
 }
-async function loadHealth(){
+async function loadHealth(){if(MINI)return;
   if(DEMO)return;
   try{const r=await fetch("/usage/api/health",{cache:"no-store"});if(!r.ok)return;state.health=await r.json();if(!modalId)renderHealth()}catch(e){}
 }
@@ -2680,7 +2717,7 @@ function renderClients(h){
 
 /* ---- account switch notice ---- */
 let lastActive=null,switchTimer=0;
-function noticeActive(){
+function noticeActive(){if(MINI)return;
   const a=claudeAccs().find(x=>x.active),id=a?a.auth_id:null;
   if(lastActive&&id&&id!==lastActive&&!$("#toast").classList.contains("err")){const msg=`O proxy passou a usar ${accName(id)} (antes: ${accName(lastActive)})`;toast(msg);
     clearTimeout(switchTimer);switchTimer=setTimeout(()=>{if($("#toast").textContent===msg)toast("")},10e3)}
@@ -2751,6 +2788,7 @@ function updateLive(){
 setInterval(updateLive,1000);
 
 function renderAll(){
+  if(MINI){hideTip();indexColors();state.loaded=true;renderMini();return}
   hideTip();indexColors();
   state.loaded=true;
   document.querySelectorAll("[aria-busy]").forEach(e=>e.removeAttribute("aria-busy"));
@@ -2770,6 +2808,8 @@ function renderAll(){
 }
 
 const DEMO_MODE=new URLSearchParams(location.search).get("demo"),DEMO=DEMO_MODE!==null;
+// ?mini: the compact view the Windows tray app shows in its popup (capacity, account in use, chart, rings).
+const MINI=new URLSearchParams(location.search).has("mini");
 // The browser's IANA zone, so the server bins days and the heatmap like the labels read.
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||""}catch(_){return""}})();
 const histUrl=(range,heat)=>"/usage/api/history?range="+encodeURIComponent(range)+(heat==="all"?"&heat=all":"")+(TZ?"&tz="+encodeURIComponent(TZ):"");
@@ -2804,7 +2844,7 @@ async function load(refresh,poll){
     state.sig=sig;state.renderAt=Date.now();
     renderAll();
     noticeActive();postForecast();
-  }catch(e){if(seq===loadSeq)toast("Falha ao carregar: "+e.message,true)}
+  }catch(e){if(seq===loadSeq){toast("Falha ao carregar: "+e.message,true);if(MINI)miniError(e.message)}}
 }
 function setupSeg(id,key){const el=$("#"+id);el.setAttribute("role","group");
   const sync=()=>el.querySelectorAll("button").forEach(b=>{b.type="button";const on=b.dataset.v===state[key];b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)});
@@ -3074,7 +3114,70 @@ function demo(){
   if(!new URLSearchParams(location.search).has("anim"))document.body.classList.add("ready");
   renderAll();
 }
-if(!DEMO||DEMO_MODE==="loading")renderSkeleton();
+/* ---- mini view (?mini): the tray app's popup ---- */
+let miniOpen=store.get("usage.miniOpen","0")==="1";
+// Messages to the tray app (WebView2 IPC): "h:<px>" fits the window to the content, "open" opens the dashboard,
+// "hide" closes the popup. Outside the app the bridge is missing and the calls do nothing.
+const miniPost=m=>{try{if(window.ipc)window.ipc.postMessage(m)}catch(_){}};
+const miniSize=()=>requestAnimationFrame(()=>{const el=$("#mini");if(el)miniPost("h:"+Math.ceil(el.getBoundingClientRect().height))});
+function miniError(msg){const el=$("#mini");if(!el||state.loaded)return;el.hidden=false;
+  el.innerHTML=`<div class="mn-err">Não consegui falar com o proxy: ${esc(msg)}</div><div class="mn-ft"><span>tenta de novo em 45s</span><button type="button" data-mopen>Abrir painel</button></div>`;miniSize()}
+function renderMini(){
+  const el=$("#mini");if(!el)return;el.hidden=false;
+  const now=Date.now(),all=claudeAccs(),accs=all.filter(a=>!a.needs_login&&weeklyOf(a));
+  const upd=`<span>atualizado ${esc(new Date(state.recvAt||now).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"}))}</span>`;
+  if(!accs.length){el.innerHTML=`<div class="mn-k">Nenhuma conta Claude com limite semanal.</div><div class="mn-ft">${upd}<button type="button" data-mopen>Abrir painel</button></div>`;miniSize();return}
+  const rem=a=>100-clampPct(weeklyOf(a).used_percent),sum=accs.reduce((t,a)=>t+rem(a),0),cap=accs.length*100;
+  const fabOf=a=>{const w=weeklyOf(a);return w&&w.fable_percent>0?Math.min(w.fable_percent,100-rem(a)):0};
+  const rk=a=>{const r=Date.parse(weeklyOf(a).reset_at);return r>0?r:Infinity};
+  const ord=[...accs].sort((x,y)=>(y.active?1:0)-(x.active?1:0)||rk(x)-rk(y));
+  const fabTot=accs.reduce((t,a)=>t+fabOf(a),0),spent=Math.max(0,cap-sum-fabTot);
+  const bar=ord.filter(a=>rem(a)>0).map(a=>`<i style="flex:${rem(a)} 1 0;--c:${ACC[a.auth_id]}"></i>`).join("")
+    +ord.filter(a=>fabOf(a)>0).map(a=>`<i class="fab" style="flex:${fabOf(a)} 1 0;--c:${ACC[a.auth_id]}"></i>`).join("")
+    +(spent>0?`<i class="track" style="flex:${spent} 1 0"></i>`:"");
+  const act=all.find(a=>a.active&&!a.needs_login);
+  const use=act?`<b><i class="adot" style="--c:${ACC[act.auth_id]}"></i><span>${esc(dispName(act))}</span></b><span class="mn-k">em uso agora</span>`:`<span class="mn-k">nenhuma conta em uso</span>`;
+  // Chart: the last 3 days recorded and the next 3 days projected (same run as the page's projection).
+  const rec={},pf=poolForecast(now,rec),t0=now/1000,X0=t0-3*DAY,X1=t0+3*DAY,W=300,H=86;
+  const ca=pf.accs.length?pf.accs:accs,ccap=ca.length*100,cs=capacitySeries(ca);
+  const X=t=>((t-X0)/(X1-X0)*W).toFixed(1),Y=v=>(H-2-Math.max(0,Math.min(ccap,v))/ccap*(H-8)).toFixed(1);
+  const hist=cs?cs.pts.filter(p=>p[0]>=X0):[],proj=rec.ts?rec.ts.map((t,k)=>[t,rec.tot[k]]).filter(p=>p[0]<=X1):[];
+  const line=pts=>pts.map((p,k)=>(k?"L":"M")+X(p[0])+","+Y(p[1])).join("");
+  const area=hist.length>1?`<path d="${line(hist)}L${X(hist[hist.length-1][0])},${H}L${X(hist[0][0])},${H}Z" fill="var(--claude)" fill-opacity=".12"/>`:"";
+  const nowV=hist.length?hist[hist.length-1][1]:sum;
+  const svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <line x1="0" x2="${W}" y1="${Y(ccap)}" y2="${Y(ccap)}" stroke="var(--border)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
+    <line x1="0" x2="${W}" y1="${H-.5}" y2="${H-.5}" stroke="var(--border)" vector-effect="non-scaling-stroke"/>
+    <line x1="${X(t0)}" x2="${X(t0)}" y1="0" y2="${H}" stroke="var(--muted-foreground)" stroke-opacity=".5" vector-effect="non-scaling-stroke"/>
+    ${area}${hist.length>1?`<path d="${line(hist)}" fill="none" stroke="var(--claude)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`:""}
+    ${proj.length>1?`<path d="${line(proj)}" fill="none" stroke="var(--claude)" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`:""}
+    <circle cx="${X(t0)}" cy="${Y(nowV)}" r="3.5" fill="var(--claude)"/></svg>`;
+  const zk=proj.findIndex(p=>p[1]<=.5),nx=(rec.events||[]).filter(e=>e.gain>=1&&e.at>t0).sort((a,b)=>a.at-b.at)[0];
+  const when=t=>esc(fmtShort(new Date(t*1000)));
+  const sumTxt=!pf.br.ok?"Coletando ritmo: a projeção aparece com algumas horas de uso."
+    :`Ritmo <b>~${fmt1(pf.br.total/24)}%/h</b> · ${zk>=0?`todas zeram <b>${when(proj[zk][0])}</b>`:"dá até o fim do gráfico"}`
+      +(nx?`<br>Próxima recarga <b>+${Math.round(nx.gain)}%</b> ${esc(dispName(nx.a))} · ${when(nx.at)}`:"");
+  const rings=ord.map(a=>{const wk=weeklyOf(a),fc=winFc(a,wk,now,pf),i=winInfo(wk,now,fc);
+    return `<div class="mn-acc">${ring(i.reset?i.left:null,{size:54,stroke:6,color:ACC[a.auth_id],keep:1,pace:i.pace,fable:wk.fable_percent})}<div class="mn-ai"><div class="nm">${esc(dispName(a))}</div>
+      <div class="rs">${i.reset?"reseta em "+esc(fmtLeft(i.reset-now)):"janela não iniciada"}</div>${wk.fable_percent>0?`<div class="rs">Fable gastou ${fmt1(wk.fable_percent)}%</div>`:""}</div></div>`}).join("");
+  const off=all.length-accs.length;
+  el.innerHTML=`<div class="mn-h"><div><div class="mn-k">Capacidade semanal</div><div class="mn-n">${Math.round(sum)}%<small>de ${cap}%</small></div></div><div class="mn-use">${use}</div></div>
+    <div class="segbar">${bar}</div>
+    <div class="mn-ch">${svg}<div class="mn-x"><span>3 dias atrás</span><span>agora</span><span>+3 dias</span></div></div>
+    <div class="mn-sum">${sumTxt}</div>
+    <button type="button" class="mn-tg" data-mt aria-expanded="${miniOpen}">${ICON_CHEV}<span>${miniOpen?"Esconder contas":"Contas"}</span></button>
+    ${miniOpen?`<div class="mn-accs">${rings}</div>${off?`<div class="mn-k">${off} conta${off>1?"s":""} sem dados (desconectada)</div>`:""}`:""}
+    <div class="mn-ft">${upd}<button type="button" data-mopen>Abrir painel</button></div>`;
+  miniSize();
+}
+if(MINI){document.body.classList.add("mini","ready");
+  $("#mini").addEventListener("click",e=>{
+    if(e.target.closest("[data-mt]")){miniOpen=!miniOpen;store.set("usage.miniOpen",miniOpen?"1":"0");renderMini();return}
+    if(e.target.closest("[data-mopen]")){if(window.ipc)miniPost("open");else window.open("/usage/","_blank")}});
+  addEventListener("keydown",e=>{if(e.key==="Escape")miniPost("hide")});
+  // The app shows the popup again later: refresh at once instead of waiting for the next poll.
+  addEventListener("focus",()=>load(false,true))}
+if(!MINI&&(!DEMO||DEMO_MODE==="loading"))renderSkeleton();
 load(false);setInterval(()=>{if(!document.hidden)load(false,true)},45000);
 document.addEventListener("visibilitychange",()=>{if(!document.hidden)load(false,true)});
 </script>

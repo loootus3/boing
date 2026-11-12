@@ -183,6 +183,7 @@ func Register(engine *gin.Engine, h Handlers) {
 	}
 	g.GET("", page)
 	g.GET("/", page)
+	g.GET("/download/tray", serveTray)
 	g.GET("/api/data", func(c *gin.Context) {
 		if c.Query("refresh") == "1" && c.GetHeader(uiHeader) == "1" {
 			t.Refresh(c.Request.Context(), false)
