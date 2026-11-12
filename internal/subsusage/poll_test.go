@@ -35,8 +35,30 @@ func TestIsHotAndIsDue(t *testing.T) {
 		{"idle fast retry due", true, true, false, 120 * time.Second, true},
 	}
 	for _, c := range cases {
-		if got := isDue(c.hasEntry, c.fast, c.hot, now.Add(-c.since), now); got != c.want {
+		if got := isDue(c.hasEntry, c.fast, c.hot, hotInterval, now.Add(-c.since), now); got != c.want {
 			t.Errorf("%s: due = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+func TestHotIntervalFor(t *testing.T) {
+	pct := func(v float64) *float64 { return &v }
+	cases := []struct {
+		name string
+		e    *Entry
+		want time.Duration
+	}{
+		{"no entry", nil, hotInterval},
+		{"far", &Entry{Windows: []Window{{Kind: "short", UsedPercent: 10}, {Kind: "weekly", UsedPercent: 40}}}, farInterval},
+		{"middle", &Entry{Windows: []Window{{Kind: "weekly", UsedPercent: 60}}}, hotInterval},
+		{"near weekly", &Entry{Windows: []Window{{Kind: "weekly", UsedPercent: 90}}}, nearInterval},
+		{"near fable", &Entry{Windows: []Window{{Kind: "weekly", UsedPercent: 30, FableLimitPercent: pct(92)}}}, nearInterval},
+		{"exhausted", &Entry{Windows: []Window{{Kind: "short", UsedPercent: 100}, {Kind: "weekly", UsedPercent: 20}}}, farInterval},
+		{"model windows ignored", &Entry{Windows: []Window{{Kind: "weekly", UsedPercent: 20}, {Kind: "model", UsedPercent: 95}}}, farInterval},
+	}
+	for _, c := range cases {
+		if got := hotIntervalFor(c.e); got != c.want {
+			t.Errorf("%s: %v, want %v", c.name, got, c.want)
 		}
 	}
 }
@@ -73,7 +95,7 @@ type fakeFetcher struct {
 
 func (f *fakeFetcher) fetch(_ context.Context, a *coreauth.Auth) (*Entry, error) {
 	f.calls = append(f.calls, a.ID)
-	e := &Entry{AuthID: a.ID, Provider: "claude", Windows: []Window{{Kind: "weekly", UsedPercent: 10}}}
+	e := &Entry{AuthID: a.ID, Provider: "claude", Windows: []Window{{Kind: "weekly", UsedPercent: 60}}} // 60%: plain hotInterval
 	if err := f.errs[a.ID]; err != nil {
 		e.Windows = nil
 		e.Error = err.Error()

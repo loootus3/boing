@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/dnsfallback"
 	"io"
 	"net"
 	"net/http"
@@ -57,7 +58,7 @@ func (b *closeConnectionBody) Close() error {
 }
 
 func newUtlsRoundTripper(proxyURL string) *utlsRoundTripper {
-	var dialer proxy.Dialer = proxy.Direct
+	var dialer proxy.Dialer = dnsfallback.Shared()
 	if proxyURL != "" {
 		proxyDialer, mode, errBuild := proxyutil.BuildDialer(proxyURL)
 		if errBuild != nil {
@@ -335,7 +336,7 @@ func newClaudeCodeRoundTripper(proxyURL string) http.RoundTripper {
 // setting. It is shared by the cached transport and the per-credential pooled one so
 // both keep the same proxy semantics.
 func claudeCodeDialer(proxyURL string) proxy.Dialer {
-	var dialer proxy.Dialer = proxy.Direct
+	var dialer proxy.Dialer = dnsfallback.Shared()
 	if proxyURL != "" {
 		proxyDialer, mode, errBuild := proxyutil.BuildDialer(proxyURL)
 		if errBuild != nil {

@@ -165,6 +165,11 @@ func Register(engine *gin.Engine, h Handlers) {
 		return
 	}
 	t := Default()
+	installHealthHook()
+	// Some clients probe /api/hello to check the server is up; answer instead of logging a 404.
+	hello := func(c *gin.Context) { c.Status(http.StatusOK) }
+	engine.HEAD("/api/hello", hello)
+	engine.GET("/api/hello", hello)
 	g := engine.Group("/usage", lanOnly())
 	page := func(c *gin.Context) {
 		// no-cache: the browser keeps the page but checks the ETag on every load, so a deploy shows at once.
@@ -234,6 +239,24 @@ func Register(engine *gin.Engine, h Handlers) {
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok", "next_at": next.UTC()})
 	}))
+	// The page posts its forecast once an hour; GET /api/history returns them so the page can
+	// show how close earlier forecasts came.
+	g.POST("/api/forecast", requireUIHeader(func(c *gin.Context) {
+		body, ok := readBody(c)
+		if !ok {
+			return
+		}
+		var req ForecastPost
+		if errJSON := json.Unmarshal(body, &req); errJSON != nil || len(req.Accounts) > 32 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid forecast"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"stored": DefaultHistory().RecordForecast(req, time.Now())})
+	}))
+	g.GET("/api/health", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusOK, gin.H{"now": time.Now().UTC(), "bucket": int64(healthBucket / time.Second), "buckets": health.view()})
+	})
 	g.GET("/api/history", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, DefaultHistory().ViewWith(c.Query("range"), c.Query("heat"), time.Now().In(queryLocation(c.Query("tz")))))

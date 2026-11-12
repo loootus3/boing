@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/dnsfallback"
 	"io"
 	"net/http"
 	"net/url"
@@ -21,7 +22,8 @@ import (
 )
 
 const (
-	pollInterval    = 120 * time.Second
+	// loopTick is how often the poller checks which accounts are due (see isDue).
+	loopTick        = 30 * time.Second
 	minRefreshDelay = 20 * time.Second
 	// staleAfter bounds how long windows from the last successful fetch are reused. It must
 	// outlast maxBackoff so the last good windows survive a full rate-limit backoff.
@@ -38,6 +40,12 @@ const (
 	// hotInterval and idleInterval are the minimum time between fetches of in-use and idle accounts.
 	hotInterval  = 120 * time.Second
 	idleInterval = 10 * time.Minute
+	// nearInterval and farInterval replace hotInterval for in-use accounts at or above
+	// nearPercent of any limit, and below farPercent of all of them (see hotIntervalFor).
+	nearInterval = 60 * time.Second
+	farInterval  = 180 * time.Second
+	nearPercent  = 85.0
+	farPercent   = 50.0
 	// fetchGap is the pause between two sequential usage requests in one round.
 	fetchGap = 2 * time.Second
 )
@@ -233,7 +241,7 @@ type Tracker struct {
 
 var defaultTracker = &Tracker{
 	entries: make(map[string]*Entry),
-	client:  &http.Client{Timeout: requestTimeout, Transport: &http.Transport{Proxy: http.ProxyFromEnvironment}},
+	client:  &http.Client{Timeout: requestTimeout, Transport: &http.Transport{Proxy: http.ProxyFromEnvironment, DialContext: dnsfallback.Shared().DialContext}},
 }
 
 // Default returns the process-wide tracker.
@@ -268,7 +276,7 @@ func (t *Tracker) loop() {
 	time.Sleep(3 * time.Second)
 	for {
 		t.Refresh(context.Background(), true)
-		time.Sleep(pollInterval)
+		time.Sleep(loopTick)
 	}
 }
 
@@ -332,15 +340,43 @@ func retriesFast(prev *Entry) bool {
 // isDue reports whether an account should be fetched now. hasEntry is false for accounts
 // that were never fetched; those are always due. fastRetry (see retriesFast) makes an idle
 // account use the hot interval.
-func isDue(hasEntry, fastRetry, hot bool, lastFetch, now time.Time) bool {
+func isDue(hasEntry, fastRetry, hot bool, hotEvery time.Duration, lastFetch, now time.Time) bool {
 	if !hasEntry {
 		return true
 	}
 	interval := idleInterval
 	if hot || fastRetry {
-		interval = hotInterval
+		interval = hotEvery
 	}
 	return now.Sub(lastFetch) >= interval
+}
+
+// hotIntervalFor adapts the in-use poll interval to how close the account is to a limit: an
+// account about to run out is polled every nearInterval so routing switches promptly, one far
+// from every limit (or already out, waiting for a known reset) every farInterval. Over a few
+// accounts this keeps roughly the request rate of a flat hotInterval.
+func hotIntervalFor(e *Entry) time.Duration {
+	if e == nil || len(e.Windows) == 0 {
+		return hotInterval
+	}
+	peak := 0.0
+	for _, w := range e.Windows {
+		if w.Kind == "short" || w.Kind == "weekly" || w.Kind == "monthly" {
+			peak = max(peak, w.UsedPercent)
+		}
+		if w.FableLimitPercent != nil {
+			peak = max(peak, *w.FableLimitPercent)
+		}
+	}
+	switch {
+	case peak >= 100:
+		return farInterval
+	case peak >= nearPercent:
+		return nearInterval
+	case peak < farPercent:
+		return farInterval
+	}
+	return hotInterval
 }
 
 // Refresh fetches usage for the tracked credentials that are due. Accounts in use are polled
@@ -415,7 +451,7 @@ func (t *Tracker) refreshAuthsMode(ctx context.Context, force, all bool, auths [
 			continue
 		}
 		hot := isHot(t.lastUsed(a.ID), active[a.ID], startedAt)
-		if !all && !isDue(hasPrev, hasPrev && retriesFast(prev), hot, t.lastFetch[a.ID], startedAt) {
+		if !all && !isDue(hasPrev, hasPrev && retriesFast(prev), hot, hotIntervalFor(prev), t.lastFetch[a.ID], startedAt) {
 			results[a.ID] = prev
 			continue
 		}

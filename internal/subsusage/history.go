@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
 	log "github.com/sirupsen/logrus"
 )
@@ -43,6 +44,14 @@ type hourStat struct {
 	// Models maps pricingKey -> tokens of that model. Hours recorded before version 3 have no
 	// entries; their tokens cannot be priced.
 	Models map[string]*modelStat `json:"m,omitempty"`
+	// Clients maps client label (see clientLabel) -> requests and estimated cost from that client.
+	Clients map[string]*clientStat `json:"cl,omitempty"`
+}
+
+// clientStat counts the requests of one client app within one hour.
+type clientStat struct {
+	Requests int64   `json:"req"`
+	Cost     float64 `json:"usd,omitempty"`
 }
 
 // modelStat counts the tokens of one pricing key within one hour.
@@ -139,6 +148,8 @@ type historyData struct {
 	Quota map[string][]quotaPoint `json:"quota"`
 	// Providers maps auth ID -> provider, so removed credentials keep their provider.
 	Providers map[string]string `json:"providers"`
+	// Forecasts maps unix hour -> auth ID -> what the page predicted then (see RecordForecast).
+	Forecasts map[int64]map[string]*forecastSnap `json:"fc,omitempty"`
 }
 
 // History records request activity and quota samples for the charts on /usage.
@@ -269,7 +280,7 @@ func (h *History) pruneLocked(now time.Time) {
 }
 
 // HandleUsage implements usage.Plugin: it counts Claude and Codex requests per credential.
-func (h *History) HandleUsage(_ context.Context, record usage.Record) {
+func (h *History) HandleUsage(ctx context.Context, record usage.Record) {
 	provider := strings.ToLower(strings.TrimSpace(record.Provider))
 	if provider != "claude" && provider != "codex" {
 		return
@@ -325,6 +336,23 @@ func (h *History) HandleUsage(_ context.Context, record usage.Record) {
 	ms.CacheWrite5m += w5m
 	ms.CacheWrite1h += w1h
 	ms.Output += output
+	if provider == "claude" {
+		label := clientLabel(logging.GetClientRequestMetadata(ctx).UserAgent)
+		if stat.Clients == nil {
+			stat.Clients = make(map[string]*clientStat)
+		}
+		cs := stat.Clients[label]
+		if cs == nil {
+			cs = &clientStat{}
+			stat.Clients[label] = cs
+		}
+		cs.Requests++
+		one := modelStat{Requests: 1, Input: fresh, CacheRead: read, CacheWrite5m: w5m, CacheWrite1h: w1h, Output: output}
+		if c, ok := priceOf(key, &one); ok {
+			cs.Cost += c.Total
+		}
+		health.recordTTFT(at, record.TTFT)
+	}
 	h.data.Providers[authID] = provider
 	if h.lastUsed == nil {
 		h.lastUsed = make(map[string]time.Time)
@@ -538,6 +566,16 @@ type HistoryView struct {
 	// HourModels maps Claude auth ID -> unix hour -> model -> estimated USD, over the quota
 	// retention. The page splits each hour's quota drop among the models by these costs.
 	HourModels map[string]map[int64]map[string]float64 `json:"hour_models"`
+	// Clients maps client label -> Claude requests and estimated cost over the range.
+	Clients map[string]ClientTotals `json:"clients"`
+	// Forecasts maps unix hour -> auth ID -> the forecast stored for that hour.
+	Forecasts map[int64]map[string]*forecastSnap `json:"forecasts"`
+}
+
+// ClientTotals summarizes one client app over the selected range.
+type ClientTotals struct {
+	Requests int64   `json:"requests"`
+	Cost     float64 `json:"cost"`
 }
 
 // View aggregates history for a range with the default 28-day heatmap; see ViewWith.
@@ -619,6 +657,7 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 		Quota:     make(map[string][]quotaPoint),
 		Models:    make(map[string]ModelTotals),
 		Previous:  make(map[string]AccountTotals),
+		Clients:   make(map[string]ClientTotals),
 	}
 	for i := range view.Buckets {
 		view.Buckets[i] = Bucket{
@@ -696,6 +735,12 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 			b.TokensByAccount[id] += total
 			b.Failed += stat.Failed
 			b.ByAccount[id] += stat.Requests
+			for _, label := range slices.Sorted(maps.Keys(stat.Clients)) {
+				c, cs := view.Clients[label], stat.Clients[label]
+				c.Requests += cs.Requests
+				c.Cost = roundUSD(c.Cost + cs.Cost)
+				view.Clients[label] = c
+			}
 			costs := totals.addHour(stat, provider)
 			for _, key := range slices.Sorted(maps.Keys(costs)) {
 				mc := costs[key]
@@ -750,6 +795,7 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 			view.Quota[id] = markProxied(append([]quotaPoint(nil), points[i:]...), h.data.Hours[id])
 		}
 	}
+	view.Forecasts = h.forecastsView()
 	view.HourModels = hourModels(h.data.Hours, h.data.Providers, minQuota)
 	view.roundCosts()
 	return view
