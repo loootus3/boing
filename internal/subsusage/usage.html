@@ -98,10 +98,10 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 
 /* hero */
 .hero{display:grid;grid-template-columns:2.2fr minmax(260px,1fr);gap:16px}
-.tile{padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.tile{padding:14px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
 .tile .k{font-size:12px;font-weight:500;color:var(--muted-foreground);display:flex;align-items:center;gap:8px}
 .tile .k .pill{margin-left:auto}
-.hnum{font-size:44px;line-height:1;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.hnum{font-size:38px;line-height:1;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
 .hnum small{font-size:13px;font-weight:400;letter-spacing:0;color:var(--muted-foreground);margin-left:8px}
 .tb-title{margin:0 6px 0 0;font-size:16px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
 .act-head{display:flex;align-items:flex-end;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
@@ -118,13 +118,13 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .legend .lg i{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
 .legend .lg b{font-weight:600;color:var(--foreground)}
 .legend .lg.dim{opacity:.55}
-.segbar{display:flex;gap:2px;height:28px;margin:2px 0 4px}
+.segbar{display:flex;gap:2px;height:22px;margin:0 0 2px}
 .segbar>i{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--c);transform-origin:left}
 .segbar>i.track{background:var(--track);min-width:0}
 /* Fable's share of the spent quota: hatched in the account colour */
 .segbar>i.fab,.meter i.fab{background:repeating-linear-gradient(135deg,var(--c) 0 3px,transparent 3px 6px);opacity:.6;min-width:0}
 .meter i.fab{border-radius:0 999px 999px 0}
-.caprows{container-type:inline-size;display:flex;flex-direction:column;gap:10px}
+.caprows{container-type:inline-size;display:flex;flex-direction:column;gap:7px}
 .cr{display:grid;grid-template-columns:minmax(7rem,max-content) minmax(5.4rem,1fr) 9.5rem 6.4rem;align-items:center;column-gap:10px;row-gap:6px;font-size:12px;color:var(--muted-foreground)}
 .cr.dim{opacity:.6}
 .cr[data-acc]{cursor:pointer;border-radius:6px;margin:-3px -6px;padding:3px 6px;transition:background .12s}
@@ -171,7 +171,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .meter u{position:absolute;top:-3px;bottom:-3px;width:2px;transform:translateX(-50%);border-radius:2px;background:var(--foreground);box-shadow:0 0 0 2px var(--surf-bg,var(--background))}
 .muted-big{font-size:18px;font-weight:600}
 .runway-spark{width:100%;height:44px;display:block}
-.rates{display:flex;flex-direction:column;gap:8px}
+.rates{display:flex;flex-direction:column;gap:6px}
 .rate{display:grid;grid-template-columns:3.7rem minmax(0,1fr) 4rem;gap:10px;align-items:center;font-size:12px;color:var(--muted-foreground)}
 .rate b{text-align:right;color:var(--foreground);font-weight:500;white-space:nowrap}
 .rate .bar{position:relative;height:6px;border-radius:999px;background:var(--track)}
@@ -390,7 +390,7 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .tl-st.main .v{font-size:18px}
 .tl-st.lead .v{font-size:24px;letter-spacing:-.01em}
 .tl-st.lead.crit .v{color:var(--error-foreground)}.tl-st.lead.warn .v{color:var(--warning-foreground)}.tl-st.lead.good .v{color:var(--success-foreground)}
-.run-adv{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}.run-adv:empty{display:none}.run-adv .tl-tip{font-size:12.5px}
+.run-adv{margin-top:8px;padding-top:10px;border-top:1px solid var(--border)}.run-adv:empty{display:none}.run-adv .tl-tip{font-size:12.5px}
 .tl-tips{order:-1;display:flex;flex-direction:column;gap:6px}
 .tl-tip{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.45;color:var(--foreground)}
 .tl-tip svg.i{width:15px;height:15px;flex:none;margin-top:2px}
@@ -484,6 +484,14 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-capr{color:var(--muted-foreground)}
 .tl-chip.past{background:var(--card);border-style:dashed}
 @media (max-width:760px){.tl-stats{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.tl-st.lead{grid-column:1/-1;order:-1}.tl-ctl .spacer{display:none}}
+/* compact strip: label, value and detail on one line per item */
+.tl-stats.mini{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 24px;padding:0 0 12px}
+.tl-stats.mini .tl-st{display:flex;align-items:baseline;gap:8px;min-width:0;white-space:nowrap}
+.tl-stats.mini .k{flex:none}.tl-stats.mini .v{flex:none;font-size:14px;align-self:center}
+.tl-stats.mini .s{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:640px){.tl-stats.mini{grid-template-columns:minmax(0,1fr);gap:8px;padding-bottom:12px}
+  .tl-stats.mini .tl-st{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:8px;row-gap:1px}
+  .tl-stats.mini .s{grid-column:1/-1}}
 
 /* agenda de recargas */
 .ag{display:flex;flex-direction:column;gap:10px;margin-top:2px;padding-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent)}
@@ -1434,7 +1442,7 @@ function renderRunway(now){
   const refill=refillPerDay(accs),mx=Math.max(perDay,refill,1);
   const NA=Math.max(1,accs.length),rate=(name,v,c,tip)=>`<div class="rate" data-tip="${esc(tip+"\nCada conta vale 100%.")}"><span>${name}</span><div class="bar"><i style="width:${(v/mx*100).toFixed(1)}%;--c:${c}"></i></div><b class="tabular">${fmt1(v/24)}%/h</b></div>`;
   el.innerHTML=`<div class="k">Até acabar${pill}</div><div class="hnum">${num}</div>
-    <div class="sub" style="margin-top:-8px">${note}</div>
+    <div class="sub" style="margin-top:-6px">${note}</div>
     <div class="rates">${rate("Consumo",perDay,"var(--claude)",paceTipFull(br))
       }${rate("Recarga",refill,"color-mix(in srgb,var(--foreground) 45%,transparent)","Recarga semanal: quanto as contas ativas devolvem, em média (100% a cada 7 dias por conta).")}</div>
     <div class="run-adv" id="runAdv">${state.runAdv||""}</div>`;
@@ -1698,17 +1706,19 @@ function renderTimeline(){
   const faName=firstEmpty&&(x=>x?dispName(x):legendName(firstEmpty[0]))(allAccs.find(a=>a.auth_id===firstEmpty[0]));
   const zEnd=zf&&(zf[1]>=t0+HZ-1?resumeAfter(accs,zf[1]):zf[1]);
   const fullStats=tlo.scen!=="same"||tlo.hide.size>0;
-  const stats=!fullStats?"":`<div class="tl-stats">${
-    (stItem("Fica sem cota",!br.ok?"—":zf?esc(hm(zf[0])):"Não nesta semana",zf?`em ${fmtLeft(zf[0]*1000-now)} · volta ${esc(hm(zEnd))}`:br.ok?`no ritmo atual, até ${esc(fmtWd(new Date(F1*1000))+" "+new Date(F1*1000).getDate())}`:"coletando ritmo",
-      "Quando o total de todas as contas do gráfico chega a 0%, no ritmo escolhido.","lead "+zCls))
-    +(()=>{const dry=dryNow?` · ${dryNow} já esgotada${dryNow>1?"s":""}`:"";
+  // Next account to run dry and next refill: always shown; a compact one-line strip unless the run is customised,
+  // when the full strip (with "Fica sem cota") replaces it.
+  const lead=fullStats?stItem("Fica sem cota",!br.ok?"—":zf?esc(hm(zf[0])):"Não nesta semana",zf?`em ${fmtLeft(zf[0]*1000-now)} · volta ${esc(hm(zEnd))}`:br.ok?`no ritmo atual, até ${esc(fmtWd(new Date(F1*1000))+" "+new Date(F1*1000).getDate())}`:"coletando ritmo",
+      "Quando o total de todas as contas do gráfico chega a 0%, no ritmo escolhido.","lead "+zCls):"";
+  const dryItem=(()=>{const dry=dryNow?` · ${dryNow} já esgotada${dryNow>1?"s":""}`:"";
       if(!firstEmpty)return stItem("Próxima conta a zerar","Nenhuma","nenhuma antes da própria recarga"+dry,"Nenhuma conta chega a 0% antes da própria recarga semanal, no ritmo escolhido.");
       const[fid,f]=firstEmpty,fa=allAccs.find(a=>a.auth_id===fid),fw=fa&&weeklyOf(fa),left=fw?Math.round(100-clampPct(fw.used_percent)):null;
       return stItem("Próxima conta a zerar",`<i class="adot" style="--c:${ACC[fid]}"></i>${esc(faName)}`,
         `${left!=null?left+"% agora · ":""}zera ${esc(hm(f.zero))} · volta ${esc(hm(f.at))}${dry}`,
-        `${faName}${left!=null?`: ${left}% do semanal agora`:""}\nZera em ${fmtLeft(f.zero*1000-now)} (${hm(f.zero)}), ${fmtLeft((f.at-f.zero)*1000)} antes da recarga (${hm(f.at)}).\nÉ o esperado com várias contas: o proxy passa para a próxima.`+(dryNow?`\n${dryNow} conta${dryNow>1?"s":""} já esgotada${dryNow>1?"s":""} até a recarga.`:""))})()
-    +stItem("Próxima recarga",nxt?`<i class="adot" style="--c:${ACC[nxt.a.auth_id]}"></i>+${Math.round((nxt.gain))}%`:"—",nxt?`${esc(nm(nxt.a).split("@")[0])} · ${esc(hm(nxt.at))}`:"nenhuma nos próximos 7 dias")
-}</div>`;
+        `${faName}${left!=null?`: ${left}% do semanal agora`:""}\nZera em ${fmtLeft(f.zero*1000-now)} (${hm(f.zero)}), ${fmtLeft((f.at-f.zero)*1000)} antes da recarga (${hm(f.at)}).\nÉ o esperado com várias contas: o proxy passa para a próxima.`+(dryNow?`\n${dryNow} conta${dryNow>1?"s":""} já esgotada${dryNow>1?"s":""} até a recarga.`:""))})();
+  const refItem=stItem("Próxima recarga",nxt?`<i class="adot" style="--c:${ACC[nxt.a.auth_id]}"></i>+${Math.round((nxt.gain))}%`:"—",nxt?`${esc(nm(nxt.a).split("@")[0])} · ${esc(hm(nxt.at))}`:"nenhuma nos próximos 7 dias",
+    nxt?`${nm(nxt.a).split("@")[0]} recarrega ${hm(nxt.at)} (em ${fmtLeft(nxt.at*1000-now)}): +${Math.round(nxt.gain)}% na capacidade somada.`:"");
+  const stats=`<div class="tl-stats${fullStats?"":" mini"}">${lead}${dryItem}${refItem}</div>`;
 
   // Advice: the pace that lasts the week, and quota that a reset will throw away.
   let advice="";
