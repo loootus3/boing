@@ -3155,7 +3155,7 @@ function renderMini(){
   const zk=proj.findIndex(p=>p[1]<=.5),nx=(rec.events||[]).filter(e=>e.gain>=1&&e.at>t0).sort((a,b)=>a.at-b.at)[0];
   const when=t=>esc(fmtShort(new Date(t*1000)));
   const sumTxt=!pf.br.ok?"Coletando ritmo: a projeção aparece com algumas horas de uso."
-    :`Ritmo <b>~${fmt1(pf.br.total/24)}%/h</b> · ${zk>=0?`todas zeram <b>${when(proj[zk][0])}</b>`:"dá até o fim do gráfico"}`
+    :`Ritmo <b>~${fmt1(pf.br.total/24)}%/h</b> · ${zk>=0?`todas zeram <b>${when(proj[zk][0])}</b>`:"não zera nos próximos 3 dias"}`
       +(nx?`<br>Próxima recarga <b>+${Math.round(nx.gain)}%</b> ${esc(dispName(nx.a))} · ${when(nx.at)}`:"");
   const rings=ord.map(a=>{const wk=weeklyOf(a),fc=winFc(a,wk,now,pf),i=winInfo(wk,now,fc);
     return `<div class="mn-acc">${ring(i.reset?i.left:null,{size:54,stroke:6,color:ACC[a.auth_id],keep:1,pace:i.pace,fable:wk.fable_percent})}<div class="mn-ai"><div class="nm">${esc(dispName(a))}</div>
