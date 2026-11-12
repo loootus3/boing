@@ -31,19 +31,18 @@ func cleanPct(v *float64) *float64 {
 	return &c
 }
 
-// RecordForecast stores the page's forecast for the current hour; the first one posted in an
-// hour wins, so repeated posts and several open tabs do not overwrite the baseline. Only
-// tracked Claude accounts are kept. It reports whether anything was stored.
+// RecordForecast stores the page's forecast for the current hour; per account, the first one
+// posted in an hour wins, so repeated posts and several open tabs do not overwrite the baseline
+// while an account missing from an earlier post can still be added. Only tracked Claude accounts
+// are kept. It reports whether anything was stored.
 func (h *History) RecordForecast(p ForecastPost, now time.Time) bool {
 	hour := now.Truncate(time.Hour).Unix()
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if _, ok := h.data.Forecasts[hour]; ok {
-		return false
-	}
+	have := h.data.Forecasts[hour]
 	snaps := make(map[string]*forecastSnap)
 	for id, s := range p.Accounts {
-		if h.data.Providers[id] != "claude" {
+		if h.data.Providers[id] != "claude" || have[id] != nil {
 			continue
 		}
 		c := &forecastSnap{}
@@ -62,7 +61,13 @@ func (h *History) RecordForecast(p ForecastPost, now time.Time) bool {
 	if h.data.Forecasts == nil {
 		h.data.Forecasts = make(map[int64]map[string]*forecastSnap)
 	}
-	h.data.Forecasts[hour] = snaps
+	if have == nil {
+		have = make(map[string]*forecastSnap, len(snaps))
+		h.data.Forecasts[hour] = have
+	}
+	for id, s := range snaps {
+		have[id] = s
+	}
 	cut := now.Add(-forecastKeep).Unix()
 	for t := range h.data.Forecasts {
 		if t < cut {

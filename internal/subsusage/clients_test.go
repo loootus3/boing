@@ -8,12 +8,14 @@ import (
 
 func TestClientLabel(t *testing.T) {
 	for ua, want := range map[string]string{
-		"claude-cli/2.1.3 (external, cli)":           "Claude Code",
-		"claude-cli/2.1.3 (external, sdk-ts)":        "Agent SDK (ts)",
-		"claude-cli/2.1.3 (external, claude-vscode)": "Claude Code (VS Code)",
-		"Anthropic/JS 0.60.0":                        "SDK Anthropic",
-		"python-httpx/0.27":                          "python-httpx",
-		"":                                           "desconhecido",
+		"claude-cli/2.1.3 (external, cli)":                              "Claude Code",
+		"claude-cli/2.1.3 (external, sdk-ts)":                           "Agent SDK",
+		"claude-cli/2.1.3 (external, agent-sdk/0.3.321)":                "Agent SDK",
+		"claude-cli/2.1.3 (external, agent-sdk/0.3.321, client-app/t3)": "Agent SDK · t3",
+		"claude-cli/2.1.3 (external, claude-vscode)":                    "Claude Code (VS Code)",
+		"Anthropic/JS 0.60.0":                                           "SDK Anthropic",
+		"python-httpx/0.27":                                             "python-httpx",
+		"":                                                              "desconhecido",
 	} {
 		if got := clientLabel(ua); got != want {
 			t.Errorf("clientLabel(%q) = %q, want %q", ua, got, want)

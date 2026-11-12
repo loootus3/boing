@@ -736,10 +736,11 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 			b.Failed += stat.Failed
 			b.ByAccount[id] += stat.Requests
 			for _, label := range slices.Sorted(maps.Keys(stat.Clients)) {
-				c, cs := view.Clients[label], stat.Clients[label]
+				cs, name := stat.Clients[label], relabelClient(label)
+				c := view.Clients[name]
 				c.Requests += cs.Requests
 				c.Cost = roundUSD(c.Cost + cs.Cost)
-				view.Clients[label] = c
+				view.Clients[name] = c
 			}
 			costs := totals.addHour(stat, provider)
 			for _, key := range slices.Sorted(maps.Keys(costs)) {

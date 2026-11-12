@@ -144,12 +144,10 @@ func copyCounts(m map[string]int) map[string]int {
 	return c
 }
 
-// isModelRequest reports whether a request is a proxied model call worth counting.
+// isModelRequest reports whether a request is a proxied Claude model call (the Anthropic Messages
+// API), the traffic the health card and the failed-attempt hook both cover.
 func isModelRequest(method, path string) bool {
-	if method != http.MethodPost || strings.HasSuffix(path, "/count_tokens") {
-		return false
-	}
-	return strings.HasPrefix(path, "/v1/") || strings.HasPrefix(path, "/v1beta/") || strings.HasPrefix(path, "/backend-api/")
+	return method == http.MethodPost && strings.TrimSuffix(path, "/") == "/v1/messages"
 }
 
 // HealthMiddleware counts the status of every proxied model request for the /usage health card.

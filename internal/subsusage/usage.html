@@ -313,6 +313,28 @@ section.blk{display:flex;flex-direction:column;gap:16px;min-width:0}
 .empty-chart{position:absolute;inset:0;display:grid;place-items:center;font-size:12px;color:var(--muted-foreground)}
 .stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .cm{padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+#clientCost{margin-top:12px}
+.fc-acc{margin-top:8px;font-size:12px;color:var(--muted-foreground)}.fc-acc span{cursor:default}
+.hl-card{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.hl-st{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500}
+.hl-st i{width:8px;height:8px;border-radius:50%;background:var(--muted-foreground)}
+.hl-st.good i{background:var(--st-good)}.hl-st.warn i{background:var(--st-warn)}.hl-st.crit i{background:var(--st-crit)}
+.hl-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.hl-s .k{font-size:12px;color:var(--muted-foreground)}.hl-s .v{font-size:20px;font-weight:600;margin-top:2px}.hl-s .v small{font-size:12px;font-weight:400;color:var(--muted-foreground)}
+.hl-s .s{font-size:11.5px;color:var(--muted-foreground);margin-top:2px}
+.hl-bars{display:flex;align-items:flex-end;gap:3px;height:56px}
+.hl-bars i{flex:1;min-width:2px;height:max(var(--h),2px);border-radius:3px 3px 0 0;background:linear-gradient(to top,var(--st-crit) var(--f),color-mix(in srgb,var(--foreground) 30%,transparent) var(--f))}
+.hl-bars i.u{box-shadow:inset 0 2px 0 var(--st-warn)}
+.hl-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}
+.hl-k{color:var(--muted-foreground);margin-right:4px}
+.hl-chip{padding:2px 8px;border:1px solid var(--border);border-radius:999px;cursor:default}.hl-chip b{font-weight:600}
+@media(max-width:640px){.hl-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.md-rs-a{font-size:12px;margin-top:4px;color:var(--muted-foreground)}.md-rs-a.good{color:var(--st-good)}.md-rs-a.warn{color:var(--st-warn)}
+.rs-hint.good{color:var(--st-good)}.rs-hint.warn{color:var(--st-warn)}
+.fa-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px}
+.fa-n{min-width:4.5rem;color:var(--muted-foreground)}
+.fa-c{padding:2px 8px;border:1px solid var(--border);border-radius:999px;cursor:default}.fa-c em{font-style:normal;color:var(--muted-foreground)}.fa-c small{color:var(--muted-foreground)}
+.fa-c.good small{color:var(--st-good)}.fa-c.warn small{color:var(--st-warn)}.fa-c.crit small{color:var(--st-crit)}
 .cm-h{font-size:12px;font-weight:500;color:var(--muted-foreground)}
 .cm-row{display:grid;grid-template-columns:minmax(9rem,14rem) 5rem 6rem minmax(4rem,1fr) 6rem;grid-template-areas:"n r t b c";align-items:center;column-gap:14px;font-size:12px;color:var(--muted-foreground);cursor:default}
 .cm-n{grid-area:n;font-size:13px;color:var(--foreground);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -673,6 +695,7 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
   <section class="blk" id="secTl">
     <div class="sec-head"><h2 id="tlTitle">Próximos 7 dias</h2><span class="sec-sub" id="tlSub">No ritmo atual, contando as recargas</span></div>
     <div class="card tl-card" id="tl"></div>
+    <div class="sub fc-acc tabular" id="fcAcc" hidden></div>
   </section>
 
   <section class="blk" id="secAcc">
@@ -680,6 +703,11 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
       <div class="menu-wrap"><button class="btn sm" data-menu="claude" aria-label="Adicionar conta"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="lbl">Adicionar conta</span></button></div></div>
     <div class="fo" id="fableOrd"></div>
     <div class="acc-grid" id="accts"></div>
+  </section>
+
+  <section class="blk" id="secHealth" hidden>
+    <div class="sec-head"><h2>Saúde do proxy</h2><span class="sec-sub" id="healthSub"></span></div>
+    <div class="card hl-card" id="health"></div>
   </section>
 
   <section class="blk" id="secAct">
@@ -700,6 +728,7 @@ body:not(.ready) .ring .arc{animation:ringin .5s cubic-bezier(.2,.7,.2,1) both}
       <div class="sub chart-note" id="chartNote" hidden></div>
     </div>
     <div class="card cm" id="modelCost" hidden></div>
+    <div class="card cm" id="clientCost" hidden></div>
     <div class="sub" id="unpricedNote" hidden></div>
   </section>
 
@@ -719,6 +748,7 @@ const PLUS='<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg
 const PROVIDERS=[{key:"claude",name:"Claude",color:"#d97757"}];
 const ICON_UP='<svg class="i" viewBox="0 0 24 24"><path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/></svg>';
 const ICON_DOWN='<svg class="i" viewBox="0 0 24 24"><path d="M22 17l-8.5-8.5-5 5L2 7"/><path d="M16 17h6v-6"/></svg>';
+const ICON_REF='<svg class="i" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
 const ICON_GAUGE='<svg class="i" viewBox="0 0 24 24"><path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>';
 const ICON_ALERT='<svg class="i" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg>';
 const ICON_CHECK='<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg>';
@@ -1050,7 +1080,7 @@ const useOrder=(x,y)=>(x.last-y.last)||(x.reset-y.reset);
 // the reset (unix s, null if it never does). The loop runs until all of them are known.
 // `ext` maps auth_id -> %/hour spent outside the proxy (Claude apps on the same account): it drains that account
 // in parallel, before the router's share, and an account it empties does not end the runway by itself.
-// rec.lefts[k] = every account's % left at rec.ts[k], indexed like `accs`.
+// rec.lefts[k] = every account's % left at rec.ts[k], indexed like `accs`; rec.flefts[k] the same for Fable's own allowance.
 // The 5h window: an account whose 5h window is full is skipped by the router until it resets, like an empty one.
 // Each 1% of weekly also spends fiveHourRatios() % of the 5h window (it opens on first use and lasts 5h), so an
 // account gives at most s5/k5 weekly % before the window resets. Demand the 5h limits block is not served (the
@@ -1075,9 +1105,11 @@ function simulate(accs,perHour,now,rec,info,ext){
   if(info&&!info.fable)Object.defineProperty(info,"fable",{value:{},enumerable:false});
   if(info)for(const p of pool){if(p.left<=1e-9)p.zero=t0;if(p.fallow&&p.fab<=1e-9)p.fzero=t0}
   const lefts=()=>{const o=new Array(accs.length).fill(0);for(const p of pool)o[p.i]=p.left;return o};
-  const push=(tt,v,l)=>{rec.ts.push(tt);rec.tot.push(v);rec.lefts.push(l||lefts())},lastT=()=>rec.ts[rec.ts.length-1];
+  // Fable's own allowance left, in % of that allowance (null for accounts without one).
+  const flefts=()=>{const o=new Array(accs.length).fill(null);for(const p of pool)if(p.fallow)o[p.i]=Math.max(0,p.fab/p.fallow*100);return o};
+  const push=(tt,v,l)=>{rec.ts.push(tt);rec.tot.push(v);rec.lefts.push(l||lefts());rec.flefts.push(flefts())},lastT=()=>rec.ts[rec.ts.length-1];
   pool.sort(useOrder);
-  if(rec){rec.ts=[];rec.tot=[];rec.lefts=[];rec.events=[];rec.use=[];rec.cap=pool.length*100;rec.hz=hz;push(t,total())}
+  if(rec){rec.ts=[];rec.tot=[];rec.lefts=[];rec.flefts=[];rec.events=[];rec.use=[];rec.cap=pool.length*100;rec.hz=hz;push(t,total())}
   for(let h=0;h<cap;h++){
     if(first<Infinity&&(!rec||h>=hz)&&infoDone(h))break;
     t+=3600;let need=perHour;const evs=[];
@@ -1974,7 +2006,7 @@ function renderAccounts(){
       const others=(a.windows||[]).filter(w=>w!==s&&w!==wk);
       if(others.length)h+=`<div class="models">${others.map(w=>modelRow(w,ACC[a.auth_id],now)).join("")}</div>`;
       const f=wk&&mode!=="off"?accountForecast(a,now,pf):null,sp="";
-      if(wk&&!a.needs_login)h+=recentUseHtml(a,now);
+      if(wk&&!a.needs_login)h+=recentUseHtml(a,now)+resetHintHtml(a,now);
       const xr=pf.br.ok&&(pf.br.ext||{})[a.auth_id];
       if(xr>=.05)h+=`<div class="recent ext" tabindex="0" data-tip="${esc("Quedas do % semanal sem requisições do proxy nesta conta: uso pelos apps do Claude (Desktop, web, celular) com o mesmo login. A projeção desconta esse ritmo da conta em paralelo, fora da fila do proxy.")}">${ICON_GAUGE}<span>Uso no app/site: <b>~${fmt1(xr/24)}%/h</b></span></div>`;
       if(f&&!wst)h+=`<div class="forecast ${f.cls||""}">${f.icon||""}<span>${esc(f.text)}${f.est?` <span class="info" data-tip="${esc(f.est)}" tabindex="0" aria-label="Como o ritmo é medido">i</span>`:""}</span></div>`;
@@ -2240,14 +2272,15 @@ function renderModal(){
   let rsec="";const rc=a.reset_credits;
   if(rc){const opts=rc.options||[];
     const rows=opts.map(o=>{const mine=rsBusyId===a.auth_id,ask=rsAsk===o.kind&&!rsBusy,busy=mine&&rsBusy===o.kind,
-      exp=o.expires_at?` · expira em ${fmtLeft(new Date(o.expires_at)-now)}`:"";
-      return `<div class="md-rs"><div class="md-rs-t"><b>${esc(o.label)}</b><span> · ${o.available} ${o.available===1?"disponível":"disponíveis"}${exp}</span>${ask?`<div class="md-rs-d">${esc(o.description)} Não dá para desfazer.</div>`:""}</div><div class="md-rs-b">${ask?`<button type="button" class="btn sm" data-rs-no>Cancelar</button><button type="button" class="btn sm danger" data-rs-ok="${esc(o.kind)}">Usar reset</button>`:`<button type="button" class="btn sm" data-rs="${esc(o.kind)}"${rsBusy?" disabled":""}>${busy?"Usando…":"Usar"}</button>`}</div></div>`}).join("");
+      exp=o.expires_at?` · expira em ${fmtLeft(new Date(o.expires_at)-now)}`:"",ad=o.available>0?resetAdvice(a,o.kind,now):null;
+      return `<div class="md-rs"><div class="md-rs-t"><b>${esc(o.label)}</b><span> · ${o.available} ${o.available===1?"disponível":"disponíveis"}${exp}</span>${ad?`<div class="md-rs-a ${ad.cls}" tabindex="0" data-tip="${esc(ad.tip)}">${esc(ad.text)}</div>`:""}${ask?`<div class="md-rs-d">${esc(o.description)} Não dá para desfazer.</div>`:""}</div><div class="md-rs-b">${ask?`<button type="button" class="btn sm" data-rs-no>Cancelar</button><button type="button" class="btn sm danger" data-rs-ok="${esc(o.kind)}">Usar reset</button>`:`<button type="button" class="btn sm" data-rs="${esc(o.kind)}"${rsBusy?" disabled":""}>${busy?"Usando…":"Usar"}</button>`}</div></div>`}).join("");
     rsec=`<div class="md-sec"><div class="md-h"><span>Créditos de reset</span>${opts.length?"":"<span>nenhum crédito disponível</span>"}</div>${rows}${rsMsg?`<div class="md-rs-msg${rsMsg.err?" err":""}">${esc(rsMsg.text)}</div>`:""}</div>`}
   const markup=`<div class="md-head">${who(email,c,a.name)}${a.plan?`<span class="badge outline">${esc(a.plan)}</span>`:""}<span class="badge outline">Prioridade: ${esc(modeTxt)}</span>${lims.length?`<div class="md-lims">${lims.join("")}</div>`:""}
       <button type="button" class="md-close" data-close aria-label="Fechar">${ICON_CLOSE}</button></div>
     <div class="md-stats">${stats}</div>
     ${rsec}
     <div class="md-sec"><div class="md-h"><span>Restante semanal · real e projeção</span>${ext>=.05?`<span>inclui ~${fmt1(ext)}%/dia fora do proxy</span>`:""}</div>${chart.html}</div>
+    ${forecastAccHtml(a,now)}
     ${act}`;
   if(body.dataset.key===markup)return;
   // Re-rendering replaces the focused control: put the focus back on its counterpart.
@@ -2414,7 +2447,202 @@ function renderActivity(){
   const un=$("#unpricedNote");un.hidden=!(unpriced>0);
   if(unpriced>0)un.textContent=`${fmtCount(unpriced)} tokens sem preço (registrados antes do rastreio por modelo ou de modelo desconhecido) não entram no custo.`;
   renderModels(h);
+  renderClients(h);
   renderHeat();
+}
+
+/* ---- reset credits: does one pay off now, and until when ---- */
+// The window a reset kind gives back, and its field in the quota samples (s = 5h, w = weekly, f = Fable).
+const RS_WIN={session:["s","5h"],weekly:["w","semanal"],full:["w","semanal"],fable:["f","Fable"]};
+// %/h a window dropped between `from` and `to` (unix s), refills ignored; null with under 30 min of samples.
+function dropRate(pts,field,from,to){
+  const xs=pts.filter(p=>p[field]!=null&&p.t>=from&&p.t<=to);let d=0;
+  for(let i=1;i<xs.length;i++)d+=Math.max(0,xs[i-1][field]-xs[i][field]);
+  const span=xs.length>1?(xs[xs.length-1].t-xs[0].t)/3600:0;
+  return span>=.5?d/span:null;
+}
+// Whether redeeming a reset of `kind` on account `a` pays off, from the last 2 hours of use of that window. A reset
+// sets the window back to 0% used, but only what gets spent before the window's own reset counts: redeemed at time t
+// with pace P (%/h) it gives min(cap, P × hours to the reset), and redeemed before the window runs out it also throws
+// away what was left. So the best moment is right after it runs out, and it pays off in full until reset − cap/P.
+// A blocked window spends nothing, so its pace is taken from the 2 hours before it got blocked.
+// Fable: its allowance counts only as far as the weekly room goes, and the reset also gives back the weekly % Fable
+// spent. With the weekly window out, that give-back (usable by any model) is what the reset brings.
+// Returns {cls, text, tip, now} (now: worth redeeming right away) or null when the window is unknown.
+function resetAdvice(a,kind,now){
+  const m=RS_WIN[kind];if(!m)return null;
+  let [field,wname]=m;const wk=weeklyOf(a);let w=kind==="session"?shortOf(a):kind==="fable"?fableWin(wk):wk;
+  if(!w||!w.reset_at||!wk)return null;
+  const t=now/1000,lw=100-clampPct(wk.used_percent),fp=wk.fable_percent||0;
+  let left=100-clampPct(w.used_percent),cap=100,unit=`da janela ${wname}`,note="";
+  if(kind==="fable"){unit="da cota do Fable";const A=wk.fable_allowance>0?wk.fable_allowance:0;
+    if(lw<=.5){field="w";w=wk;left=0;cap=fp;unit="do semanal";
+      note=`Com o semanal esgotado, o que este reset traz são os ~${fmt1(fp)}% do semanal que o Fable gastou (voltam para qualquer modelo), além de recarregar o Fable.`}
+    else if(A){left=Math.min(left,lw/A*100);cap=Math.min(100,(lw+fp)/A*100);
+      if(cap<99.5)note=`O semanal limita: mesmo com o reset, o Fable teria só ~${Math.round(cap)}% da cota utilizável (${Math.round(lw)}% do semanal + ${fmt1(fp)}% devolvidos).`}}
+  const R=Date.parse(w.reset_at)/1000;if(!(R>t))return null;
+  const pts=quota7Of(a.auth_id),open=p=>kind==="fable"&&field==="f"?(p.f==null||p.f>.5)&&(p.w==null||p.w>.5):p[field]>.5;
+  let P=dropRate(pts,field,t-7200,t),src="das últimas 2h";
+  if(left<=.5){
+    let k=-1;for(let i=pts.length-1;i>=0;i--){if(pts[i][field]==null)continue;if(open(pts[i])){k=i;break}}
+    const end=k>=0&&k+1<pts.length?pts[k+1].t:null;
+    if(end&&t-end<24*3600){const q=dropRate(pts,field,end-7200,end);if(q!=null){P=q;src="das 2h antes de esgotar"}}
+  }
+  const H=(R-t)/3600,at=x=>fmtShort(new Date(x*1000)),pace=P!=null?` (${fmt1(P)}%/h)`:"",amt=v=>v>=99.5?"o reset inteiro":`~${Math.round(v)}% ${unit}`;
+  let tip=`Um ${kind==="full"?"reset completo":"reset "+RS_WIN[kind][1]} só vale o que você gastar antes do reset normal (${at(R)}).\n`
+    +`No ritmo ${src}${pace}, o melhor momento é logo depois de esgotar: usado antes, joga fora o que ainda restava.`;
+  if(kind==="weekly"||kind==="full"||field==="w"&&kind==="fable")tip+="\nO ritmo é só desta conta; o proxy divide o uso entre as contas pela ordem de reset.";
+  if(note)tip+="\n"+note;
+  if(kind==="session"&&lw<=.5)return{cls:"mut",text:"Não compensa: o semanal está esgotado, então o 5h recarregado não teria uso.",tip,now:false};
+  if(cap<3)return{cls:"mut",text:kind==="fable"&&field==="w"?`Rende quase nada agora: o Fable gastou só ~${fmt1(fp)}% do semanal esgotado.`:"Rende quase nada: o semanal está quase no fim.",tip,now:false};
+  if(!(P>=.2))return{cls:"mut",text:`Sem uso ${src}: não compensa agora.`,tip,now:false};
+  const D=R-cap/P*3600;
+  if(left<=.5){const g=Math.min(cap,P*H);
+    if(g>=cap-.5)return{cls:"good",text:`Compensa usar agora: rende ${amt(cap)}, e no ritmo ${src}${pace} você gasta tudo antes do reset normal (rende tudo se usado até ${at(D)}).`,tip,now:true};
+    if(g>=Math.max(3,cap*.3))return{cls:"warn",text:`Compensa em parte: até o reset normal (em ${fmtLeft((R-t)*1000)}) você gastaria ${amt(g)}.`,tip,now:true};
+    return{cls:"mut",text:`Não compensa: o reset normal vem em ${fmtLeft((R-t)*1000)} e no ritmo ${src} você gastaria só ${amt(g)}.`,tip,now:false}}
+  const z=t+left/P*3600;
+  if(z>=R)return{cls:"mut",text:`Não precisa: no ritmo ${src}${pace} ainda sobra ~${Math.round(left-P*H)}% ${unit} no reset normal.`,tip,now:false};
+  const val=Math.min(cap,P*(R-z)/3600);
+  if(val>=cap-.5)return{cls:"good",text:`Espere esgotar (~${at(z)}). Usado até ${at(D)}, rende ${amt(cap)}.`,tip:tip+`\nUsar agora jogaria fora os ~${Math.round(left)}% que ainda restam.`,now:false};
+  if(val>=Math.max(3,cap*.3))return{cls:"warn",text:`Espere esgotar (~${at(z)}); usado logo depois, rende ${amt(val)} antes do reset normal.`,tip,now:false};
+  return{cls:"mut",text:`Não deve compensar: esgota ~${at(z)}, perto do reset normal (${at(R)}).`,tip,now:false};
+}
+// Card hint when a reset credit the account holds pays off right now.
+function resetHintHtml(a,now){
+  const rc=a.reset_credits;if(!rc||!(rc.options||[]).length)return"";
+  for(const o of rc.options){if(!(o.available>0))continue;const ad=resetAdvice(a,o.kind,now);
+    if(ad&&ad.now)return `<div class="recent rs-hint ${ad.cls}" tabindex="0" data-tip="${esc(ad.text+"\n\n"+ad.tip)}">${ICON_REF}<span>${esc(o.label)}: <b>compensa usar agora</b></span></div>`}
+  return"";
+}
+
+/* ---- forecast snapshots: what the projection said, to check it later ---- */
+const FC_H=[3,6,12,24];
+// Value of series ys (at times ts) at time t, linear between samples; null outside the series or on a null sample.
+function seriesAt(ts,ys,t){
+  if(!ts.length||t<ts[0]||t>ts[ts.length-1])return null;
+  let k=0;while(k+1<ts.length&&ts[k+1]<=t)k++;
+  const y0=ys[k];if(y0==null)return null;if(k+1>=ts.length||ts[k]===t)return y0;
+  const y1=ys[k+1];if(y1==null)return y0;
+  return y0+(y1-y0)*(t-ts[k])/Math.max(1e-9,ts[k+1]-ts[k]);
+}
+function forecastSnapshot(now){
+  const rec={},pf=poolForecast(now,rec);if(!pf.br.ok||!rec.ts||rec.ts.length<2)return null;
+  const t0=now/1000,out={};
+  pf.accs.forEach((a,i)=>{const w=[],f=[];
+    for(const H of FC_H){const t=t0+H*3600;w.push(seriesAt(rec.ts,rec.lefts.map(l=>l[i]),t));f.push(seriesAt(rec.ts,rec.flefts.map(l=>l[i]),t))}
+    if(w.some(v=>v!=null))out[a.auth_id]={w,f}});
+  return Object.keys(out).length?out:null;
+}
+let fcPostedHour=0;
+// Once an hour per tab; the server keeps the first post of each hour, so other tabs and repeats are harmless.
+function postForecast(){
+  if(DEMO)return;const now=Date.now(),hour=Math.floor(now/3600e3);
+  if(hour===fcPostedHour||!state.data||now-state.dataNow>10*60e3)return;
+  const snap=forecastSnapshot(now);if(!snap)return;fcPostedHour=hour;
+  fetch("/usage/api/forecast",{method:"POST",headers:{"Content-Type":"application/json","X-Usage-UI":"1"},body:JSON.stringify({accounts:snap})}).then(r=>{if(!r.ok)fcPostedHour=0}).catch(()=>{fcPostedHour=0});
+}
+// Sample value of `field` nearest to t (within 20 min), or null.
+function sampleAt(pts,field,t){
+  let lo=0,hi=pts.length;while(lo<hi){const m=(lo+hi)>>1;if(pts[m].t<t)lo=m+1;else hi=m}
+  let best=null,bd=1200;
+  for(let i=lo;i<pts.length&&pts[i].t-t<=bd;i++)if(pts[i][field]!=null){const d=pts[i].t-t;if(d<=bd){bd=d;best=pts[i][field]}break}
+  for(let i=lo-1;i>=0&&t-pts[i].t<=1200;i--)if(pts[i][field]!=null){const d=t-pts[i].t;if(d<bd){best=pts[i][field]}break}
+  return best}
+// For each horizon, every stored forecast whose target time has passed, with the real value then:
+// [{H, rows:[{at, pred, real, err}]}] for one account and field ("w" weekly, "f" Fable).
+function forecastChecks(id,field,now){
+  const fc=(state.hist&&state.hist.forecasts)||{},pts=quota7Of(id),t=now/1000,key=field==="f"?"f":"w";
+  return FC_H.map((H,k)=>{const rows=[];
+    for(const hk of Object.keys(fc)){const s=fc[hk][id];if(!s||!s[key])continue;const pred=s[key][k];if(pred==null)continue;
+      const tt=+hk+H*3600;if(tt>t-300)continue;const real=sampleAt(pts,field,tt);if(real==null)continue;
+      rows.push({at:+hk,pred,real,err:real-pred})}
+    rows.sort((x,y)=>x.at-y.at);return{H,rows}});
+}
+const mae=rows=>rows.length?rows.reduce((s,r)=>s+Math.abs(r.err),0)/rows.length:null;
+const signed=v=>(v>0?"+":v<0?"−":"±")+fmt1(Math.abs(v)).replace(/,0$/,"");
+// Modal section: the latest check per horizon plus the mean error over the stored week.
+function forecastAccHtml(a,now){
+  const wk=weeklyOf(a);if(!wk)return"";
+  const lines=[["w","Semanal"],...(fableWin(wk)?[["f","Fable"]]:[])].map(([field,name])=>{
+    const cs=forecastChecks(a.auth_id,field,now).filter(c=>c.rows.length);if(!cs.length)return"";
+    return `<div class="fa-row"><span class="fa-n">${name}</span>`+cs.map(c=>{const last=c.rows[c.rows.length-1],m=mae(c.rows);
+      const tip=`Previsão feita ${fmtShort(new Date(last.at*1000))} para ${c.H}h depois: ${Math.round(last.pred)}% restante.\nReal: ${Math.round(last.real)}% (${signed(last.err)} p.p.).\nErro médio em ${c.rows.length} ${c.rows.length===1?"previsão":"previsões"} de ${c.H}h: ±${fmt1(m)} p.p.`;
+      return `<span class="fa-c ${m<=3?"good":m<=8?"warn":"crit"}" tabindex="0" data-tip="${esc(tip)}"><em>${c.H}h</em> ${Math.round(last.pred)}→${Math.round(last.real)}% <small>±${fmt1(m)}</small></span>`}).join("")+`</div>`}).join("");
+  if(!lines)return `<div class="md-sec"><div class="md-h"><span>Acerto da previsão</span><span>coletando: a primeira checagem sai 3h depois da primeira previsão</span></div></div>`;
+  return `<div class="md-sec"><div class="md-h"><span>Acerto da previsão</span><span>previsto → real · erro médio em p.p.</span></div>${lines}</div>`;
+}
+// One line under the 7-day chart: mean error of the weekly forecasts, all accounts.
+function renderForecastAcc(now){
+  const el=$("#fcAcc");if(!el)return;
+  const by=FC_H.map(H=>({H,rows:[]}));
+  for(const a of claudeAccs())forecastChecks(a.auth_id,"w",now).forEach((c,k)=>by[k].rows.push(...c.rows));
+  const parts=by.filter(c=>c.rows.length).map(c=>`<span tabindex="0" data-tip="${esc(`${c.rows.length} ${c.rows.length===1?"previsão":"previsões"} de ${c.H}h checadas contra o % real, todas as contas.`)}">${c.H}h ±${fmt1(mae(c.rows))}</span>`);
+  el.hidden=!parts.length;el.innerHTML=parts.length?`Erro médio da previsão semanal (p.p.): ${parts.join(" · ")}`:"";
+}
+
+/* ---- proxy health: what the clients got and which upstream attempts failed (last 24h) ---- */
+const HL_REASON={dns:["DNS falhou","O resolvedor de DNS local não respondeu. O proxy agora reaproveita o último endereço conhecido da Anthropic quando isso acontece."],
+  timeout:["Timeout","A conexão com a Anthropic ficou sem resposta."],network:["Rede","Conexão recusada, rede inacessível ou caiu no meio."],
+  "429":["Limite (429)","A conta bateu no limite; o proxy tenta a próxima."],overloaded:["Sobrecarga","A Anthropic respondeu 529/503 (sobrecarregada)."],
+  "5xx":["Erro 5xx","Erro interno da Anthropic."],auth:["Login","Token recusado (401/403)."],other:["Outros",""]};
+function renderHealth(){
+  const el=$("#health"),sec=$("#secHealth");if(!el||!sec)return;
+  const hd=state.health,bs=(hd&&hd.buckets)||[];
+  if(!hd){sec.hidden=true;return}
+  sec.hidden=!claudeAccs().length;
+  const now=Date.parse(hd.now)/1000||Date.now()/1000,sum=(xs,f)=>xs.reduce((s,b)=>s+(f(b)||0),0);
+  const day=bs,hour=bs.filter(b=>b.t>=now-3600);
+  const req=sum(day,b=>b.req),fail=sum(day,b=>b.fail),req1=sum(hour,b=>b.req),fail1=sum(hour,b=>b.fail);
+  const up={},acc={};for(const b of day){for(const k in b.up||{})up[k]=(up[k]||0)+b.up[k];for(const k in b.acc||{})acc[k]=(acc[k]||0)+b.acc[k]}
+  const upN=Object.values(up).reduce((s,v)=>s+v,0);
+  const tn=sum(hour,b=>b.ttft_n),tt=sum(hour,b=>b.ttft),tmax=Math.max(0,...hour.map(b=>b.ttft_max||0));
+  const rate1=req1?fail1/req1:0,st=!req1?["mut","Sem tráfego na última hora"]:fail1===0?["good","Tudo certo na última hora"]:rate1<.05?["warn","Instável na última hora"]:["crit","Com falhas na última hora"];
+  $("#healthSub").textContent=!bs.length?"desde o reinício do proxy":now-bs[0].t>=23*3600?"últimas 24h":`desde o reinício do proxy (${fmtShort(new Date(bs[0].t*1000))})`;
+  const stat=(k,v,s,tip)=>`<div class="hl-s"${tip?` tabindex="0" data-tip="${esc(tip)}"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div><div class="s">${s}</div></div>`;
+  // Hourly columns over the covered span: requests, with the failed part in red.
+  const H=3600,start=Math.floor((bs.length?bs[0].t:now)/H)*H,nh=Math.max(1,Math.min(24,Math.ceil((now-start)/H))),from=Math.floor(now/H)*H-(nh-1)*H;
+  const cols=Array.from({length:nh},(_,k)=>{const t=from+k*H,xs=bs.filter(b=>b.t>=t&&b.t<t+H),u={};for(const b of xs)for(const r in b.up||{})u[r]=(u[r]||0)+b.up[r];
+    return{t,req:sum(xs,b=>b.req),fail:sum(xs,b=>b.fail),u}});
+  const mx=Math.max(1,...cols.map(c=>c.req));
+  const bars=cols.map(c=>{const ur=Object.entries(c.u).sort((x,y)=>y[1]-x[1]).map(([r,n])=>`${(HL_REASON[r]||[r])[0]} ${n}`).join(", ");
+    const tip=`${fmtHour(new Date(c.t*1000))}–${fmtHour(new Date((c.t+H)*1000))}: ${fmtCount(c.req)} req`+(c.fail?` · ${fmtCount(c.fail)} falharam para o app`:"")+(ur?`\nTentativas com erro na Anthropic: ${ur}`:"");
+    return `<i tabindex="0" data-tip="${esc(tip)}" style="--h:${(c.req/mx*100).toFixed(1)}%;--f:${c.req?(c.fail/c.req*100).toFixed(1):0}%"${Object.keys(c.u).length?` class="u"`:""}></i>`}).join("");
+  const chips=Object.entries(up).sort((x,y)=>y[1]-x[1]).map(([r,n])=>{const [l,d]=HL_REASON[r]||[r,""];return `<span class="hl-chip" tabindex="0"${d?` data-tip="${esc(d)}"`:""}>${esc(l)} <b>${fmtCount(n)}</b></span>`}).join("");
+  const accs=Object.entries(acc).sort((x,y)=>y[1]-x[1]).map(([id,n])=>`<span class="hl-chip">${esc(accName(id))} <b>${fmtCount(n)}</b></span>`).join("");
+  el.innerHTML=`<div class="hl-top"><span class="hl-st ${st[0]}"><i></i>${st[1]}</span></div>
+    <div class="hl-stats">${stat("Requisições",fmtCount(req),req1?`${fmtCount(req1)} na última hora`:"nenhuma na última hora")}
+    ${stat("Falharam para o app",req?`${fmtCount(fail)} <small>${fmtPct(fail/req)}</small>`:"0",fail1?`${fmtCount(fail1)} na última hora`:"nenhuma na última hora","Respostas 5xx ou 429 que chegaram ao app (Claude Code, T3…), depois de o proxy tentar as outras contas.")}
+    ${stat("Erros na Anthropic",fmtCount(upN),upN?"tentativas; o proxy tenta outra conta":"nenhum","Cada tentativa que falhou numa conta. O proxy repete em outra conta, então nem todas viram erro para o app.")}
+    ${stat("1º token",tn?`${fmt1(tt/tn/1000)} s`:"—",tn?`média da última hora · máx. ${fmt1(tmax/1000)} s`:"sem requisições na última hora","Tempo até o primeiro token das respostas bem-sucedidas.")}</div>
+    <div class="hl-bars" role="img" aria-label="Requisições por hora, com as falhas em vermelho">${bars}</div>
+    ${chips?`<div class="hl-row"><span class="hl-k">Erros na Anthropic</span>${chips}</div>`:""}
+    ${accs?`<div class="hl-row"><span class="hl-k">Por conta</span>${accs}</div>`:""}`;
+}
+async function loadHealth(){
+  if(DEMO)return;
+  try{const r=await fetch("/usage/api/health",{cache:"no-store"});if(!r.ok)return;state.health=await r.json();if(!modalId)renderHealth()}catch(e){}
+}
+
+/* ---- cost per client app (from the User-Agent) ---- */
+function renderClients(h){
+  const el=$("#clientCost");if(!el)return;
+  const rows=Object.entries(h.clients||{}).map(([k,c])=>({k,req:c.requests||0,c:c.cost||0})).sort((x,y)=>y.c-x.c||y.req-x.req);
+  el.hidden=!rows.length;if(!rows.length){el.innerHTML="";return}
+  const top=rows.reduce((s,r)=>s+r.c,0);
+  el.innerHTML=`<div class="cm-h" data-tip="Identificado pelo User-Agent de cada requisição. Contado desde que o rastreio por app começou." tabindex="0">Custo por app</div>`+rows.map(r=>{
+    const w=top>0?Math.max(r.c>0?2:0,r.c/top*100):0;
+    return `<div class="cm-row"><span class="cm-n">${esc(r.k)}</span><span class="cm-r">${fmtCount(r.req)} req</span><span class="cm-t">${top>0?fmtPct(r.c/top):""}</span>`
+      +`<span class="cm-b"><i style="width:${w.toFixed(1)}%"></i></span><span class="cm-c">${fmtUSD(r.c)}</span></div>`}).join("");
+}
+
+/* ---- account switch notice ---- */
+let lastActive=null,switchTimer=0;
+function noticeActive(){
+  const a=claudeAccs().find(x=>x.active),id=a?a.auth_id:null;
+  if(lastActive&&id&&id!==lastActive&&!$("#toast").classList.contains("err")){const msg=`O proxy passou a usar ${accName(id)} (antes: ${accName(lastActive)})`;toast(msg);
+    clearTimeout(switchTimer);switchTimer=setTimeout(()=>{if($("#toast").textContent===msg)toast("")},10e3)}
+  if(id)lastActive=id;
 }
 
 /* ---- cost per model ---- */
@@ -2491,7 +2719,8 @@ function renderAll(){
   // While the dialog is open only it and the summary (tab title, favicon) are redrawn; closing redraws the rest.
   // `behind` is set first: renderModal closes the dialog when its account is gone, and that close must redraw the page.
   if(modalId&&!none&&renderAll.done){state.behind=true;renderHero();renderModal();updateBrand();updateLive();return}
-  if(none){$("#tl").dataset.key="";closeAccModal()}else{renderHero();renderTimeline();renderAccounts();renderModal()}
+  if(none){$("#tl").dataset.key="";closeAccModal()}else{renderHero();renderTimeline();renderAccounts();renderModal();renderForecastAcc(Date.now())}
+  renderHealth();
   if(!none||hasHist)renderActivity();
   if(none)state.cap=null;
   updateBrand();updateLive();countUps();
@@ -2508,6 +2737,7 @@ let loadSeq=0;
 async function load(refresh,poll){
   if(DEMO){if(DEMO_MODE!=="loading")demo();return}
   const seq=++loadSeq,period=state.period;
+  loadHealth();
   try{
     const reqs=[fetch("/usage/api/data"+(refresh?"?refresh=1":""),{cache:"no-store",headers:{"X-Usage-UI":"1"}}),
       fetch(histUrl(period,state.heat),{cache:"no-store"})];
@@ -2518,7 +2748,7 @@ async function load(refresh,poll){
     const t1=await r1.text(),t2=r2.ok?await r2.text():null,t3=r3&&r3.ok?await r3.text():null;
     if(seq!==loadSeq)return;
     const nowM=t1.match(/"now":"([^"]*)"/),sig=[period,state.heat,t1.replace(/"now":"[^"]*"/,""),t2,t3].join("\u0001");
-    if(poll&&t2!=null&&sig===state.sig&&Date.now()-state.renderAt<60e3){state.dataNow=(nowM&&Date.parse(nowM[1]))||Date.now();state.recvAt=Date.now();
+    if(poll&&t2!=null&&sig===state.sig&&Date.now()-state.renderAt<60e3){state.dataNow=(nowM&&Date.parse(nowM[1]))||Date.now();state.recvAt=Date.now();postForecast();
       if(/^Falha ao carregar/.test($("#toast").textContent))toast("");return}
     const data=JSON.parse(t1),hist=t2!=null?JSON.parse(t2):state.hist;
     // Every period needs the 7-day samples for the pace: 7d/30d responses carry the server's full retention, filtered client-side.
@@ -2531,6 +2761,7 @@ async function load(refresh,poll){
     if(/^Falha ao carregar/.test($("#toast").textContent))toast("");
     state.sig=sig;state.renderAt=Date.now();
     renderAll();
+    noticeActive();postForecast();
   }catch(e){if(seq===loadSeq)toast("Falha ao carregar: "+e.message,true)}
 }
 function setupSeg(id,key){const el=$("#"+id);el.setAttribute("role","group");
