@@ -7,14 +7,20 @@
 // The server address comes from, in order: %APPDATA%\UsageTray\url.txt, the `USAGE_TRAY_URL=` line the proxy
 // appends to the .exe when it is downloaded, then http://127.0.0.1:8317.
 //
-// The first run copies the .exe to %LOCALAPPDATA%\UsageTray, turns on "start with Windows" and starts from there;
-// running a newer download asks the installed copy to quit and replaces it.
+// The first run copies the .exe to %LOCALAPPDATA%\UsageTray, turns on "start with Windows" and starts from there.
+// Running any copy again replaces the one that is running (the newest start wins), so there is only ever one.
+//
+// Updates: the build id is baked in (build.rs, "TRAYBUILD:<id>:END"); the proxy reads it from the .exe it publishes
+// and reports it as `tray_build` in /usage/api/data, which the app already polls for the icon. When it differs from
+// this build, the app downloads it, swaps its own file (a running .exe can be renamed, not overwritten) and restarts.
 #![windows_subsystem = "windows"]
 
 use std::{
     f64::consts::TAU,
+    io::Read,
     path::{Path, PathBuf},
     process::Command,
+    sync::mpsc,
     thread,
     time::{Duration, Instant},
 };
@@ -49,6 +55,87 @@ const POLL: Duration = Duration::from_secs(120);
 // The popup's WebView is dropped after this long hidden, so the app idles at a few MB.
 const DROP_AFTER: Duration = Duration::from_secs(300);
 
+// Kept in the binary as text so the proxy can read it from the file (see build.rs).
+static BUILD_MARK: &str = concat!("TRAYBUILD:", env!("TRAY_BUILD_ID"), ":END");
+
+fn build_id() -> &'static str {
+    let m = std::hint::black_box(BUILD_MARK);
+    &m["TRAYBUILD:".len()..m.len() - ":END".len()]
+}
+
+/// The build id inside an .exe image, if marked.
+fn parse_build(data: &[u8]) -> Option<String> {
+    let pat = b"TRAYBUILD:";
+    let mut off = 0;
+    while let Some(i) = data[off..].windows(pat.len()).position(|w| w == pat) {
+        let start = off + i + pat.len();
+        let rest = &data[start..data.len().min(start + 70)];
+        if let Some(end) = rest.windows(4).position(|w| w == b":END") {
+            let id = &rest[..end];
+            if !id.is_empty() && id.iter().all(|c| c.is_ascii_alphanumeric() || b"._-".contains(c)) {
+                return Some(String::from_utf8_lossy(id).into_owned());
+            }
+        }
+        off = start;
+    }
+    None
+}
+
+fn url_encode(s: &str) -> String {
+    s.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' => (b as char).to_string(),
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
+/// Downloads and installs the proxy's build `want`, then starts it. Ok(()) means: quit now.
+fn update_to(base: &str, want: &str) -> Result<(), String> {
+    let resp = ureq::get(&format!("{base}/usage/download/tray?base={}", url_encode(base)))
+        .timeout(Duration::from_secs(120))
+        .call()
+        .map_err(|e| e.to_string())?;
+    let mut data = Vec::new();
+    resp.into_reader().take(64 << 20).read_to_end(&mut data).map_err(|e| e.to_string())?;
+    // Only a whole Windows image carrying the announced build is installed.
+    if data.len() < 100_000 || !data.starts_with(b"MZ") || parse_build(&data).as_deref() != Some(want) {
+        return Err("download is not the announced build".into());
+    }
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dir = exe.parent().ok_or("no folder")?.to_path_buf();
+    let (new, old) = (dir.join(format!("{APP}.new.exe")), dir.join(format!("{APP}.old.exe")));
+    std::fs::write(&new, &data).map_err(|e| e.to_string())?;
+    let _ = std::fs::remove_file(&old);
+    std::fs::rename(&exe, &old).map_err(|e| e.to_string())?;
+    if let Err(e) = std::fs::rename(&new, &exe) {
+        let _ = std::fs::rename(&old, &exe);
+        return Err(e.to_string());
+    }
+    Command::new(&exe).spawn().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Files a previous update or install left behind.
+fn cleanup_leftovers() {
+    if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf)) {
+        for f in [format!("{APP}.old.exe"), format!("{APP}.new.exe")] {
+            let _ = std::fs::remove_file(dir.join(f));
+        }
+    }
+}
+
+fn signal_quit() {
+    unsafe {
+        let name = wide(&format!("Local\\{APP}.Quit"));
+        let h = CreateEventW(std::ptr::null(), 0, 0, name.as_ptr());
+        if !h.is_null() {
+            SetEvent(h);
+            CloseHandle(h);
+        }
+    }
+}
+
 enum UserEvent {
     Tray(TrayIconEvent),
     Menu(MenuEvent),
@@ -61,6 +148,8 @@ struct Stats {
     left: f64,
     cap: f64,
     active: Option<String>,
+    // The tray app build the proxy publishes (`tray_build`), when it has one.
+    tray_build: Option<String>,
 }
 
 fn wide(s: &str) -> Vec<u16> {
@@ -129,14 +218,7 @@ fn ensure_installed() -> bool {
         return true;
     }
     // Ask an installed copy that is running to quit, so its file can be replaced.
-    unsafe {
-        let name = wide(&format!("Local\\{APP}.Quit"));
-        let h = CreateEventW(std::ptr::null(), 0, 0, name.as_ptr());
-        if !h.is_null() {
-            SetEvent(h);
-            CloseHandle(h);
-        }
-    }
+    signal_quit();
     if std::fs::create_dir_all(&dir).is_err() {
         alert("Não consegui criar a pasta do app em %LOCALAPPDATA%.");
         return false;
@@ -181,7 +263,8 @@ fn fetch_stats(base: &str) -> Option<Stats> {
             active = a["name"].as_str().filter(|s| !s.is_empty()).or(a["email"].as_str()).map(String::from);
         }
     }
-    Some(Stats { left, cap, active })
+    let tray_build = v["tray_build"].as_str().filter(|s| !s.is_empty()).map(String::from);
+    Some(Stats { left, cap, active, tray_build })
 }
 
 /// 32×32 ring: the share of the weekly capacity left, green / amber / red; grey without data.
@@ -259,16 +342,29 @@ fn main() {
     if !ensure_installed() {
         return;
     }
-    // One copy at a time.
+    // One copy at a time, the newest: a running one is asked to quit and this one waits for it (up to 10 s).
     let mutex_name = wide(&format!("Local\\{APP}.Single"));
-    let _mutex = unsafe { CreateMutexW(std::ptr::null(), 0, mutex_name.as_ptr()) };
-    if unsafe { GetLastError() } == ERROR_ALREADY_EXISTS {
-        return;
+    let mut _mutex = unsafe { CreateMutexW(std::ptr::null(), 0, mutex_name.as_ptr()) };
+    let mut tries = 0;
+    while unsafe { GetLastError() } == ERROR_ALREADY_EXISTS {
+        if tries == 50 {
+            return;
+        }
+        tries += 1;
+        signal_quit();
+        unsafe { CloseHandle(_mutex) };
+        thread::sleep(Duration::from_millis(200));
+        _mutex = unsafe { CreateMutexW(std::ptr::null(), 0, mutex_name.as_ptr()) };
     }
+    cleanup_leftovers();
     if let Some(dir) = install_dir() {
         std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", dir.join("WebView2"));
     }
     let exe = std::env::current_exe().unwrap_or_default();
+    // "Start with Windows" always points at this (installed) copy, not at an old download.
+    if autostart_get() {
+        autostart_set(true, &exe);
+    }
     let base = base_url();
     let page = format!("{base}/usage/?mini");
 
@@ -303,6 +399,29 @@ fn main() {
                 break;
             }
             thread::sleep(POLL);
+        });
+    }
+    // Updater: gets the build the proxy publishes whenever the stats poll sees it differ from this one (a failed
+    // attempt is retried on a later poll, at most every 10 minutes). Local "dev" builds never update.
+    let (upd_tx, upd_rx) = mpsc::channel::<String>();
+    {
+        let (p, b) = (proxy.clone(), base.clone());
+        thread::spawn(move || {
+            let mut last_try: Option<Instant> = None;
+            while let Ok(mut want) = upd_rx.recv() {
+                while let Ok(w) = upd_rx.try_recv() {
+                    want = w;
+                }
+                if last_try.is_some_and(|t| t.elapsed() < Duration::from_secs(600)) {
+                    continue;
+                }
+                last_try = Some(Instant::now());
+                if update_to(&b, &want).is_ok() {
+                    let _ = p.send_event(UserEvent::Quit);
+                    break;
+                }
+                cleanup_leftovers();
+            }
         });
     }
 
@@ -342,9 +461,14 @@ fn main() {
     let mut open_at_press = false;
 
     event_loop.run(move |event, _, control_flow| {
-        let now = Instant::now();
-        *control_flow =
-            ControlFlow::WaitUntil(now + if visible { Duration::from_millis(200) } else { Duration::from_secs(30) });
+        // Visible: poll the foreground every 200 ms. Hidden: sleep until the WebView is due to be dropped, or for good.
+        *control_flow = if visible {
+            ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(200))
+        } else if webview.is_some() {
+            ControlFlow::WaitUntil(hidden_at + DROP_AFTER + Duration::from_secs(1))
+        } else {
+            ControlFlow::Wait
+        };
 
         let mut hide = |visible: &mut bool, hidden_at: &mut Instant| {
             if *visible {
@@ -417,6 +541,11 @@ fn main() {
                 }
             }
             Event::UserEvent(UserEvent::Stats(st)) => {
+                if let Some(want) = st.as_ref().and_then(|s| s.tray_build.as_deref()) {
+                    if build_id() != "dev" && want != build_id() {
+                        let _ = upd_tx.send(want.to_string());
+                    }
+                }
                 if let Some(t) = &tray {
                     let (frac, tip) = match &st {
                         Some(s) if s.cap > 0.0 => (

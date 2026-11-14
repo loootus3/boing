@@ -427,24 +427,9 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-plot .capl{stroke:var(--muted-foreground);stroke-width:1;stroke-dasharray:4 4;opacity:.6}
 .tl-line{fill:none;stroke:var(--claude);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .tl-line.proj{stroke-dasharray:6 5}
-.tl-cmp{fill:none;stroke:var(--st-warn);stroke-width:2;stroke-dasharray:1 4;stroke-linecap:round;stroke-linejoin:round}
-.tl-pj{margin-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:12px;font-size:12px}
-.tl-pj-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:8px;color:var(--muted-foreground)}
-.tl-pj-h b{color:var(--foreground);font-weight:600;font-size:13px}
-.tl-pj-l{max-height:244px;overflow:auto;display:flex;flex-direction:column;gap:2px;overscroll-behavior:contain}
-.tl-pj-r{display:grid;grid-template-columns:minmax(92px,1.1fr) minmax(0,1.6fr) minmax(56px,.6fr) minmax(70px,.8fr);gap:10px;align-items:center;text-align:left;width:100%;padding:6px 8px;border:0;border-radius:6px;background:none;color:var(--muted-foreground);font:inherit;cursor:pointer}
-.tl-pj-r:hover{background:var(--accent)}
-.tl-pj-r.on{background:color-mix(in srgb,var(--st-warn) 14%,transparent);color:var(--foreground)}
-.tl-pj-r b{color:var(--foreground);font-weight:600}
-.tl-pj-r .good{color:var(--st-good)}.tl-pj-r .warn{color:var(--st-warn)}.tl-pj-r .crit{color:var(--st-crit)}
-.tl-pj-r.hd{cursor:default;font-size:11px;padding-top:0;padding-bottom:2px}.tl-pj-r.hd:hover{background:none}
-.tl-pj-e{color:var(--muted-foreground)}
-@media (max-width:640px){.tl-pj-r{grid-template-columns:minmax(80px,1fr) minmax(0,1.4fr) minmax(60px,.8fr)}.tl-pj-r>:nth-child(3){display:none}}
 .tl-line.rs{stroke:var(--st-good);stroke-dasharray:3 4}
 .tl-chip.rs{border-color:var(--st-good);border-width:1.5px}
 .tl-leg i.rs{height:0;background:none;border-top:2px dashed var(--st-good);border-radius:0}
-.tl-cmp.start{stroke-width:7;stroke-dasharray:none}
-.tl-leg i.cmp{height:0;background:none;border-top:2px dotted var(--st-warn);border-radius:0}
 .tl-plot .gnow{stroke:var(--muted-foreground);stroke-width:1;opacity:.7}
 .tl-nowl{position:absolute;top:0;transform:translateX(-50%);z-index:1;font-size:11.5px;line-height:15px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;padding:0 4px;background:var(--card);border-radius:4px}
 .tl-leg i.proj{height:0;background:none;border-top:2px dashed var(--claude);border-radius:0}
@@ -692,9 +677,15 @@ body.mini{overflow:hidden}
 .mn-use b{display:flex;align-items:center;gap:6px;font-size:13px;min-width:0;max-width:100%}
 .mn-use b span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mini .segbar{height:14px;margin:0}
-.mn-ch svg{display:block;width:100%;height:86px;overflow:visible}
-.mn-x{display:flex;justify-content:space-between;font-size:11px;color:var(--muted-foreground);margin-top:3px}
+.mn-ch svg{display:block;width:100%;height:86px;overflow:hidden}
+.mn-dot{position:absolute;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;background:var(--claude);pointer-events:none}
+.mn-x{display:flex;justify-content:space-between;font-size:11px;color:var(--muted-foreground);margin-top:3px;height:14px}
 .mn-sum{font-size:12px;color:var(--muted-foreground);line-height:1.45}.mn-sum b{color:var(--foreground);font-weight:600}
+.mn-go{display:inline-grid;place-items:center;width:20px;height:20px;margin-left:4px;padding:0;border:0;border-radius:5px;background:none;color:var(--muted-foreground);cursor:pointer;vertical-align:-5px}
+.mn-go:hover{background:var(--accent);color:var(--foreground)}.mn-go svg{width:13px;height:13px}
+.mn-ch{position:relative;touch-action:none;cursor:grab}.mn-ch.drag{cursor:grabbing}
+.mn-now{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.mn-x{position:relative}
 .mn-tg{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;height:28px;border:0;border-top:1px solid var(--border);background:none;color:var(--muted-foreground);font:inherit;font-size:12px;cursor:pointer;padding:6px 0 0}
 .mn-tg:hover{color:var(--foreground)}.mn-tg svg{transform:rotate(90deg);transition:transform .15s}.mn-tg[aria-expanded="true"] svg{transform:rotate(-90deg)}
 .mn-accs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px}
@@ -830,8 +821,6 @@ const store={get(k,d){try{return localStorage.getItem(k)??d}catch(_){return d}},
 const SCEN={same:{l:"No ritmo atual",m:1},half:{l:"Na metade do ritmo",m:.5},double:{l:"No dobro do ritmo",m:2},none:{l:"Sem usar nada",m:0}};
 const tlo={view:store.get("usage.tlview","left")==="rate"?"rate":"left",scen:SCEN[store.get("usage.scen","same")]?store.get("usage.scen","same"):"same",
   hide:new Set((()=>{try{const v=JSON.parse(store.get("usage.tlhide","[]"));return Array.isArray(v)?v:[]}catch(_){return[]}})()),menu:false,
-  // "Previsto × real": 0 off, else the horizon (h) of the stored forecasts drawn over the recorded line.
-  cmp:(v=>[0,3,6,12,24].includes(v)?v:0)(+store.get("usage.tlcmp","0")),cmpH:(v=>[3,6,12,24].includes(v)?v:24)(+store.get("usage.tlcmpH","24")),
   // "Resets ótimos": where the reset credits gain the most, drawn as a second projection.
   rs:store.get("usage.tlrs","0")==="1"};
 const state={burn:(b=>["auto","1","3","6"].includes(b)?b:"auto")(store.get("usage.burn","auto")),shape:store.get("usage.shape","day")==="flat"?"flat":"day",period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),heat:(s=>s==="all"?"all":"28d")(store.get("usage.heat","28d")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
@@ -1249,7 +1238,9 @@ function simulate(accs,perHour,now,rec,info,ext,shape,resets){
       // Fable the run happened to route there.
       if(r.kind==="fable"){if(p.fallow){gain=Math.min(100-p.left,r.full?p.fallow:p.fallow-p.fab);p.fab=p.fallow;p.nofab=true}}
       else if(r.kind==="weekly"||r.kind==="full"){gain=100-p.left;if(r.kind==="full"){p.s5=100;p.t5=null}}
-      p.left+=gain;if(rec&&h<hz)rec.redeemed.push({...r,gain,i:p.i})}
+      p.left+=gain;
+      // Drawn as a step at the start of the hour (the run's previous point): the line jumps straight up.
+      if(rec&&h<hz){const ta=lastT();rec.redeemed.push({...r,gain,i:p.i,ta,top:total()});push(ta+1,total())}}
     for(const p of pool)while(p.reset<=t){p.nofab=false;
       if(info&&!p.fr&&h<IH){p.fr=true;info[p.a.auth_id]={before:p.left,at:p.reset,zero:p.zero==null?null:p.zero}}
       evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left,before:p.left});p.left=100;p.reset+=p.period}
@@ -1727,7 +1718,7 @@ function renderTimeline(){
   // Re-rendering would close an open <select>.
   if(el.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
   const cf=chartForecast(now),rec=cf.rec,accs=cf.accs,br=cf.br,sm=cf.m,perHour=br.ok?br.total*sm/24:0,rateMode=tlo.view==="rate";
-  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,tlo.cmp,tlo.pj,tlo.rs,state.pjAt||0,state.qarchAt||0,state.burn,state.shape,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+dispName(a)).join("|")].join("/");
+  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,tlo.rs,state.qarchAt||0,state.burn,state.shape,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+dispName(a)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
   const PH=innerWidth<640?240:280,TOP=44,BOT=PH-6,HZ=TL_FUT,t0=now/1000,ts=rec.ts,tot=rec.tot,K=ts.length;
@@ -1777,40 +1768,10 @@ function renderTimeline(){
   const zv=zs.map(([s,e])=>({s,e,open:e>=t0+HZ-1,vs:Math.max(s,V0),ve:Math.min(e,V1)})).filter(z=>z.ve>z.vs);
   for(const z of zv)if(z.open)z.e=resumeAfter(accs,z.e);
 
-  // "Previsto × real". With stored projections (state.pj, one per hour while the page is open): the list of them
-  // and the chosen one drawn whole over the chart, summed over the shown accounts. Until there are any: the hourly
-  // point forecasts made tlo.cmp hours before each moment ([t, predicted, real], targets already passed).
-  const cmpOn=!!tlo.cmp&&!!past&&!rateMode,cmpPts=[];let cmpErr=null,cmpLine="",pjList=[],pjSel=null;
-  if(cmpOn&&state.pj){const ids=accs.map(a=>a.auth_id);
-    pjList=memo("pjList",[state.pj,ids.join(","),past],()=>Object.entries(state.pj).map(([hk,c])=>{
-      if(!c||!c.accs||!ids.every(id=>c.accs[id]&&c.accs[id].length>1))return null;
-      const n=Math.min(...ids.map(id=>c.accs[id].length)),pts=[];
-      for(let k=0;k<n;k++){let v=0;for(const id of ids)v+=c.accs[id][k];pts.push([c.at+k*c.step,v])}
-      let e=0,sg=0,ne=0;for(const p of pts){if(p[0]>t0)break;if(p[0]<F0)continue;const d=atPts(past,p[0])-p[1];e+=Math.abs(d);sg+=d;ne++}
-      let z=null,mn=pts[0];for(const p of pts){if(z==null&&p[1]<=.5)z=p[0];if(p[1]<mn[1])mn=p}
-      return{hk:+hk,at:c.at,pace:c.pace||0,pts,mae:ne>1?e/ne:null,bias:ne>1?sg/ne:0,ne,z,mn}}).filter(Boolean).sort((x,y)=>y.at-x.at));
-    if(pjList.length){
-      // Default: the one made about a day ago, so there is something to compare with.
-      pjSel=pjList.find(x=>x.hk===tlo.pj)||pjList.reduce((b,x)=>Math.abs(x.at-(t0-DAY))<Math.abs(b.at-(t0-DAY))?x:b,pjList[0]);
-      const st=pjSel.pts,vis=st.filter((p,k)=>(st[k+1]?st[k+1][0]:p[0])>=V0&&(st[k-1]?st[k-1][0]:p[0])<=V1);
-      if(vis.length)cmpLine=`<path class="tl-cmp" d="${vis.map((p,k)=>(k?"L":"M")+fx(p)).join("")}" ${NS}/>`
-        +(st[0][0]>=V0&&st[0][0]<=V1?`<path class="tl-cmp start" d="M${fx(st[0])}l0.01,0" ${NS}/>`:"");
-      if(pjSel.mae!=null)cmpErr={mae:pjSel.mae,bias:pjSel.bias,n:pjSel.ne}}}
-  if(cmpOn&&!pjList.length){const fc={...(state.fcArch||{}),...((state.hist&&state.hist.forecasts)||{})},k=FC_H.indexOf(tlo.cmp);
-    for(const hk of Object.keys(fc).map(Number).sort((a,b)=>a-b)){const tt=hk+tlo.cmp*3600;if(tt>t0-60||tt<F0)continue;let sum=0,ok=true;
-      for(const a of accs){const sn=fc[hk][a.auth_id],v=sn&&sn.w?sn.w[k]:null;if(v==null){ok=false;break}sum+=v}
-      if(ok)cmpPts.push([tt,sum,atPts(past,tt)])}
-    if(cmpPts.length){const e=cmpPts.map(p=>p[2]-p[1]);
-      cmpErr={mae:e.reduce((s,x)=>s+Math.abs(x),0)/e.length,bias:e.reduce((s,x)=>s+x,0)/e.length,n:e.length}}
-    // Gaps over 1.5h (hours with no page open, so no forecast) break the line; a lone point is a dot.
-    let d="",prev=null;
-    for(const p of cmpPts){if(p[0]<V0-3600||p[0]>V1+3600){prev=null;continue}
-      const join=prev&&p[0]-prev[0]<=5400;d+=(join?"L":"M")+fx(p)+(join?"":"l0.01,0");prev=p}
-    if(d)cmpLine=`<path class="tl-cmp" d="${d}" ${NS}/>`}
-  if(cmpOn)loadProjections();
   const hasCredits=accs.some(a=>((a.reset_credits&&a.reset_credits.options)||[]).some(o=>o.available>0&&RS_PLAN_KINDS[o.kind]));
   const rsP=tlo.rs&&hasCredits&&!rateMode&&br.ok?resetPlan(now):null;let rsLine="";
-  if(rsP&&rsP.plan.length){const st=clipPts(rsP.rec.ts.map((t,k)=>[t,rsP.rec.tot[k]]),V0,V1);
+  if(rsP&&rsP.plan.length){const r0=Math.min(...(rsP.rec.redeemed||[]).map(r=>r.ta)),
+      st=clipPts(rsP.rec.ts.map((t,k)=>[t,rsP.rec.tot[k]]).filter(p=>p[0]>=r0),V0,V1);
     if(st.length>1)rsLine=`<path class="tl-line rs" d="${st.map((p,k)=>(k?"L":"M")+fx(p)).join("")}" ${NS}/>`}
   // At most 4 ticks: 0, steps of whole accounts, and the full capacity.
   let yt=[];
@@ -1826,7 +1787,7 @@ function renderTimeline(){
       <stop offset="0" stop-color="var(--claude)" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="var(--claude)" stop-opacity="0"/></linearGradient></defs>
     ${grid}${zrect}${areaD?`<path d="${areaD}" fill="url(#tlGrad)" stroke="none"${past?` opacity=".45"`:""}/>`:""}${pastArea}
     <line class="capl" x1="0" x2="1000" y1="${Y(cap)}" y2="${Y(cap)}" ${NS}/>
-    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past&&nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}${cmpLine}${rsLine}${lineD?`<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`:""}`;
+    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past&&nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}${rsLine}${lineD?`<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`:""}`;
   const yfmt=v=>rateMode?((v)>0&&(v)<1?fmt1((v)):Math.round((v)*10)/10).toString().replace(".",",")+"%/h":Math.round((v))+"%";
   const ylab=yt.map(v=>`<span style="top:${Y(v)}px">${yfmt(v)}</span>`).join("");
   let capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${rec.cap===100?"conta cheia":`${rec.cap}% = ${rec.cap/100} contas cheias`}</div>`;
@@ -1890,13 +1851,14 @@ function renderTimeline(){
 
   const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?"últimos "+Math.round(pastH/24)+" dias":"últimas "+pastH+"h";
   const legend=past?`<span><i></i>Real (${pastLbl})</span><span><i class="proj"></i>Projeção</span><span data-tip="${esc("Faixa colorida embaixo: a conta gasta em cada hora (cheia no passado, clara na projeção).")}" tabindex="0"><i class="use"></i>Conta usada</span>`
-    +(rsLine?`<span><i class="rs"></i>Com resets ótimos</span>`:"")
-    +(pjSel?`<span tabindex="0" data-tip="${esc(`Pontilhado: a projeção que a página fez ${hm(pjSel.at)}, inteira (2 semanas), somando as contas mostradas. A linha cheia é o que aconteceu; o tracejado é a projeção de agora.`
-      +(cmpErr?`\nErro médio até agora: ±${fmt1(cmpErr.mae)} p.p. em ${cmpErr.n} pontos (a cada 2h).\nEm média o real ficou ${Math.abs(cmpErr.bias)<.5?"igual ao previsto":cmpErr.bias>0?`${fmt1(cmpErr.bias)} p.p. acima (gastou menos que o previsto)`:`${fmt1(-cmpErr.bias)} p.p. abaixo (gastou mais que o previsto)`}.`:"")
-      +"\nEscolha outra projeção na lista abaixo do gráfico.")}"><i class="cmp"></i>Projeção de ${esc(hm(pjSel.at))}${cmpErr?` · erro ±${fmt1(cmpErr.mae)} p.p.`:""}</span>`
-    :cmpOn?`<span tabindex="0" data-tip="${esc(`Pontilhado: o total que a página previu ${tlo.cmp}h antes de cada momento (ela guarda uma previsão por hora enquanto está aberta). A linha cheia é o que aconteceu.`
-      +(cmpErr?`\nErro médio: ±${fmt1(cmpErr.mae)} p.p. em ${cmpErr.n} ${cmpErr.n===1?"previsão":"previsões"}.\nEm média o real ficou ${Math.abs(cmpErr.bias)<.5?"igual ao previsto":cmpErr.bias>0?`${fmt1(cmpErr.bias)} p.p. acima do previsto (gastou menos que o previsto)`:`${fmt1(-cmpErr.bias)} p.p. abaixo do previsto (gastou mais que o previsto)`}.`:"\nAinda não há previsões com esse prazo vencido para as contas mostradas.")
-      +(tlo.hide.size?"\nSó soma as contas mostradas.":""))}"><i class="cmp"></i>Previsto ${tlo.cmp}h antes${cmpErr?` · erro ±${fmt1(cmpErr.mae)} p.p.`:" · sem dados ainda"}</span>`:""):`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
+    +(rsP?(()=>{const fh=h=>h<.5?"nenhuma hora":fmtLeft(h*3600e3);
+      if(!rsP.plan.length)return `<span tabindex="0" data-tip="${esc(rsP.before.h<.5?"No ritmo atual a cota dá conta das próximas 2 semanas sem os resets: guarde-os.":`Os resets que você tem não diminuem o tempo sem cota agora (${fh(rsP.before.h)} nas próximas 2 semanas): no momento em que as contas zeram eles devolveriam pouco.`)}"><i class="rs"></i>${rsP.before.h<.5?"Resets: guarde":"Resets: não ajudam agora"}</span>`;
+      const tip=(rsP.rec.redeemed||[]).map(r=>{const a=accs.find(x=>x.auth_id===r.id),fa=a&&weeklyOf(a).fable_allowance;
+          return `${RS_PLAN_KINDS[r.kind]} da ${a?nm(a).split("@")[0]:r.id}: ${hm(r.ta)}, +${Math.round(r.gain)}%`+(r.kind==="fable"&&fa>0?` (antes, gaste os ${fa}% de Fable dela)`:"")}).join("\n")
+        +`\nSem cota nas próximas 2 semanas: ${fh(rsP.before.h)} → ${fh(rsP.after.h)}.`
+        +(rsP.plan.some(r=>r.kind==="fable")?"\nDepois de um reset do Fable, a conta usa outros modelos no lugar do Fable até o reset semanal dela.":"");
+      return `<span tabindex="0" data-tip="${esc(tip)}"><i class="rs"></i>Com resets ótimos · ${fh(rsP.before.h)} → ${fh(rsP.after.h)} sem cota</span>`})():"")
+:`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
   const rate=br.ok
     ?`<span data-tip="${esc(paceTipFull(br)+`\n≈ ${Math.round(br.total*sm)}%/dia`)}" tabindex="0">gastando <b>~${fmt1(br.total*sm/24)}%/h</b></span>${sm!==1?` <span class="tl-scen">${esc(SCEN[tlo.scen].l.toLowerCase())}</span>`:""}`
     :`<b>coletando ritmo</b> · sem desgaste na projeção`;
@@ -1911,12 +1873,11 @@ function renderTimeline(){
   const accMenu=`<div class="tl-accm"><button type="button" class="tl-accb${tlo.hide.size?" on":""}" data-accmenu="1" aria-haspopup="true" aria-expanded="${tlo.menu}">${accs.length}/${allAccs.length} contas<svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>${tlo.menu?`<div class="tl-menu">${allAccs.map(a=>`<label><input type="checkbox" data-hide="${esc(a.auth_id)}"${tlo.hide.has(a.auth_id)?"":" checked"}${!tlo.hide.has(a.auth_id)&&accs.length===1?" disabled":""}><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span>${esc(nm(a))}</span></label>`).join("")}<div class="tl-menu-n">Só muda este gráfico e o resumo acima dele.</div></div>`:""}</div>`;
   const nAdj=(state.burn!=="auto")+(tlo.scen!=="same")+(tlo.hide.size>0)+(state.shape!=="day");
   {const tt=$("#tlTitle");if(tt)tt.textContent=custom?"Projeção":tlz.preset==="24h"?"Próximas 24h":tlz.preset==="3d"?"Próximos 3 dias":tlz.preset==="week"?"Próximos 7 dias":"Histórico e projeção"}
-  const ctl=`<div class="tl-ctl">${segOf("view",tlo.view,[["left","Restante","Quanto resta, somando as contas"],["rate","Consumo","Quanto sai por hora (%/h)"]],"O que mostrar")}<button type="button" class="tl-adv" data-adv="1" aria-expanded="${!!tlo.adv}" aria-controls="tlSet" aria-label="Ajustes da projeção">${ICON_SLIDERS}<span class="tl-adv-l">Ajustes</span>${nAdj?`<span class="tl-badge">${nAdj}</span>`:""}</button>${past&&!rateMode?`<button type="button" class="tl-accb${tlo.cmp?" on":""}" data-cmp="1" aria-pressed="${!!tlo.cmp}" data-tip="${esc("Mostra, sobre o histórico, o que a projeção tinha previsto e compara com o que aconteceu. O prazo da previsão fica em Ajustes.")}">Previsto × real</button>`:""}${hasCredits&&!rateMode?`<button type="button" class="tl-accb${tlo.rs?" on":""}" data-rs="1" aria-pressed="${tlo.rs}" data-tip="${esc("Mostra onde usar os resets que você tem para render mais: no momento em que todas as contas zerariam, na conta em que o reset devolve mais. Desenha a projeção com eles.")}">Resets ótimos</button>`:""}<div class="spacer"></div><div class="tl-zg">${tools}${nav}</div></div>
+  const ctl=`<div class="tl-ctl">${segOf("view",tlo.view,[["left","Restante","Quanto resta, somando as contas"],["rate","Consumo","Quanto sai por hora (%/h)"]],"O que mostrar")}<button type="button" class="tl-adv" data-adv="1" aria-expanded="${!!tlo.adv}" aria-controls="tlSet" aria-label="Ajustes da projeção">${ICON_SLIDERS}<span class="tl-adv-l">Ajustes</span>${nAdj?`<span class="tl-badge">${nAdj}</span>`:""}</button>${hasCredits&&!rateMode?`<button type="button" class="tl-accb${tlo.rs?" on":""}" data-rs="1" aria-pressed="${tlo.rs}" data-tip="${esc("Mostra onde usar os resets que você tem para render mais: no momento em que todas as contas zerariam, na conta em que o reset devolve mais. Desenha a projeção com eles.")}">Resets ótimos</button>`:""}<div class="spacer"></div><div class="tl-zg">${tools}${nav}</div></div>
     <div class="tl-ctl tl-set${tlo.adv?" open":""}" id="tlSet">
       <div class="tl-field"><span class="tl-lab" id="tlRitmo">Ritmo calculado com</span>${segOf("burn",state.burn,[["auto","Auto","Automático: as últimas horas pesam mais (meia-vida 12h), misturado com a média da semana enquanto há pouco histórico"],["1","1h","Só a última hora"],["3","3h","Só as últimas 3 horas"],["6","6h","Só as últimas 6 horas"]],"Ritmo calculado com")}</div>
       <div class="tl-field"><span class="tl-lab">Ritmo ao longo do dia</span>${segOf("shape",state.shape,[["day","Pelo horário","O ritmo segue o seu padrão de uso por hora do dia (últimos 14 dias) e, com o tempo, volta para a média da semana. Nos testes com o seu histórico errou menos que o constante."],["flat","Constante","O ritmo atual, igual a qualquer hora, por toda a projeção"]],"Ritmo ao longo do dia")}</div>
       <div class="tl-field"><label class="tl-lab" for="tlScen">Se eu continuar</label><select class="sel" id="tlScen" data-scen="1">${Object.entries(SCEN).map(([v,o])=>`<option value="${v}"${tlo.scen===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select></div>
-      ${tlo.cmp&&!rateMode&&!pjList.length?`<div class="tl-field"><span class="tl-lab">Previsão feita</span>${segOf("cmph",String(tlo.cmp),FC_H.map(h=>[String(h),h+"h antes",`Compara com a previsão feita ${h}h antes de cada momento`]),"Previsão feita")}</div>`:""}
       <div class="tl-field">${accMenu}</div></div>`;
   // Summary strip (this chart's run).
   // The next account to run dry from here on; accounts already at 0% are only counted.
@@ -1965,42 +1926,22 @@ function renderTimeline(){
     if(fullStats)advice=pa;else{state.runAdv=pa;const ra=$("#runAdv");if(ra)ra.innerHTML=pa}
     const seen=new Set(),waste=evs.filter(e=>{if(seen.has(e.a.auth_id))return false;seen.add(e.a.auth_id);return e.before>=5&&e.at<=t0+2*DAY}).sort((a,b)=>b.before-a.before)[0];
     if(waste&&fullStats)advice+=`<div class="tl-tip warn"><i class="adot" style="--c:${ACC[waste.a.auth_id]}"></i><span><b>${esc(nm(waste.a).split("@")[0])}</b> vai perder <b>~${Math.round(waste.before)}% da cota dela</b> no reset (${esc(hm(waste.at))}): use antes do reset, o que sobrar se perde.</span></div>`}
-  // "Resets ótimos": what to redeem, where, and what it changes.
-  if(rsP){const fh=h=>h<.5?"nenhuma hora":fmtLeft(h*3600e3);
-    if(rsP.plan.length){
-      const items=rsP.plan.map(r=>{const a=accs.find(x=>x.auth_id===r.id),wk=a&&weeklyOf(a),fa=wk&&wk.fable_allowance>0?wk.fable_allowance:0;
-        return `<b>${esc(r.label)}</b> da <b>${esc(a?nm(a).split("@")[0]:r.id)}</b> em <b>${esc(hm(r.at))}</b>${r.at<=t0+3600?" (agora)":" (quando todas zerarem)"}: <b>+${Math.round(r.gain)}%</b>`
-          +(r.kind==="fable"&&fa?` · antes, gaste os ${fa}% de Fable dessa conta no Fable`:"")}).join("<br>");
-      advice+=`<div class="tl-tip good">${ICON_CHECK}<span>${items}<br>Tempo sem cota nas próximas 2 semanas: <b>${fh(rsP.before.h)} → ${fh(rsP.after.h)}</b> (linha verde).`
-        +(rsP.plan.some(r=>r.kind==="fable")?" Depois de um reset do Fable, a projeção usa outros modelos nessa conta no lugar do Fable até o reset semanal dela.":"")+`</span></div>`}
-    else advice+=`<div class="tl-tip">${ICON_CHECK}<span>${rsP.before.h<.5?"<b>Guarde os resets:</b> no ritmo atual a cota dá conta das próximas 2 semanas sem eles.":`<b>Os resets que você tem não diminuem o tempo sem cota agora</b> (${fh(rsP.before.h)} nas próximas 2 semanas): o que eles devolveriam no momento em que as contas zeram é pouco.`}</span></div>`}
-  // The stored projections, newest first: when, what it foresaw, the pace it assumed and how far off it has been.
-  const pjHtml=()=>{
-    if(!pjList.length)return `<div class="tl-pj"><div class="tl-pj-h"><b>Projeções guardadas</b></div><div class="tl-pj-e">${state.pjAt?"Ainda não há projeções completas guardadas para estas contas. A página guarda uma por hora enquanto está aberta; até lá, o pontilhado mostra a previsão feita "+tlo.cmp+"h antes de cada momento.":"Carregando…"}</div></div>`;
-    const ec=m=>m==null?"":m<=5?"good":m<=15?"warn":"crit";
-    return `<div class="tl-pj"><div class="tl-pj-h"><b>Projeções guardadas</b><span>${pjList.length} · uma por hora com a página aberta (a cada 6h depois de 3 dias) · clique para comparar</span></div>
-      <div class="tl-pj-l"><div class="tl-pj-r hd" aria-hidden="true"><span>Feita</span><span>O que previa</span><span>Ritmo</span><span>Erro até agora</span></div>${pjList.map(x=>{const on=x===pjSel;
-        const what=x.z?`zerava <b>${esc(hm(x.z))}</b>`:`não zerava · mín. <b>${Math.round(x.mn[1])}%</b> ${esc(hm(x.mn[0]))}`;
-        return `<button type="button" class="tl-pj-r${on?" on":""}" data-pj="${x.hk}" aria-pressed="${on}"><span><b>${esc(hm(x.at))}</b></span><span>${what}</span><span class="tabular">${x.pace?fmt1(x.pace)+"%/h":"—"}</span><span class="tabular ${ec(x.mae)}">${x.mae!=null?`±${fmt1(x.mae)} p.p.`:"cedo demais"}</span></button>`}).join("")}</div></div>`};
   // Re-rendering replaces the focused control: remember it to focus its counterpart afterwards.
-  const ae=document.activeElement,fsel=ae&&el.contains(ae)?["z","view","burn","accmenu","hide","scen","adv","cmp","cmph","shape","pj","rs"].map(k=>ae.dataset&&ae.dataset[k]!=null?`[data-${k}="${CSS.escape(ae.dataset[k])}"]`:null).find(Boolean)||(ae.id==="tlPlot"?"#tlPlot":null):null;
+  const ae=document.activeElement,fsel=ae&&el.contains(ae)?["z","view","burn","accmenu","hide","scen","adv","shape","rs"].map(k=>ae.dataset&&ae.dataset[k]!=null?`[data-${k}="${CSS.escape(ae.dataset[k])}"]`:null).find(Boolean)||(ae.id==="tlPlot"?"#tlPlot":null):null;
   const summary=`${rateMode?"Consumo por hora":"Capacidade semanal restante"}, ${fmtRange(V0)} a ${fmtRange(V1)}. Agora ${Math.round(tot[0])}% de ${rec.cap}%. `+(zf?`Todas zeram ${hm(zf[0])}.`:"Não zeram nas próximas 2 semanas.")+(nxt?` Próxima recarga ${hm(nxt.at)}, +${Math.round((nxt.gain))}%.`:"");
   el.innerHTML=`${ctl}${stats}${advice?`<div class="tl-tips">${advice}</div>`:""}<div class="tl-cap"><div class="tl-leg">${legend}</div></div>
     <div class="tl-chart"><div class="tl-y" aria-hidden="true">${ylab}</div>
       <div class="tl-plot${zoomed?" zoomed":""}" id="tlPlot" tabindex="0" role="img" aria-label="${esc(summary+" Use ← e → para percorrer.")}"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none" aria-hidden="true"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
         <div class="tl-hover" id="tlHover"></div><i class="tl-hdot" id="tlHdot"></i><div class="tip" id="tlTip" role="status" aria-live="polite"></div></div></div>
-    <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>${cmpOn?pjHtml():""}`;
+    <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>`;
   if(fsel){const n=el.querySelector(fsel);if(n)n.focus({preventScroll:true})}
   el.onclick=ev=>{const t=ev.target.closest?ev.target:null;if(!t)return;
-    const z=t.closest("[data-z]"),vw=t.closest("[data-view]"),cm=t.closest("[data-cmp]"),ch=t.closest("[data-cmph]"),bu=t.closest("[data-burn]"),am=t.closest("[data-accmenu]"),hd=t.closest("[data-hide]"),ad=t.closest("[data-adv]");
+    const z=t.closest("[data-z]"),vw=t.closest("[data-view]"),bu=t.closest("[data-burn]"),am=t.closest("[data-accmenu]"),hd=t.closest("[data-hide]"),ad=t.closest("[data-adv]");
     if(z){const v=z.dataset.z;
       if(v==="prev"||v==="next"){const d=(v==="prev"?-1:1)*VS/2,a=Math.min(Math.max(F0,V0+d),F1-VS);tlz.rng=[a,a+VS];tlz.preset=null}
       else{tlz.rng=null;tlz.preset=v==="reset"?"2w":v}
       renderTimeline()}
     else if(t.closest("[data-rs]")){tlo.rs=!tlo.rs;store.set("usage.tlrs",tlo.rs?"1":"0");renderTimeline()}
-    else if(t.closest("[data-pj]")){tlo.pj=+t.closest("[data-pj]").dataset.pj;renderTimeline()}
-    else if(cm){tlo.cmp=tlo.cmp?0:tlo.cmpH;store.set("usage.tlcmp",String(tlo.cmp));renderTimeline()}
-    else if(ch){tlo.cmp=tlo.cmpH=+ch.dataset.cmph;store.set("usage.tlcmp",String(tlo.cmp));store.set("usage.tlcmpH",String(tlo.cmpH));renderTimeline()}
     else if(vw){tlo.view=vw.dataset.view;store.set("usage.tlview",tlo.view);renderTimeline()}
     else if(t.closest("[data-shape]")){state.shape=t.closest("[data-shape]").dataset.shape;store.set("usage.shape",state.shape);el.dataset.key="";renderAll()}
     else if(bu){state.burn=bu.dataset.burn;store.set("usage.burn",state.burn);el.dataset.key="";renderAll()}
@@ -2060,9 +2001,9 @@ function renderTimeline(){
       const{l,top}=place(x,yt2,txt);
       ov+=lead(x,top,yt2,a)+`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>${esc(narrow?initials(nm(a)):shortN(a))}</span> +${Math.round(g)}%</div>`}}
   // Reset credits of the optimal plan: where to redeem each one.
-  if(rsP)for(const r of rsP.plan){if(r.at<V0||r.at>V1)continue;const a=accs.find(x=>x.auth_id===r.id);if(!a)continue;
-    const x=P(r.at)/100*W,yt2=Y(atPts(rsP.rec.ts.map((t,k)=>[t,rsP.rec.tot[k]]),r.at+3600)),txt=`↻ ${narrow?initials(nm(a)):shortN(a)} +${Math.round(r.gain)}%`;
-    ov+=`<i class="tl-dot rs" style="left:${P(r.at).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
+  if(rsP)for(const r of rsP.rec.redeemed||[]){if(r.ta<V0||r.ta>V1)continue;const a=accs.find(x=>x.auth_id===r.id);if(!a)continue;
+    const x=P(r.ta)/100*W,yt2=Y(r.top),txt=`↻ ${narrow?initials(nm(a)):shortN(a)} +${Math.round(r.gain)}%`;
+    ov+=`<i class="tl-dot rs" style="left:${P(r.ta).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
     const{l,top}=place(x,yt2,txt);
     ov+=lead(x,top,yt2,a)+`<div class="tl-chip rs" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>↻ ${esc(narrow?initials(nm(a)):shortN(a))}</span> +${Math.round(r.gain)}%</div>`}
   if(minOn){const tm=prc[mk][0],vm=prc[mk][1],ym=Y(vm),l=Math.max(60,Math.min(W-60,P(tm)/100*W)),below=ym+26<=BOT;
@@ -2081,10 +2022,6 @@ function renderTimeline(){
     const u=Math.max(0,Math.min(1,(t-ta[k-1])/Math.max(1e-6,ta[k]-ta[k-1])));
     return va[k-1]+(va[k]-va[k-1])*u};
   const valAt=t=>lerp(ts,tot,t),pt=past&&past.map(p=>p[0]),pv=past&&past.map(p=>p[1]);
-  // The compared forecast at t: [t, predicted, real]; the chosen projection (interpolated) or the hourly point
-  // forecast nearest to t, within 40 min.
-  const cmpNear=t=>{if(pjSel){const p=pjSel.pts;return t>=p[0][0]&&t<=p[p.length-1][0]?[t,atPts(p,t),t<t0?atPts(past,t):null]:null}
-    let b=null;for(const p of cmpPts)if(Math.abs(p[0]-t)<=2400&&(!b||Math.abs(p[0]-t)<Math.abs(b[0]-t)))b=p;return b};
   plot.onpointermove=plot.onpointerdown=ev=>{tlPtr=ev.pointerType==="touch"?null:{x:ev.clientX,y:ev.clientY};
     if((drag&&drag.on)||tlPan)return;
     const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=V0+x/r.width*VS;
@@ -2093,7 +2030,6 @@ function renderTimeline(){
       hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
       tip.innerHTML=`<div class="d">${esc(hm(t))} · real</div>
         <div class="r tot"><span>Total real</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
-        ${(c=>c?`<div class="r"><span><i class="adot" style="--c:var(--st-warn)"></i>${pjSel?"Projeção de "+esc(hm(pjSel.at)):`Previsto ${tlo.cmp}h antes`}</span><b class="tabular">${Math.round(c[1])}% · ${signed(c[2]-c[1])} p.p.</b></div>`:"")(cmpNear(t))}
         <div class="d" style="margin:6px 0 2px">Usada nessa hora</div>
         ${(u=>{const l=u?u.by.map((d,k)=>[d,k]).filter(p=>p[0]>=.1).sort((x,y)=>y[0]-x[0]):[];
           return l.length?l.map(([d,k])=>`<div class="r"><span><i class="adot" style="--c:${ACC[accs[k].auth_id]}"></i>${esc(nm(accs[k]).split("@")[0])}</span><b class="tabular">−${fmt1(d)}%</b></div>`).join(""):(r=>r&&r.i>=0?`<div class="r"><span><i class="adot" style="--c:${ACC[accs[r.i].auth_id]}"></i>${esc(nm(accs[r.i]).split("@")[0])}</span><b class="tabular">&lt;1%</b></div>`:`<div class="r"><span>Nenhuma conta gasta</span><b></b></div>`)(pastRuns.find(r=>t>=r.a&&t<r.b))})(pastUse.find(u=>t>=u.a&&t<u.b))}
@@ -2106,7 +2042,6 @@ function renderTimeline(){
     hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
     tip.innerHTML=`<div class="d">${Math.abs(x-xn)<2?"agora":esc(hm(t))}${past?" · projeção":""}</div>
       <div class="r tot"><span>Total projetado</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
-      ${(c=>c?`<div class="r"><span><i class="adot" style="--c:var(--st-warn)"></i>Projeção de ${esc(hm(pjSel.at))}</span><b class="tabular">${Math.round(c[1])}%</b></div>`:"")(pjSel&&cmpNear(t))}
       <div class="d" style="margin:6px 0 2px">Usando nessa hora</div>
       <div class="r">${ua?`<span><i class="adot" style="--c:${ACC[ua.auth_id]}"></i>${esc(nm(ua).split("@")[0])}</span><b>${ua.mode==="last"?"reserva":""}</b>`:`<span>Nenhuma conta disponível</span><b></b>`}</div>
       <div class="d" style="margin:6px 0 2px">${next?"Próxima recarga":"Nenhuma recarga até o fim do gráfico"}</div>
@@ -2836,16 +2771,12 @@ function seriesAt(ts,ys,t){
 function forecastSnapshot(now){
   const rec={},pf=poolForecast(now,rec);if(!pf.br.ok||!rec.ts||rec.ts.length<2)return null;
   const t0=now/1000,out={};
-  const curve={step:CURVE_STEP,pace:pf.br.ok?pf.br.total/24:0,accs:{}},n=Math.floor(TL_FUT/CURVE_STEP);
   pf.accs.forEach((a,i)=>{const w=[],f=[],col=rec.lefts.map(l=>l[i]);
     for(const H of FC_H){const t=t0+H*3600;w.push(seriesAt(rec.ts,col,t));f.push(seriesAt(rec.ts,rec.flefts.map(l=>l[i]),t))}
     if(w.some(v=>v!=null))out[a.auth_id]={w,f};
-    const c=[];for(let k=0;k<=n;k++){const v=seriesAt(rec.ts,col,t0+k*CURVE_STEP);if(v==null)break;c.push(Math.round(v))}
-    if(c.length>1)curve.accs[a.auth_id]=c});
-  return Object.keys(out).length?{accounts:out,curve}:null;
+  });
+  return Object.keys(out).length?{accounts:out}:null;
 }
-// The whole projection is posted with the hourly forecast every CURVE_STEP s for TL_FUT (see "Previsto × real").
-const CURVE_STEP=7200;
 let fcPostedHour=0;
 // Once an hour per tab; the server keeps the first post of each hour, so other tabs and repeats are harmless.
 function postForecast(){if(MINI)return;
@@ -3079,12 +3010,6 @@ async function load(refresh,poll){
     noticeActive();postForecast();loadArchive();
   }catch(e){if(seq===loadSeq){toast("Falha ao carregar: "+e.message,true);if(MINI)miniError(e.message)}}
 }
-// Stored projections for "Previsto × real": fetched while the comparison is on, again every 20 min.
-let pjBusy=false;
-function loadProjections(){
-  if(DEMO||pjBusy||(state.pjAt&&Date.now()-state.pjAt<20*60e3))return;pjBusy=true;
-  fetch("/usage/api/projections",{cache:"no-store",headers:{"X-Usage-UI":"1"}}).then(r=>r.ok?r.json():null).then(j=>{
-    if(j){state.pj=j.curves||{};state.pjAt=Date.now();renderTimeline()}}).catch(()=>{}).finally(()=>{pjBusy=false})}
 // Samples older than the view's 8 days, for the long-range chart: refreshed every 30 min (they only grow by the hour).
 let archBusy=false;
 function loadArchive(){
@@ -3360,7 +3285,10 @@ function demo(){
   renderAll();
 }
 /* ---- mini view (?mini): the tray app's popup ---- */
-let miniOpen=store.get("usage.miniOpen","0")==="1";
+// Mini chart window: [from, to] in seconds relative to now; wheel zooms around the pointer, drag pans, double click
+// resets. Bounds: the recorded week behind and the 2-week projection ahead.
+const MZ_DEF=[-3*DAY,3*DAY],MZ_MIN=6*3600,MZ_LO=-7*DAY,MZ_HI=14*DAY;let mz=MZ_DEF.slice();
+const mzSet=(a,b)=>{let w=Math.min(MZ_HI-MZ_LO,Math.max(MZ_MIN,b-a));a=Math.min(Math.max(MZ_LO,a),MZ_HI-w);mz=[a,a+w]};
 // Messages to the tray app (WebView2 IPC): "h:<px>" fits the window to the content, "open" opens the dashboard,
 // "hide" closes the popup. Outside the app the bridge is missing and the calls do nothing.
 const miniPost=m=>{try{if(window.ipc)window.ipc.postMessage(m)}catch(_){}};
@@ -3383,43 +3311,62 @@ function renderMini(){
   const act=all.find(a=>a.active&&!a.needs_login);
   const use=act?`<b><i class="adot" style="--c:${ACC[act.auth_id]}"></i><span>${esc(dispName(act))}</span></b><span class="mn-k">em uso agora</span>`:`<span class="mn-k">nenhuma conta em uso</span>`;
   // Chart: the last 3 days recorded and the next 3 days projected (same run as the page's projection).
-  const rec={},pf=poolForecast(now,rec),t0=now/1000,X0=t0-3*DAY,X1=t0+3*DAY,W=300,H=86;
-  const ca=pf.accs.length?pf.accs:accs,ccap=ca.length*100,cs=capacitySeries(ca);
+  const rec={},pf=poolForecast(now,rec),t0=now/1000,X0=t0+mz[0],X1=t0+mz[1],W=300,H=86;
+  const ca=pf.accs.length?pf.accs:accs,ccap=ca.length*100;
+  const past=rec.ts&&rec.ts.length?memo("miniPast",[state.quota7,ca.map(a=>a.auth_id).join(","),Math.floor(now/60e3)],()=>pastSeries(ca,t0,rec.tot[0],7*DAY)):null;
   const X=t=>((t-X0)/(X1-X0)*W).toFixed(1),Y=v=>(H-2-Math.max(0,Math.min(ccap,v))/ccap*(H-8)).toFixed(1);
-  const hist=cs?cs.pts.filter(p=>p[0]>=X0):[],proj=rec.ts?rec.ts.map((t,k)=>[t,rec.tot[k]]).filter(p=>p[0]<=X1):[];
+  const fullProj=rec.ts?rec.ts.map((t,k)=>[t,rec.tot[k]]):[];
+  const hist=past?clipPts(past,X0,X1):[],proj=fullProj.length>1?clipPts(fullProj,X0,X1):[];
   const line=pts=>pts.map((p,k)=>(k?"L":"M")+X(p[0])+","+Y(p[1])).join("");
   const area=hist.length>1?`<path d="${line(hist)}L${X(hist[hist.length-1][0])},${H}L${X(hist[0][0])},${H}Z" fill="var(--claude)" fill-opacity=".12"/>`:"";
-  const nowV=hist.length?hist[hist.length-1][1]:sum;
+  const nowV=fullProj.length?fullProj[0][1]:sum,nowIn=t0>=X0&&t0<=X1;
   const svg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
     <line x1="0" x2="${W}" y1="${Y(ccap)}" y2="${Y(ccap)}" stroke="var(--border)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>
     <line x1="0" x2="${W}" y1="${H-.5}" y2="${H-.5}" stroke="var(--border)" vector-effect="non-scaling-stroke"/>
-    <line x1="${X(t0)}" x2="${X(t0)}" y1="0" y2="${H}" stroke="var(--muted-foreground)" stroke-opacity=".5" vector-effect="non-scaling-stroke"/>
+    ${nowIn?`<line x1="${X(t0)}" x2="${X(t0)}" y1="0" y2="${H}" stroke="var(--muted-foreground)" stroke-opacity=".5" vector-effect="non-scaling-stroke"/>`:""}
     ${area}${hist.length>1?`<path d="${line(hist)}" fill="none" stroke="var(--claude)" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`:""}
     ${proj.length>1?`<path d="${line(proj)}" fill="none" stroke="var(--claude)" stroke-width="2" stroke-dasharray="5 4" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`:""}
-    <circle cx="${X(t0)}" cy="${Y(nowV)}" r="3.5" fill="var(--claude)"/></svg>`;
-  const zk=proj.findIndex(p=>p[1]<=.5),nx=(rec.events||[]).filter(e=>e.gain>=1&&e.at>t0).sort((a,b)=>a.at-b.at)[0];
+    </svg>${nowIn?`<i class="mn-dot" style="left:${(+X(t0)/W*100).toFixed(2)}%;top:${Y(nowV)}px"></i>`:""}`;
+  const zk0=fullProj.findIndex(p=>p[0]<=t0+3*DAY&&p[1]<=.5),zk=zk0>=0&&fullProj[zk0][0]<=t0+3*DAY?zk0:-1,nx=(rec.events||[]).filter(e=>e.gain>=1&&e.at>t0).sort((a,b)=>a.at-b.at)[0];
   const when=t=>esc(fmtShort(new Date(t*1000)));
   const sumTxt=!pf.br.ok?"Coletando ritmo: a projeção aparece com algumas horas de uso."
-    :`Ritmo <b>~${fmt1(pf.br.total/24)}%/h</b> · ${zk>=0?`todas zeram <b>${when(proj[zk][0])}</b>`:"não zera nos próximos 3 dias"}`
+    :`Ritmo <b>~${fmt1(pf.br.total/24)}%/h</b> · ${zk>=0?`todas zeram <b>${when(fullProj[zk][0])}</b>`:"não zera nos próximos 3 dias"}`
       +(nx?`<br>Próxima recarga <b>+${Math.round(nx.gain)}%</b> ${esc(dispName(nx.a))} · ${when(nx.at)}`:"");
   const rings=ord.map(a=>{const wk=weeklyOf(a),fc=winFc(a,wk,now,pf),i=winInfo(wk,now,fc);
     return `<div class="mn-acc">${ring(i.reset?i.left:null,{size:54,stroke:6,color:ACC[a.auth_id],keep:1,pace:i.pace,fable:wk.fable_percent})}<div class="mn-ai"><div class="nm">${esc(dispName(a))}</div>
       <div class="rs">${i.reset?"reseta em "+esc(fmtLeft(i.reset-now)):"janela não iniciada"}</div>${wk.fable_percent>0?`<div class="rs">Fable gastou ${fmt1(wk.fable_percent)}%</div>`:""}</div></div>`}).join("");
   const off=all.length-accs.length;
-  el.innerHTML=`<div class="mn-h"><div><div class="mn-k">Capacidade semanal</div><div class="mn-n">${Math.round(sum)}%<small>de ${cap}%</small></div></div><div class="mn-use">${use}</div></div>
+  const rel=t=>{const d=t-t0,h=Math.abs(d)/3600;if(h<.5)return"agora";
+    const s=h>=48?Math.round(h/24)+" dias":h>=1.5?Math.round(h)+"h":Math.round(h*60)+"min";return d<0?s+" atrás":"+"+s};
+  const zoomed=mz[0]!==MZ_DEF[0]||mz[1]!==MZ_DEF[1];
+  const xl=`<span>${esc(rel(X0))}</span>${nowIn&&(t0-X0)/(X1-X0)>.18&&(X1-t0)/(X1-X0)>.18?`<span class="mn-now" style="left:${((t0-X0)/(X1-X0)*100).toFixed(2)}%">agora</span>`:""}<span>${esc(rel(X1))}</span>`;
+  el.innerHTML=`<div class="mn-h"><div><div class="mn-k">Capacidade semanal<button type="button" class="mn-go" data-mopen aria-label="Abrir o painel no navegador" title="Abrir o painel no navegador"><svg class="i" viewBox="0 0 24 24"><path d="M7 17L17 7M9 7h8v8"/></svg></button></div><div class="mn-n">${Math.round(sum)}%<small>de ${cap}%</small></div></div><div class="mn-use">${use}</div></div>
     <div class="segbar">${bar}</div>
-    <div class="mn-ch">${svg}<div class="mn-x"><span>3 dias atrás</span><span>agora</span><span>+3 dias</span></div></div>
+    <div class="mn-ch" title="Roda do mouse: zoom · arraste: mover · duplo clique: voltar">${svg}</div><div class="mn-x">${xl}</div>
     <div class="mn-sum">${sumTxt}</div>
-    <button type="button" class="mn-tg" data-mt aria-expanded="${miniOpen}">${ICON_CHEV}<span>${miniOpen?"Esconder contas":"Contas"}</span></button>
-    ${miniOpen?`<div class="mn-accs">${rings}</div>${off?`<div class="mn-k">${off} conta${off>1?"s":""} sem dados (desconectada)</div>`:""}`:""}
-    <div class="mn-ft">${upd}<button type="button" data-mopen>Abrir painel</button></div>`;
+    <div class="mn-accs">${rings}</div>${off?`<div class="mn-k">${off} conta${off>1?"s":""} sem dados (desconectada)</div>`:""}
+    <div class="mn-ft">${upd}${zoomed?`<button type="button" data-mz0>voltar ao zoom normal</button>`:""}</div>`;
   miniSize();
 }
 if(MINI){document.body.classList.add("mini","ready");
   $("#mini").addEventListener("click",e=>{
-    if(e.target.closest("[data-mt]")){miniOpen=!miniOpen;store.set("usage.miniOpen",miniOpen?"1":"0");renderMini();return}
+    if(e.target.closest("[data-mz0]")){mz=MZ_DEF.slice();renderMini();return}
     if(e.target.closest("[data-mopen]")){if(window.ipc)miniPost("open");else window.open("/usage/","_blank")}});
   addEventListener("keydown",e=>{if(e.key==="Escape")miniPost("hide")});
+  // Zoom and pan of the chart (the panel is re-rendered, so the listeners live on #mini and the window).
+  const mini=$("#mini");let mraf=0,mdrag=null;
+  const mredraw=()=>{if(!mraf)mraf=requestAnimationFrame(()=>{mraf=0;renderMini()})};
+  mini.addEventListener("wheel",e=>{const ch=e.target.closest(".mn-ch");if(!ch)return;e.preventDefault();
+    const r=ch.getBoundingClientRect(),f=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),w=mz[1]-mz[0];
+    if(e.shiftKey||Math.abs(e.deltaX)>Math.abs(e.deltaY)){const d=(Math.abs(e.deltaX)>Math.abs(e.deltaY)?e.deltaX:e.deltaY)/r.width*w;mzSet(mz[0]+d,mz[1]+d)}
+    else{const nw=w*Math.exp(e.deltaY*(e.deltaMode===1?16:1)*.0015),at=mz[0]+f*w;mzSet(at-f*nw,at-f*nw+nw)}
+    mredraw()},{passive:false});
+  mini.addEventListener("pointerdown",e=>{const ch=e.target.closest(".mn-ch");if(!ch||e.button!==0)return;
+    mdrag={x:e.clientX,m:mz.slice(),w:ch.getBoundingClientRect().width||1,id:e.pointerId};ch.classList.add("drag")});
+  addEventListener("pointermove",e=>{if(!mdrag||e.pointerId!==mdrag.id)return;if(!e.buttons){mdrag=null;return}
+    const d=-(e.clientX-mdrag.x)/mdrag.w*(mdrag.m[1]-mdrag.m[0]);mzSet(mdrag.m[0]+d,mdrag.m[1]+d);mredraw()});
+  addEventListener("pointerup",()=>{mdrag=null});
+  mini.addEventListener("dblclick",e=>{if(e.target.closest(".mn-ch")){mz=MZ_DEF.slice();renderMini()}});
   // The app shows the popup again later: refresh at once instead of waiting for the next poll.
   addEventListener("focus",()=>load(false,true))}
 {const t=$("#trayDl");if(t)t.href="/usage/download/tray?base="+encodeURIComponent(location.origin)}

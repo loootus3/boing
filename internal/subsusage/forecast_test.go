@@ -36,30 +36,3 @@ func TestIsModelRequest(t *testing.T) {
 		t.Error("GET counted")
 	}
 }
-
-func TestRecordCurveKeepsFirstAndThins(t *testing.T) {
-	h := &History{data: newHistoryData()}
-	h.data.Providers["a"], h.data.Providers["x"] = "claude", "codex"
-	now := time.Date(2026, 11, 12, 10, 20, 0, 0, time.UTC)
-	post := func(at time.Time, v float64) bool {
-		return h.RecordForecast(ForecastPost{Curve: &CurvePost{Step: 7200, Pace: 2.5, Accs: map[string][]float64{"a": {v, v - 1, 130}, "x": {1, 2}}}}, at)
-	}
-	if !post(now, 50) {
-		t.Fatal("curve not stored")
-	}
-	if post(now.Add(10*time.Minute), 10) {
-		t.Fatal("second curve of the hour stored")
-	}
-	c := h.data.Curves[now.Truncate(time.Hour).Unix()]
-	if got := c.Accs["a"]; len(got) != 3 || got[0] != 50 || got[2] != 100 || c.Accs["x"] != nil {
-		t.Fatalf("got %+v", c.Accs)
-	}
-	if h.RecordForecast(ForecastPost{Curve: &CurvePost{Step: 60, Accs: map[string][]float64{"a": {1, 2}}}}, now.Add(time.Hour)) {
-		t.Fatal("bad step accepted")
-	}
-	// After curveDenseKeep, only hours divisible by 6 stay (10:00 UTC is not one).
-	post(now.Add(curveDenseKeep+2*time.Hour), 40)
-	if _, ok := h.data.Curves[now.Truncate(time.Hour).Unix()]; ok {
-		t.Fatal("old off-grid curve kept")
-	}
-}

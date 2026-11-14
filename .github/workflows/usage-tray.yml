@@ -25,6 +25,9 @@ jobs:
         with:
           workspaces: tools/usage-tray
       - run: cargo build --release
+        env:
+          # The build id the app compares with the proxy's published copy to update itself.
+          TRAY_BUILD: ${{ github.sha }}
       - uses: actions/upload-artifact@v4
         with:
           name: usage-tray

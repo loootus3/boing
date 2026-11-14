@@ -189,7 +189,9 @@ func Register(engine *gin.Engine, h Handlers) {
 			t.Refresh(c.Request.Context(), false)
 		}
 		c.Header("Cache-Control", "no-store")
-		c.JSON(http.StatusOK, gin.H{"now": time.Now().UTC(), "accounts": t.Snapshot()})
+		// tray_build: the tray app this server publishes; the app polls this endpoint and updates itself when
+		// its own build differs.
+		c.JSON(http.StatusOK, gin.H{"now": time.Now().UTC(), "accounts": t.Snapshot(), "tray_build": trayBuild()})
 	})
 	// {"order": ["<auth id>", ...]} sets the accounts Fable 5.2 uses, first to last; accounts left
 	// out keep normal routing for it. An empty order clears it.
@@ -261,10 +263,6 @@ func Register(engine *gin.Engine, h Handlers) {
 	g.GET("/api/history", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, DefaultHistory().ViewWith(c.Query("range"), c.Query("heat"), time.Now().In(queryLocation(c.Query("tz")))))
-	})
-	g.GET("/api/projections", func(c *gin.Context) {
-		c.Header("Cache-Control", "no-store")
-		c.JSON(http.StatusOK, gin.H{"curves": DefaultHistory().Curves()})
 	})
 	g.GET("/api/quota_archive", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
