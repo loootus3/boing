@@ -446,7 +446,7 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-capl{position:absolute;font-size:12px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap}
 .tl-capl[data-tip]{pointer-events:auto;cursor:help}
 .tl-capl{right:0}
-.tl-chip{position:absolute;transform:translateX(-50%);z-index:2;font-size:12px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;white-space:nowrap;pointer-events:none;
+.tl-chip{position:absolute;transform:translateX(-50%);z-index:3;font-size:12px;font-weight:600;line-height:16px;padding:0 6px;border-radius:999px;white-space:nowrap;pointer-events:none;
   background:var(--card);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);color:var(--foreground)}
 .tl-zero{position:absolute;z-index:1;font-size:11.5px;line-height:1.35;color:var(--error-foreground);white-space:nowrap;padding:2px 6px;background:color-mix(in srgb,var(--card) 85%,transparent);border-radius:4px}
 .tl-zero b{font-weight:600;display:inline-flex;align-items:center;gap:5px;line-height:16px}
@@ -541,7 +541,7 @@ body.modal-open .live i::after,body.modal-open .cr-n em.use::after{animation:non
 .md-close:hover{background:var(--accent);color:var(--foreground)}
 .md-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
 .md-lims{display:flex;align-items:flex-start;gap:6px;margin-left:12px;flex:none}
-@media (max-width:640px){.md-head{flex-wrap:wrap}.md-lims{order:5;margin-left:0}}
+@media (max-width:640px){.md-head{flex-wrap:wrap;position:relative;padding-right:36px}.md-lims{order:5;margin-left:0}.md-close{position:absolute;top:0;right:0}}
 .md-lim{display:flex;flex-direction:column;align-items:center;gap:1px;width:52px;text-align:center}
 .md-lim .ring{padding:0}
 .md-lim .ln{font-size:10.5px;line-height:1.1;color:var(--muted-foreground);white-space:nowrap}
@@ -569,7 +569,7 @@ body.modal-open .live i::after,body.modal-open .cr-n em.use::after{animation:non
 .fo-c i.adot{margin-right:5px}
 .fo-c button{display:grid;place-items:center;width:22px;height:22px;border:0;border-radius:999px;background:none;color:var(--muted-foreground);cursor:pointer;font:inherit;line-height:1}
 .fo-c button:hover:not(:disabled){background:var(--accent);color:var(--foreground)}.fo-c button:disabled{opacity:.3;cursor:default}
-.fo-arrow{opacity:.6}.fo select.sel{height:28px;font-size:12.5px}
+.fo-arrow{opacity:.6}.fo-tail{white-space:nowrap}.cm-cov{font-weight:400;color:var(--muted-foreground)}.fo select.sel{height:28px;font-size:12.5px}
 .md-h{display:flex;justify-content:space-between;gap:6px 14px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
 .md-h>span:first-child{font-weight:500;color:var(--foreground)}
 .md-h b{color:var(--foreground);font-weight:600}
@@ -742,7 +742,7 @@ body.mini{overflow:hidden}
   </section>
 
   <section class="blk" id="secTl">
-    <div class="sec-head"><h2 id="tlTitle">Próximos 7 dias</h2><span class="sec-sub" id="tlSub">No ritmo atual, contando as recargas</span></div>
+    <div class="sec-head"><h2 id="tlTitle">Histórico e projeção</h2><span class="sec-sub" id="tlSub">No ritmo atual, contando as recargas</span></div>
     <div class="card tl-card" id="tl"></div>
     <div class="sub fc-acc tabular" id="fcAcc" hidden></div>
   </section>
@@ -863,8 +863,10 @@ function hue(v){let h=0;for(const c of v)h=(h*31+c.charCodeAt(0))|0;return Math.
 // addresses on the same domain don't all collapse to the same pair.
 function initials(v){const l=String(v).split("@")[0].replace(/[^a-z]/gi,"");if(!l)return"?";
   const b=[...l.slice(1)].find(c=>!/[aeiou]/i.test(c))||l[1]||"";return(l[0]+b).toUpperCase()}
+// A display name ending in a number keeps it ("Conta 2" → C2), so numbered accounts stay distinguishable.
+function nameTag(v){const m=/^([a-z])[^\s\d]*\s*(\d{1,2})$/i.exec(String(v).trim());return m?(m[1]+m[2]).toUpperCase():initials(v)}
 // With `c` (the account's identity colour) the avatar wears it, so one colour marks the account everywhere.
-function who(email,c,name){const h=hue(email),ini=name&&initials(name)!=="?"?initials(name):initials(email);
+function who(email,c,name){const h=hue(email),ini=name&&initials(name)!=="?"?nameTag(name):initials(email);
   const st=c?`background:color-mix(in srgb,${c} 22%,transparent);color:var(--foreground)`:`background:oklch(.85 .08 ${h});color:oklch(.35 .1 ${h})`;
   return `<span class="avatar" style="${st}">${esc(ini)}</span>
     <span class="redact" title="${esc(email)}">${name?`<b>${esc(name)}</b><span class="em"> · ${esc(email)}</span>`:esc(email)}</span>`}
@@ -1842,9 +1844,7 @@ function renderTimeline(){
     svg+=runs.filter(r=>r.i>=0&&r.b>V0&&r.a<V1).map(r=>{const x1=X(Math.max(r.a,V0)),x2=X(Math.min(r.b,V1));
       return `<rect x="${x1.toFixed(1)}" y="${BOT-5}" width="${Math.max(.5,x2-x1).toFixed(1)}" height="5" fill="${ACC[accs[r.i].auth_id]}"${r.fut?` opacity=".45"`:""}/>`}).join("")}
   const zNarrow=innerWidth<640,zDay=t=>(d=>fmtWd(d)+" "+d.getDate())(new Date(t*1000));
-  const zlab=zv.map(z=>{const right=P(z.vs)>60;
-    return `<div class="tl-zero" tabindex="0" style="top:${Y(cap)+8}px;${zNarrow?"right:4px":right?`right:${Math.max(0,100-P(z.ve)).toFixed(2)}%`:`left:calc(${P(z.vs).toFixed(2)}% + 8px)`}" data-tip="${esc(`Todas as contas sem cota de ${hm(z.s)} até ${hm(z.e)}${z.open?" (próximo reset, depois do fim do gráfico)":""}`)}">
-      <b>${ICON_X}sem cota: ${esc(zNarrow?zDay(z.s):hm(z.s))} → ${esc(zNarrow?zDay(z.e):hm(z.e))}</b></div>`}).join("");
+  const zlab="";
   // Lowest point of the visible projection (skipped when it is its first point, or zero: the "zerado" label covers that).
   let mk=0;for(let k=1;k<prc.length;k++)if(prc[k][1]<prc[mk][1]-.05)mk=k;
   const minOn=!rateMode&&prc.length>1&&mk>0&&prc[mk][1]>.5;
@@ -1955,11 +1955,11 @@ function renderTimeline(){
   // Axis labels by priority (agora, left edge, then ticks), dropping any that would touch an accepted one.
   const xn=P(t0)/100*W,xs=[],xlab=[];
   if(nowVis)xlab.push({x:xn,t:"agora",first:true});
-  if(past&&V0<=F0+1)xlab.push({x:0,t:"há "+pastLbl.replace(" dias","d"),first:true});
+  if(past&&V0<=F0+1)xlab.push({x:0,t:fmtRange(F0),first:true});
   ticks.forEach(k=>xlab.push({x:P(k.t)/100*W,t:k.l,pct:P(k.t)}));
   let xl="";
   for(const l of xlab){
-    if(!l.first&&(l.x+22>W||(!past&&!zoomed&&l.x<46)))continue;
+    if(!l.first&&(l.x+l.t.length*6.4+6>W||(!past&&!zoomed&&l.x<46)))continue;
     if(xs.some(x=>Math.abs(x-l.x)<46))continue;
     xs.push(l.x);
     xl+=`<span${l.first?` class="first"`:""} style="left:${(l.first?l.x/W*100:l.pct).toFixed(2)}%">${esc(l.t)}</span>`}
@@ -1969,6 +1969,10 @@ function renderTimeline(){
   const CW=46,boxes=[];
   let ov="";
   const narrow=W<560,cwOf=t=>Math.round(t.length*6.6+16),shortN=a=>nm(a).split("@")[0];
+  // Narrow screens: a short tag per account ("Conta 2" → C2), falling back to the e-mail's letters when two collide.
+  const tag0=a=>nameTag(shortN(a)),
+    tags=new Map(accs.map(a=>[a.auth_id,accs.filter(b=>tag0(b)===tag0(a)).length>1?initials(a.email||shortN(a)):tag0(a)])),
+    lbl=a=>narrow?tags.get(a.auth_id)||tag0(a):shortN(a);
   if(rateMode){
     // Refills only change what is left, not the hourly rate: coloured ticks on the baseline, details on hover.
     for(const e of evs){if(e.gain<1||e.x<V0||e.x>V1)continue;
@@ -1984,28 +1988,39 @@ function renderTimeline(){
     // Above the point first, then below it, never across another label or the cap line.
     const cand=[yt2-26,yt2-47,yt2+12,yt2+33,yt2-68,yt2+54,yt2-89].map(t=>Math.max(0,Math.min(BOT-20,t)));
     const hits=t=>boxes.filter(b=>l-cw/2<b.r+4&&l+cw/2>b.l-4&&Math.abs(t-b.t)<19).length;
-    top=cand.find(t=>!hits(t));if(top==null)top=cand.reduce((m,t)=>hits(t)<hits(m)?t:m,cand[0]);
+    top=cand.find(t=>!hits(t));if(top==null){if(narrow)return null;top=cand.reduce((m,t)=>hits(t)<hits(m)?t:m,cand[0])}
     boxes.push({l:l-cw/2,r:l+cw/2,t:top});return{l,top}};
   for(const e of evs)if(e.gain>=1&&e.x>=V0&&e.x<=V1){const x=P(e.x)/100*W;boxes.push({l:x-6,r:x+6,t:Y(e.top)-9})}
   if(!rateMode)boxes.push({l:0,r:W,t:Y(cap)-9});
+  // "Sem cota" labels inside their hatched stretch, as long a text as fits (full, short, icon only), so two
+  // stretches never overlap; the chips keep clear of them and the cap label hides when one reaches it.
+  if(!rateMode){let capHit=false;
+    for(const z of zv){const x0=P(z.vs)/100*W,x1=P(z.ve)/100*W,zw=x1-x0-8,top=Y(cap)+8;
+      const full=`sem cota: ${zNarrow?zDay(z.s):hm(z.s)} → ${zNarrow?zDay(z.e):hm(z.e)}`,txt=[full,"sem cota",""].find(t=>(t?cwOf(t)+12:24)<=zw);
+      if(txt==null)continue;const w=txt?cwOf(txt)+12:24,l=Math.max(0,Math.min(W-w,x0+4));
+      boxes.push({l,r:l+w,t:top});if(l+w>W-150)capHit=true;
+      ov+=`<div class="tl-zero" tabindex="0" style="top:${top}px;left:${l.toFixed(1)}px" data-tip="${esc(`Todas as contas sem cota de ${hm(z.s)} até ${hm(z.e)}${z.open?" (próximo reset, depois do fim do gráfico)":""}`)}"><b>${ICON_X}${esc(txt)}</b></div>`}
+    if(capHit)ov+=`<style>#tlPlot .tl-capl:not(.safe){display:none}</style>`}
+  // Reset credits of the optimal plan: where to redeem each one.
+  if(rsP)for(const r of rsP.rec.redeemed||[]){if(r.ta<V0||r.ta>V1)continue;const a=accs.find(x=>x.auth_id===r.id);if(!a)continue;
+    const x=P(r.ta)/100*W,yt2=Y(r.top),txt=`↻ ${lbl(a)} +${Math.round(r.gain)}%`;
+    ov+=`<i class="tl-dot rs" style="left:${P(r.ta).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
+    const pl=place(x,yt2,txt);if(!pl)continue;const{l,top}=pl;
+    ov+=lead(x,top,yt2,a)+`<div class="tl-chip rs" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>↻ ${esc(lbl(a))}</span> +${Math.round(r.gain)}%</div>`}
   for(const e of evs){if(e.gain<1||e.x<V0||e.x>V1)continue;
-    const x=P(e.x)/100*W,yt2=Y(e.top),txt=`${narrow?initials(nm(e.a)):shortN(e.a)} +${Math.round((e.gain))}%`;
+    const x=P(e.x)/100*W,yt2=Y(e.top),txt=`${lbl(e.a)} +${Math.round((e.gain))}%`;
     ov+=`<i class="tl-dot" style="left:${P(e.x).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"></i>`;
-    const{l,top}=place(x,yt2,txt);
-    ov+=lead(x,top,yt2,e.a)+`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"><span>${esc(narrow?initials(nm(e.a)):shortN(e.a))}</span> +${Math.round((e.gain))}%</div>`}
+    const pl=place(x,yt2,txt);if(!pl)continue;const{l,top}=pl;
+    ov+=lead(x,top,yt2,e.a)+`<div class="tl-chip" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[e.a.auth_id]}"><span>${esc(lbl(e.a))}</span> +${Math.round((e.gain))}%</div>`}
   // Refills already seen in the recorded part: a rise of the weekly remaining between two samples.
   if(past)for(const a of accs){const q=qAllOf(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);
     for(let k=q.length&&q[0].t-F0>3600?0:1;k<q.length;k++){const g=k?q[k].w-q[k-1].w:q[0].w;if(g<3||q[k].t<Math.max(V0,F0)||q[k].t>Math.min(V1,t0))continue;
-      const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),txt=`${narrow?initials(nm(a)):shortN(a)} +${Math.round(g)}%`;
+      const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),txt=`${lbl(a)} +${Math.round(g)}%`;
       ov+=`<i class="tl-dot" style="left:${P(q[k].t).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
-      const{l,top}=place(x,yt2,txt);
-      ov+=lead(x,top,yt2,a)+`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>${esc(narrow?initials(nm(a)):shortN(a))}</span> +${Math.round(g)}%</div>`}}
-  // Reset credits of the optimal plan: where to redeem each one.
-  if(rsP)for(const r of rsP.rec.redeemed||[]){if(r.ta<V0||r.ta>V1)continue;const a=accs.find(x=>x.auth_id===r.id);if(!a)continue;
-    const x=P(r.ta)/100*W,yt2=Y(r.top),txt=`↻ ${narrow?initials(nm(a)):shortN(a)} +${Math.round(r.gain)}%`;
-    ov+=`<i class="tl-dot rs" style="left:${P(r.ta).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
-    const{l,top}=place(x,yt2,txt);
-    ov+=lead(x,top,yt2,a)+`<div class="tl-chip rs" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>↻ ${esc(narrow?initials(nm(a)):shortN(a))}</span> +${Math.round(r.gain)}%</div>`}
+      // Over a long window the past refills are dots only: their labels would crowd out the projection's.
+      if(VS>8*DAY)continue;
+      const pl=place(x,yt2,txt);if(!pl)continue;const{l,top}=pl;
+      ov+=lead(x,top,yt2,a)+`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>${esc(lbl(a))}</span> +${Math.round(g)}%</div>`}}
   if(minOn){const tm=prc[mk][0],vm=prc[mk][1],ym=Y(vm),l=Math.max(60,Math.min(W-60,P(tm)/100*W)),below=ym+26<=BOT;
     ov+=`<i class="tl-dot min" style="left:${P(tm).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
       +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(hm(tm))}</div>`}
@@ -2142,11 +2157,14 @@ function fableWin(wk){
 function fableSt(fw,fc,now){
   if(!fc||100-clampPct(fw.used_percent)<=0)return null;
   const wz=fc.wk&&fc.wk.zero!=null?fc.wk.zero:null,z=fc.zero!=null&&(wz==null||fc.zero<=wz)?fc.zero:wz,how=fc.avg?`\nRitmo ${fc.avg}.`:"";
+  if(z!=null&&z===wz&&z!==fc.zero&&z-now<=60000)return{t:"parado pelo semanal",c:"fast",tip:"O semanal desta conta acabou; o Fable volta a ser usado quando ele resetar."+how};
   if(z!=null)return{t:z-now<=60000?"esgotada":`esgota em ${fmtLeft(z-now)}`,c:"fast",tip:(z===wz&&z!==fc.zero?"Acaba junto com o semanal desta conta.":"No ritmo atual do Fable.")+how};
   if(fc.before!=null)return{t:`sobra ~${Math.round(fc.before)}% no reset`,c:"ok",tip:"No ritmo atual do Fable."+how};
   return null}
 function ringBlock(w,acc,now,st,fc,a){
   const i=winInfo(w,now,fc),l=lvl(i.left),fab=w.kind==="fable";
+  // The "esgotada" chip already says it; don't repeat it in the status line.
+  if(st&&st.t==="esgotada"&&i.left<=0)st=null;
   return `<div class="rb${i.reset?"":" none"}">${ring(i.reset?i.left:null,{pace:i.pace,tip:i.tip,viz:a?winViz(a,w,now,i,fc,acc,w.label,!!i.reset):"",color:acc,keep:1,fable:fab?null:w.fable_percent})}
     <div class="rl">${esc(w.label)}${l?`<span class="chip ${l}">${ICON_ALERT}${i.left<=0?"esgotada":l==="crit"?"crítico":"baixo"}</span>`:""}</div>
     <div class="rs tabular"><span>${i.reset?`reseta em ${fmtLeft(i.reset-now)}`:"janela não iniciada"}</span>${st?`<span class="pc ${st.c}" tabindex="0" data-tip="${esc(st.tip)}">${st.t}</span>`:i.reset&&i.pace!=null&&i.left>0?(d=>`<span class="pc ${d<-5?"fast":""}">${d<-5?"acima do ritmo ideal":d>5?"abaixo do ritmo ideal":"no ritmo ideal"}</span>`)(i.left-i.pace):""}</div></div>`;
@@ -2166,7 +2184,7 @@ function renderFableOrder(){
   const chip=(a,i)=>`<span class="fo-c"><b>${i+1}º</b><i class="adot" style="--c:${ACC[a.auth_id]}"></i>${esc(dispName(a))}${a.mode==="off"?` <span class="mut">(não usar)</span>`:""}
     <button type="button" data-fo="up" data-id="${esc(a.auth_id)}" aria-label="${esc("Subir "+dispName(a))}"${i?"":" disabled"}>‹</button><button type="button" data-fo="down" data-id="${esc(a.auth_id)}" aria-label="${esc("Descer "+dispName(a))}"${i<ord.length-1?"":" disabled"}>›</button><button type="button" data-fo="rm" data-id="${esc(a.auth_id)}" aria-label="${esc("Tirar "+dispName(a)+" da ordem do Fable")}">${ICON_CLOSE}</button></span>`;
   const add=rest.length?`<select class="sel" data-fo="add" aria-label="Adicionar conta à ordem do Fable 5.2"><option value="">+ conta</option>${rest.map(a=>`<option value="${esc(a.auth_id)}">${esc(dispName(a))}</option>`).join("")}</select>`:"";
-  const html=`<span class="fo-l" data-tip="${esc("Ordem em que o Fable 5.2 usa as contas. Vale mesmo para contas em \"Usar por último\"; os outros modelos seguem a ordem normal. Se nenhuma da lista estiver disponível, o Fable segue a ordem normal.")}" tabindex="0">Fable 5.2</span>${ord.length?ord.map(chip).join(`<span class="fo-arrow">→</span>`)+`<span class="fo-arrow">→</span><span>depois, ordem normal</span>`:`<span>ordem normal</span>`}${add}`;
+  const html=`<span class="fo-l" data-tip="${esc("Ordem em que o Fable 5.2 usa as contas. Vale mesmo para contas em \"Usar por último\"; os outros modelos seguem a ordem normal. Se nenhuma da lista estiver disponível, o Fable segue a ordem normal.")}" tabindex="0">Fable 5.2</span>${ord.length?ord.map(chip).join(`<span class="fo-arrow">→</span>`)+`<span class="fo-tail"><span class="fo-arrow">→</span> depois, ordem normal</span>`:`<span>ordem normal</span>`}${add}`;
   if(el.dataset.key===html)return;el.dataset.key=html;el.innerHTML=html;
 }
 async function saveFableOrder(ids){
@@ -2386,7 +2404,9 @@ function accChart(a,i,rec,now,f){
     // Close to the "now" dot, the label goes to the right of its point instead of centred over both.
     if(zero&&inV(zero))ov+=`<i class="tl-dot" style="left:${P(zero).toFixed(2)}%;top:${Y(0)}px;--c:var(--st-crit)"></i><div class="md-zero" style="left:${P(zero).toFixed(2)}%;top:${Y(0)-22}px${inV(t0)&&P(zero)-P(t0)<9?";transform:translateX(5px)":""}">esgota ~${esc(hm(zero))}</div>`;
     if(wk&&inV(t0))ov+=`<i class="tl-dot now" style="left:${P(t0).toFixed(2)}%;top:${Y(pw[pw.length-1][1]).toFixed(1)}px;background:${c}"></i>`;
-    const xl=[{t:t0,l:"agora",now:1},...ticks].reduce((o,k)=>{const x=P(k.t);if(!o.some(z=>Math.abs(z.x-x)<5.5)&&x>2&&x<97)o.push({...k,x});return o},[]);
+    // Minimum gap in % of the plot, from the width the modal will have (labels are ~50px wide).
+    const mgap=Math.max(5.5,5600/Math.max(200,Math.min(innerWidth,760)-90));
+    const xl=[{t:t0,l:"agora",now:1},...ticks].reduce((o,k)=>{const x=P(k.t);if(!o.some(z=>Math.abs(z.x-x)<mgap)&&x>2&&x<97)o.push({...k,x});return o},[]);
     const seg=`<div class="seg md-z" data-tip="${esc("Roda do mouse (ou pinça): zoom\nArraste: selecionar um trecho para ampliar\nCom zoom: arraste para mover, shift + arraste seleciona\nDuplo clique: ver o período inteiro")}">${[["3d","3 dias"],["week","7 dias"],["hist","Tempo todo"]].map(([k,l])=>{const on=!v.custom&&mdRange===k;return `<button type="button" data-mdz="${k}" aria-pressed="${on}"${on?` class="on"`:""}>${l}</button>`}).join("")}</div>`;
     const zoomed=VS<F1-F0-1;
     return `<div class="md-tl"><div class="md-leg tl-leg">${leg}</div>${seg}</div>
@@ -2664,9 +2684,13 @@ function renderActivity(){
   plot.onfocus=()=>{if(total)kshow()};plot.onblur=plot.onmouseleave;
   // Today is still filling up: a light band over its last half-step says so.
   if(!hourly&&n>1&&total){$("#chartSvg").insertAdjacentHTML("beforeend",`<rect class="partial" x="${X((n-1.25)*SUB).toFixed(1)}" y="0" width="${(960-X((n-1.25)*SUB)).toFixed(1)}" height="260"/>`);
-    plot.insertAdjacentHTML("beforeend",`<span class="vlab part" style="left:${(X((n-1.25)*SUB)/960*100).toFixed(2)}%">hoje, parcial</span>`)}
+    plot.insertAdjacentHTML("beforeend",`<span class="vlab part" style="right:4px">hoje, parcial</span>`)}
   // Few days: mark each real data point with its total, so the curve never hides what was measured.
+  // On a narrow plot a value label is left out when it would touch its right-hand neighbour (today's always stays).
+  const pw=plot.clientWidth||960,vspan=i=>{const c=X(i*SUB)/960*pw,w=fmtMetric(totals[i]).length*6.8+6;return i===0?[c,c+w]:i===n-1?[c-w,c]:[c-w/2,c+w/2]},vshow=new Set();
+  for(let i=n-1,lim=Infinity;i>=0;i--)if(totals[i]>0){const[l,r]=vspan(i);if(r+4<=lim){vshow.add(i);lim=l}}
   if(!hourly&&total&&n>1&&n<=10)plot.insertAdjacentHTML("beforeend",totals.map((v,i)=>{if(!(v>0))return"";const x=X(i*SUB)/960*100,y=Y(v)/260*100;
+    if(!vshow.has(i))return `<i class="vpt" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%"></i>`;
     return `<i class="vpt" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%"></i><span class="vlab" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%;transform:translate(${i===0?"0":i===n-1?"-100%":"-50%"},-150%)">${fmtMetric(v)}</span>`}).join(""));
 
   const cur=sumTotals(h.accounts,h.providers),{inp,out,cache,cw,req,fail,unpriced,cs:cs$,saved,tok,hit}=cur;
@@ -2872,8 +2896,10 @@ function renderClients(h){
   const el=$("#clientCost");if(!el)return;
   const rows=Object.entries(h.clients||{}).map(([k,c])=>({k,req:c.requests||0,c:c.cost||0})).sort((x,y)=>y.c-x.c||y.req-x.req);
   el.hidden=!rows.length;if(!rows.length){el.innerHTML="";return}
-  const top=rows.reduce((s,r)=>s+r.c,0);
-  el.innerHTML=`<div class="cm-h" data-tip="Identificado pelo User-Agent de cada requisição. Contado desde que o rastreio por app começou." tabindex="0">Custo por app</div>`+rows.map(r=>{
+  const top=rows.reduce((s,r)=>s+r.c,0),seen=rows.reduce((s,r)=>s+r.req,0),all=sumTotals(h.accounts,h.providers).req||0;
+  // App tracking started later than the other counters: say how much of the window it covers.
+  const cov=all>0&&seen<all*.95?` <span class="cm-cov">· ${fmtCount(seen)} de ${fmtCount(all)} req identificadas</span>`:"";
+  el.innerHTML=`<div class="cm-h" data-tip="Identificado pelo User-Agent de cada requisição. Contado desde que o rastreio por app começou." tabindex="0">Custo por app${cov}</div>`+rows.map(r=>{
     const w=top>0?Math.max(r.c>0?2:0,r.c/top*100):0;
     return `<div class="cm-row"><span class="cm-n">${esc(r.k)}</span><span class="cm-r">${fmtCount(r.req)} req</span><span class="cm-t">${top>0?fmtPct(r.c/top):""}</span>`
       +`<span class="cm-b"><i style="width:${w.toFixed(1)}%"></i></span><span class="cm-c">${fmtUSD(r.c)}</span></div>`}).join("");
@@ -3333,8 +3359,8 @@ function renderMini(){
     :`Ritmo <b>~${fmt1(pf.br.total/24)}%/h</b> · ${zk>=0?`todas zeram <b>${when(fullProj[zk][0])}</b>`:"não zera nos próximos 3 dias"}`
       +(nx?`<br>Próxima recarga <b>+${Math.round(nx.gain)}%</b> ${esc(dispName(nx.a))} · ${when(nx.at)}`:"");
   const rings=ord.map(a=>{const wk=weeklyOf(a),fc=winFc(a,wk,now,pf),i=winInfo(wk,now,fc);
-    return `<div class="mn-acc">${ring(i.reset?i.left:null,{size:54,stroke:6,color:ACC[a.auth_id],keep:1,pace:i.pace,fable:wk.fable_percent})}<div class="mn-ai"><div class="nm">${esc(dispName(a))}</div>
-      <div class="rs">${i.reset?"reseta em "+esc(fmtLeft(i.reset-now)):"janela não iniciada"}</div>${wk.fable_percent>0?`<div class="rs">Fable gastou ${fmt1(wk.fable_percent)}%</div>`:""}</div></div>`}).join("");
+    return `<div class="mn-acc">${ring(i.reset?i.left:null,{size:54,stroke:6,color:ACC[a.auth_id],keep:1,pace:i.pace,fable:wk.fable_percent})}<div class="mn-ai"><div class="nm" title="${esc(dispName(a))}">${esc(dispName(a))}</div>
+      <div class="rs" title="${i.reset?"reseta em "+esc(fmtLeft(i.reset-now)):""}">${i.reset?"↻ "+esc(fmtLeft(i.reset-now)):"não iniciada"}</div>${wk.fable_percent>0?`<div class="rs" title="Fable gastou ${fmt1(wk.fable_percent)}% do semanal">Fable ${Math.round(wk.fable_percent)}%</div>`:""}</div></div>`}).join("");
   const off=all.length-accs.length;
   const rel=t=>{const d=t-t0,h=Math.abs(d)/3600;if(h<.5)return"agora";
     const s=h>=48?Math.round(h/24)+" dias":h>=1.5?Math.round(h)+"h":Math.round(h*60)+"min";return d<0?s+" atrás":"+"+s};
