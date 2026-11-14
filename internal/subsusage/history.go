@@ -796,10 +796,30 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 			view.Quota[id] = markProxied(append([]quotaPoint(nil), points[i:]...), h.data.Hours[id])
 		}
 	}
-	view.Forecasts = h.forecastsView()
+	// Forecasts of the quota retention only (the poll stays small); older ones come with QuotaArchive.
+	view.Forecasts = h.forecastsView(minQuota, math.MaxInt64)
 	view.HourModels = hourModels(h.data.Hours, h.data.Providers, minQuota)
 	view.roundCosts()
 	return view
+}
+
+// QuotaArchive returns, per credential, the stored quota samples older than the history view's
+// quota retention plus an hour (hourly, see pruneLocked), with Proxy marks set, and the forecasts of
+// those hours: the page joins them to the view's recent data for the long-range chart and refetches
+// them every 30 min, so the hour of overlap covers the time in between. Credentials without old
+// samples are left out.
+func (h *History) QuotaArchive(now time.Time) (map[string][]quotaPoint, map[int64]map[string]*forecastSnap) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	minQuota := now.Add(-quotaKeepDuration + time.Hour).Unix()
+	out := make(map[string][]quotaPoint)
+	for id, points := range h.data.Quota {
+		i := sort.Search(len(points), func(i int) bool { return points[i].T >= minQuota })
+		if i > 0 {
+			out[id] = markProxied(append([]quotaPoint(nil), points[:i]...), h.data.Hours[id])
+		}
+	}
+	return out, h.forecastsView(math.MinInt64, minQuota)
 }
 
 // QuotaAll returns a copy of every stored quota sample of a credential, compacted and full

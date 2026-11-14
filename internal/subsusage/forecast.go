@@ -8,7 +8,8 @@ import (
 // forecastHorizons are the hours ahead each forecast snapshot predicts.
 var forecastHorizons = [4]int{3, 6, 12, 24}
 
-const forecastKeep = 8 * 24 * time.Hour
+// Kept for a month so the long-range chart can compare old forecasts with what happened.
+const forecastKeep = 31 * 24 * time.Hour
 
 // forecastSnap is what the page predicted for one account at the start of one hour: the
 // remaining % of the weekly window (W) and of Fable's own allowance (F) forecastHorizons hours
@@ -78,10 +79,13 @@ func (h *History) RecordForecast(p ForecastPost, now time.Time) bool {
 	return true
 }
 
-// forecastsView copies the stored snapshots; h.mu must be held.
-func (h *History) forecastsView() map[int64]map[string]*forecastSnap {
-	out := make(map[int64]map[string]*forecastSnap, len(h.data.Forecasts))
+// forecastsView copies the stored snapshots of hours in [from, to); h.mu must be held.
+func (h *History) forecastsView(from, to int64) map[int64]map[string]*forecastSnap {
+	out := make(map[int64]map[string]*forecastSnap)
 	for t, m := range h.data.Forecasts {
+		if t < from || t >= to {
+			continue
+		}
 		c := make(map[string]*forecastSnap, len(m))
 		for id, s := range m {
 			cp := *s
