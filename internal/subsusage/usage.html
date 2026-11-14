@@ -428,6 +428,22 @@ body.tl-panning,body.tl-panning *{cursor:grabbing!important;user-select:none}
 .tl-line{fill:none;stroke:var(--claude);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .tl-line.proj{stroke-dasharray:6 5}
 .tl-cmp{fill:none;stroke:var(--st-warn);stroke-width:2;stroke-dasharray:1 4;stroke-linecap:round;stroke-linejoin:round}
+.tl-pj{margin-top:14px;border-top:1px solid color-mix(in srgb,var(--border) 70%,transparent);padding-top:12px;font-size:12px}
+.tl-pj-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:8px;color:var(--muted-foreground)}
+.tl-pj-h b{color:var(--foreground);font-weight:600;font-size:13px}
+.tl-pj-l{max-height:244px;overflow:auto;display:flex;flex-direction:column;gap:2px;overscroll-behavior:contain}
+.tl-pj-r{display:grid;grid-template-columns:minmax(92px,1.1fr) minmax(0,1.6fr) minmax(56px,.6fr) minmax(70px,.8fr);gap:10px;align-items:center;text-align:left;width:100%;padding:6px 8px;border:0;border-radius:6px;background:none;color:var(--muted-foreground);font:inherit;cursor:pointer}
+.tl-pj-r:hover{background:var(--accent)}
+.tl-pj-r.on{background:color-mix(in srgb,var(--st-warn) 14%,transparent);color:var(--foreground)}
+.tl-pj-r b{color:var(--foreground);font-weight:600}
+.tl-pj-r .good{color:var(--st-good)}.tl-pj-r .warn{color:var(--st-warn)}.tl-pj-r .crit{color:var(--st-crit)}
+.tl-pj-r.hd{cursor:default;font-size:11px;padding-top:0;padding-bottom:2px}.tl-pj-r.hd:hover{background:none}
+.tl-pj-e{color:var(--muted-foreground)}
+@media (max-width:640px){.tl-pj-r{grid-template-columns:minmax(80px,1fr) minmax(0,1.4fr) minmax(60px,.8fr)}.tl-pj-r>:nth-child(3){display:none}}
+.tl-line.rs{stroke:var(--st-good);stroke-dasharray:3 4}
+.tl-chip.rs{border-color:var(--st-good);border-width:1.5px}
+.tl-leg i.rs{height:0;background:none;border-top:2px dashed var(--st-good);border-radius:0}
+.tl-cmp.start{stroke-width:7;stroke-dasharray:none}
 .tl-leg i.cmp{height:0;background:none;border-top:2px dotted var(--st-warn);border-radius:0}
 .tl-plot .gnow{stroke:var(--muted-foreground);stroke-width:1;opacity:.7}
 .tl-nowl{position:absolute;top:0;transform:translateX(-50%);z-index:1;font-size:11.5px;line-height:15px;color:var(--muted-foreground);pointer-events:none;white-space:nowrap;padding:0 4px;background:var(--card);border-radius:4px}
@@ -815,8 +831,10 @@ const SCEN={same:{l:"No ritmo atual",m:1},half:{l:"Na metade do ritmo",m:.5},dou
 const tlo={view:store.get("usage.tlview","left")==="rate"?"rate":"left",scen:SCEN[store.get("usage.scen","same")]?store.get("usage.scen","same"):"same",
   hide:new Set((()=>{try{const v=JSON.parse(store.get("usage.tlhide","[]"));return Array.isArray(v)?v:[]}catch(_){return[]}})()),menu:false,
   // "Previsto × real": 0 off, else the horizon (h) of the stored forecasts drawn over the recorded line.
-  cmp:(v=>[0,3,6,12,24].includes(v)?v:0)(+store.get("usage.tlcmp","0")),cmpH:(v=>[3,6,12,24].includes(v)?v:24)(+store.get("usage.tlcmpH","24"))};
-const state={burn:(b=>["auto","1","3","6"].includes(b)?b:"auto")(store.get("usage.burn","auto")),period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),heat:(s=>s==="all"?"all":"28d")(store.get("usage.heat","28d")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
+  cmp:(v=>[0,3,6,12,24].includes(v)?v:0)(+store.get("usage.tlcmp","0")),cmpH:(v=>[3,6,12,24].includes(v)?v:24)(+store.get("usage.tlcmpH","24")),
+  // "Resets ótimos": where the reset credits gain the most, drawn as a second projection.
+  rs:store.get("usage.tlrs","0")==="1"};
+const state={burn:(b=>["auto","1","3","6"].includes(b)?b:"auto")(store.get("usage.burn","auto")),shape:store.get("usage.shape","day")==="flat"?"flat":"day",period:store.get("usage.period","7d"),metric:(m=>["cost","tokens","requests"].includes(m)?m:"cost")(store.get("usage.metric","cost")),stack:(s=>s==="model"?"model":"account")(store.get("usage.stack","account")),heat:(s=>s==="all"?"all":"28d")(store.get("usage.heat","28d")),data:{accounts:[]},hist:null,quota7:null,dataNow:0,recvAt:0};
 $("#emptyLogo").innerHTML=LOGO.claude;
 
 /* formatting (after T3 Code usageFormat) */
@@ -916,6 +934,56 @@ const lvlColor=l=>l==="crit"?"var(--st-crit)":l==="low"?"var(--st-warn)":"var(--
 const gaugeColor=(left,acc)=>lvl(left)?lvlColor(lvl(left)):(acc||"var(--muted-foreground)");
 const quotaOf=id=>(((state.hist&&state.hist.quota)||{})[id])||[];
 const quota7Of=id=>((state.quota7||{})[id]||[]);
+// Memo of a heavy computation: recomputed only when one of `deps` changes (compared with ===).
+function memo(tag,deps,fn){const c=memo.c||(memo.c=new Map()),h=c.get(tag);
+  if(h&&h.deps.length===deps.length&&h.deps.every((d,i)=>d===deps[i]))return h.v;
+  const v=fn();c.set(tag,{deps,v});return v}
+// The account's scheduled weekly reset in [a-15min, b+15min] (unix s), from its current reset_at and period; null
+// when there is none (an unknown account counts as one, so old data keeps its resets).
+function natReset(id,a,b){
+  const ac=id&&((state.data&&state.data.accounts)||[]).find(x=>x.auth_id===id),w=ac&&weeklyOf(ac);
+  if(!w||!w.reset_at)return a;
+  const d=w.duration_sec||7*DAY,r=Date.parse(w.reset_at)/1000;if(!(r>0))return a;
+  const R=r+Math.ceil((a-900-r)/d)*d;return R<=b+900?Math.max(a,Math.min(b,R)):null}
+// Weekly % spent between two samples of account `id`. A rise of 10+ points across the account's scheduled weekly
+// reset: what is below 100% at the later sample was spent after it. Any other rise (a redeemed reset credit,
+// rounding) counts nothing.
+const wDrop=(x,y,id)=>x.w>y.w?x.w-y.w:y.w-x.w>=10&&natReset(id,x.t,y.t)!=null?Math.max(0,100-y.w):0;
+// Spend segments [t0,w0,t1,w1] of one account over every sample (qAllOf), sorted; a reset becomes a drop from 100.
+const wSegs=id=>memo("segs:"+id,[state.quota7,state.qarch],()=>{const q=qAllOf(id).filter(p=>p.w!=null).sort((x,y)=>x.t-y.t),sg=[];
+  for(let k=1;k<q.length;k++){const x=q[k-1],y=q[k];if(!(y.t>x.t))continue;const d=wDrop(x,y,id);
+    // A reset's spend starts at the reset, not at the sample before it.
+    if(d>0)sg.push(x.w>y.w?[x.t,x.w,y.t,y.w]:[natReset(id,x.t,y.t)??x.t,y.w+d,y.t,y.w])}
+  return sg});
+// Weekly % one account spent in each unix hour: {h0 (first hour), v (Float64Array)}; built once per data change.
+const hourSpend=id=>memo("hs:"+id,[state.quota7,state.qarch],()=>{const sg=wSegs(id);if(!sg.length)return{h0:0,v:new Float64Array(0)};
+  const h0=Math.floor(sg[0][0]/3600),h1=Math.floor(sg[sg.length-1][2]/3600),v=new Float64Array(h1-h0+1);
+  for(const[xs,xv,ys,yv]of sg){const r=(xv-yv)/(ys-xs);let s=xs;
+    while(s<ys){const hb=Math.floor(s/3600),e=Math.min(ys,(hb+1)*3600);v[hb-h0]+=r*(e-s);s=e}}
+  return{h0,v}});
+const spendIn=(id,a,b)=>{const{h0,v}=hourSpend(id);let d=0;const ha=Math.floor(a/3600),hb=Math.ceil(b/3600);
+  for(let h=Math.max(ha,h0);h<Math.min(hb,h0+v.length);h++){const s=Math.max(a,h*3600),e=Math.min(b,(h+1)*3600);if(e>s)d+=v[h-h0]*(e-s)/3600}
+  return d};
+// Shape of the pace over the coming days, measured on the last 14 days of every account: use per local hour of the
+// day (smoothed, trusted more with more days, mean 1) and the mean over the last 7 days (%/h, all accounts).
+// The projection drifts from the current pace to that mean (half-life PACE_REVERT_H) along the daily curve: in a
+// backtest on this data it cut the error at 12h by ~9% and at 24h by ~3% against a flat pace.
+const PACE_REVERT_H=24;
+const paceProfile=accs=>memo("prof:"+accs.map(a=>a.auth_id).join(","),[state.quota7,state.qarch,Math.floor(Date.now()/600e3)],()=>{
+  const now=Date.now()/1000,H1=Math.floor(now/3600),H0=H1-14*24,sum=new Array(24).fill(0),cnt=new Array(24).fill(0);let first=Infinity,wk=0;
+  for(const a of accs){const{h0,v}=hourSpend(a.auth_id);if(v.length)first=Math.min(first,h0)}
+  if(!isFinite(first))return null;
+  for(let h=Math.max(H0,first);h<H1;h++){let d=0;for(const a of accs){const{h0,v}=hourSpend(a.auth_id);const i=h-h0;if(i>=0&&i<v.length)d+=v[i]}
+    const lh=new Date(h*3600e3).getHours();sum[lh]+=d;cnt[lh]++;if(h>=H1-7*24)wk+=d}
+  const days=(H1-Math.max(H0,first))/24;if(days<1)return null;
+  const raw=sum.map((x,i)=>cnt[i]?x/cnt[i]:0),m=raw.reduce((a,b)=>a+b,0)/24;if(!(m>0))return null;
+  const sm=raw.map((x,i)=>(raw[(i+23)%24]+2*x+raw[(i+1)%24])/4/m),w=days/(days+3);
+  return{by:sm.map(x=>1-w+w*x),mean:wk/Math.min(7*24,H1-Math.max(H0,first)),days}});
+// Multiplier of the current pace at time t (s) for the projection, or null to keep it flat.
+function paceShape(accs,curPerHour,now){
+  if(state.shape==="flat"||!(curPerHour>0))return null;const pr=paceProfile(accs);if(!pr)return null;
+  const t0=now/1000,k=Math.LN2/(PACE_REVERT_H*3600),L=pr.mean/curPerHour;
+  return t=>{const e=Math.exp(-k*Math.max(0,t-t0));return pr.by[new Date(t*1000).getHours()]*(e+(1-e)*L)}}
 // Every sample of an account for the long-range chart: the archive (hourly samples older than the view's 8 days,
 // fetched apart) joined to the recent ones. Falls back to the recent samples until the archive arrives.
 const qAllOf=id=>{const q=quota7Of(id),a=(state.qarch||{})[id];if(!a||!a.length)return q;if(!q.length)return a;
@@ -1141,7 +1209,11 @@ const useOrder=(x,y)=>(x.last-y.last)||(x.reset-y.reset);
 // Each 1% of weekly also spends fiveHourRatios() % of the 5h window (it opens on first use and lasts 5h), so an
 // account gives at most s5/k5 weekly % before the window resets. Demand the 5h limits block is not served (the
 // pool stays put, it does not count as running out); only an empty pool ends the runway.
-function simulate(accs,perHour,now,rec,info,ext){
+// `shape(t)` (optional) scales the pace and the outside use at time t (see paceShape). `resets` (optional): reset
+// credits redeemed during the run, [{id, at (unix s), kind}]; a Fable one gives back the weekly % Fable spent since
+// its last refill and refills Fable, and that account then gets no more Fable until its weekly reset (the way they
+// are used); a weekly/full one refills the weekly window. Each applied one is reported in rec.redeemed.
+function simulate(accs,perHour,now,rec,info,ext,shape,resets){
   const R=r5Of(),t0=now/1000;
   const pool=accs.map((a,i)=>{const w=weeklyOf(a),sh=shortOf(a),k5=R&&sh?(R.by[a.auth_id]||R.pool):0,sr=sh&&sh.reset_at?Date.parse(sh.reset_at)/1000:0;
     return{a,i,last:a.mode==="last"?1:0,left:Math.max(0,100-w.used_percent),reset:new Date(w.reset_at)/1000,period:w.duration_sec||7*DAY,
@@ -1165,11 +1237,20 @@ function simulate(accs,perHour,now,rec,info,ext){
   const flefts=()=>{const o=new Array(accs.length).fill(null);for(const p of pool)if(p.fallow)o[p.i]=Math.max(0,p.fab/p.fallow*100);return o};
   const push=(tt,v,l)=>{rec.ts.push(tt);rec.tot.push(v);rec.lefts.push(l||lefts());rec.flefts.push(flefts())},lastT=()=>rec.ts[rec.ts.length-1];
   pool.sort(useOrder);
-  if(rec){rec.ts=[];rec.tot=[];rec.lefts=[];rec.flefts=[];rec.events=[];rec.use=[];rec.cap=pool.length*100;rec.hz=hz;push(t,total())}
+  if(rec){rec.ts=[];rec.tot=[];rec.lefts=[];rec.flefts=[];rec.events=[];rec.use=[];rec.redeemed=[];rec.cap=pool.length*100;rec.hz=hz;push(t,total())}
+  const rq=(resets||[]).slice().sort((a,b)=>a.at-b.at);
   for(let h=0;h<cap;h++){
-    if(first<Infinity&&(!rec||h>=hz)&&infoDone(h))break;
-    t+=3600;let need=perHour;const evs=[];
-    for(const p of pool)while(p.reset<=t){
+    if(first<Infinity&&(!rec||h>=hz)&&infoDone(h)&&!rq.length)break;
+    t+=3600;const f=shape?Math.max(0,shape(t-1800)):1,ph=perHour*f;let need=ph;const evs=[];
+    // Reset credits due within this hour, applied at its start (before this hour's spend).
+    while(rq.length&&rq[0].at<t){const r=rq.shift(),p=pool.find(q=>q.a.auth_id===r.id);if(!p)continue;
+      let gain=0;
+      // full: the account's Fable allowance was spent on Fable first (how these credits are used), not just the
+      // Fable the run happened to route there.
+      if(r.kind==="fable"){if(p.fallow){gain=Math.min(100-p.left,r.full?p.fallow:p.fallow-p.fab);p.fab=p.fallow;p.nofab=true}}
+      else if(r.kind==="weekly"||r.kind==="full"){gain=100-p.left;if(r.kind==="full"){p.s5=100;p.t5=null}}
+      p.left+=gain;if(rec&&h<hz)rec.redeemed.push({...r,gain,i:p.i})}
+    for(const p of pool)while(p.reset<=t){p.nofab=false;
       if(info&&!p.fr&&h<IH){p.fr=true;info[p.a.auth_id]={before:p.left,at:p.reset,zero:p.zero==null?null:p.zero}}
       evs.push({t,at:p.reset,a:p.a,i:p.i,gain:100-p.left,before:p.left});p.left=100;p.reset+=p.period}
     for(const p of pool)while(p.fres<=t){
@@ -1182,22 +1263,25 @@ function simulate(accs,perHour,now,rec,info,ext){
     pool.sort(useOrder);
     // A 5h window that resets by mid-hour is fresh for the whole hour.
     for(const p of pool)if(p.t5!=null&&p.t5<=t-1800){p.s5=100;p.t5=null}
-    if(ext)for(const p of pool){const e=ext[p.a.auth_id];if(!(e>0)||p.left<=1e-9)continue;const take=Math.min(room(p),e);
+    if(ext)for(const p of pool){const e=ext[p.a.auth_id]*f;if(!(e>0)||p.left<=1e-9)continue;const take=Math.min(room(p),e);
       if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+take/e*3600;
       spend(p,take,t-3600)}
     // The account the router drains first this hour (the strip under the chart); with Fable in the mix, the one
     // that gives the most, ties in useOrder.
     const u0=pool.find(p=>room(p)>1e-9);
     let drawn=0;const took=new Array(accs.length).fill(0);
-    const draw=(p,take)=>{if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+(drawn+take)/perHour*3600;
+    const draw=(p,take)=>{if(info&&!p.fr&&p.zero==null&&take>=p.left-1e-9)p.zero=t-3600+(drawn+take)/ph*3600;
       spend(p,take,t-3600);drawn+=take;took[p.i]+=take};
     // Fable has its own weekly allowance on each account. Its part of the pace (fsh) goes to the Fable order
     // first (fable_rank), then to the other accounts in useOrder, each only while its allowance lasts, like the
     // router. Fable demand no account can take is not served (those requests fail): it drains nothing.
-    let needF=perHour*fsh;need=perHour-needF;
+    let needF=ph*fsh;need=ph-needF;
     if(needF>0)for(const p of [...pool.filter(p=>p.rank>0).sort((x,y)=>x.rank-y.rank),...pool.filter(p=>!(p.rank>0))]){
-      if(needF<=1e-12)break;const take=Math.min(room(p),p.fab,needF);if(!(take>0))continue;
-      if(p.fallow){p.fab-=take;if(info&&!p.ffr&&p.fzero==null&&p.fab<=1e-9)p.fzero=t-3600+(drawn+take)/perHour*3600}
+      if(needF<=1e-12)break;
+      // After a Fable reset this account takes its share as other models (Opus) instead.
+      if(p.nofab){const take=Math.min(room(p),needF);if(take>0){draw(p,take);needF-=take}continue}
+      const take=Math.min(room(p),p.fab,needF);if(!(take>0))continue;
+      if(p.fallow){p.fab-=take;if(info&&!p.ffr&&p.fzero==null&&p.fab<=1e-9)p.fzero=t-3600+(drawn+take)/ph*3600}
       draw(p,take);needF-=take}
     for(const p of pool){if(need<=0)break;const take=Math.min(room(p),need);if(!(take>0))continue;draw(p,take);need-=take}
     if(rec&&h<hz){let i=u0?u0.i:-1;
@@ -1205,10 +1289,10 @@ function simulate(accs,perHour,now,rec,info,ext){
       rec.use.push({a:t-3600,b:t,i})}
     // Outside-the-proxy use alone can also empty the pool (the router's share may be 0).
     // Fable demand left unserved while weekly quota remains does not end the runway; with the pool empty, any does.
-    const unserved=perHour-drawn;
+    const unserved=ph-drawn;
     if(first===Infinity&&unserved<=1e-9&&ext&&total()<=1e-9)first=h+1;
     if(unserved>1e-9&&first===Infinity&&total()<=1e-9){
-      first=h+drawn/perHour;
+      first=h+drawn/ph;
       if(rec&&h<hz)push(Math.min(t-1,Math.max(lastT()+1,t0+first*3600)),0);
     }
     if(rec&&h<hz){for(const e of evs)rec.events.push(e);push(t,total())}
@@ -1233,7 +1317,7 @@ function paceFrom(accs,quota,now,winH){
     const from=now-winH*3600,ext={},extD={};let drop=0,first=Infinity;
     for(const a of accs){const pts=(Q[a.auth_id]||[]).filter(p=>p.w!=null);let de=0;
       for(let i=1;i<pts.length;i++){const x=pts[i-1],y=pts[i];if(y.t<=from||y.t<=x.t)continue;
-        const f=x.t<from?(y.t-from)/(y.t-x.t):1,d=Math.max(0,x.w-y.w)*f;
+        const f=x.t<from?(y.t-from)/(y.t-x.t):1,d=wDrop(x,y,a.auth_id)*f;
         if(flagged&&!y.p)de+=d;else drop+=d;first=Math.min(first,Math.max(x.t,from))}
       if(de>0)extD[a.auth_id]=de}
     const cov=isFinite(first)?now-first:0;
@@ -1249,7 +1333,7 @@ function paceFrom(accs,quota,now,winH){
     const w=weeklyOf(a),r=w&&Date.parse(w.reset_at)/1000,ws=r?r-(w.duration_sec||7*DAY):Infinity;
     let NE=0,winE=0;
     for(let i=1;i<pts.length;i++){
-      const x=pts[i-1],y=pts[i],drop=Math.max(0,x.w-y.w),wt=Math.exp(-k*(now-(x.t+y.t)/2))*drop;
+      const x=pts[i-1],y=pts[i],drop=wDrop(x,y,a.auth_id),wt=Math.exp(-k*(now-(x.t+y.t)/2))*drop;
       if(flagged&&!y.p){NE+=wt;if(x.t>=ws)winE+=drop}else N+=wt;
       if(x.t<tStart)tStart=x.t;
     }
@@ -1314,15 +1398,15 @@ function paceTipFull(br){
 const paceTagHtml=(br,cls)=>br.ok?(br.source==="win"?` <span${cls?` class="${cls}"`:""} data-tip="${esc(paceTip(br))}" tabindex="0">${paceTag(br)}</span>`
   :` <span class="info${cls?" "+cls:""}" data-tip="${esc(paceTip(br))}" tabindex="0" aria-label="Como o ritmo é medido">i</span>`):"";
 // Weekly-remaining drop (resets ignored) over the last `hours` and its hourly average over the time the samples cover.
-function recentUse(points,now,hours=3){
+function recentUse(points,now,hours=3,id){
   const pts=points.filter(p=>p.w!=null&&p.t>=now-hours*3600);
   let drop=0;
-  for(let i=1;i<pts.length;i++)drop+=Math.max(0,pts[i-1].w-pts[i].w);
+  for(let i=1;i<pts.length;i++)drop+=wDrop(pts[i-1],pts[i],id);
   const coveredH=pts.length>1?(pts[pts.length-1].t-pts[0].t)/3600:0;
   return{drop,perHour:pts.length>1?drop/Math.max(coveredH,.5):null,coveredH,n:pts.length};
 }
 function recentUseHtml(a,now){
-  const r=recentUse(quota7Of(a.auth_id),now/1000,3);
+  const r=recentUse(quota7Of(a.auth_id),now/1000,3,a.auth_id);
   const tip=`Média da queda do % semanal nas últimas 3 horas (${r.n} ${r.n===1?"amostra":"amostras"})`;
   const body=r.n<2?"ritmo: coletando":r.drop<=0?"sem uso nas últimas 3h":`semanal: <b>${fmt1(r.perHour)}%/h</b> nas últimas 3h`;
   return `<div class="recent" data-tip="${esc(tip+(r.n>=2&&r.drop>0?`\nQueda: −${fmt1(r.drop)}%`:""))}">${ICON_GAUGE}<span>${body}</span></div>`;
@@ -1330,26 +1414,60 @@ function recentUseHtml(a,now){
 // Accounts whose weekly window feeds the pool: in use, connected, with a reset time.
 const runwayAccs=()=>claudeAccs().filter(a=>a.mode!=="off"&&!a.needs_login&&weeklyOf(a)&&weeklyOf(a).reset_at);
 // The one simulation behind every forecast on the page: burn rate, pool run and per-account info.
+// The pool run is shared by the cards, tiles, modal and the hourly forecast post: one simulation per minute and data
+// change (memo), over the chart's 2 weeks. `rec` receives the run's series (shared arrays: read only).
+const simDeps=now=>[state.data,state.quota7,state.qarch,state.burn,state.shape,Math.floor(now/60e3)];
 function poolForecast(now,rec){
-  const accs=runwayAccs(),br=burnRate(accs),info={};
-  if(accs.length)simulate(accs,br.ok?br.perDay/24:0,now,rec,info,extPerHour(br));
-  return{accs,br,info};
+  const v=memo("pool",simDeps(now),()=>{const accs=runwayAccs(),br=burnRate(accs),info={},r={hzH:TL_FUT/3600};
+    if(accs.length)simulate(accs,br.ok?br.perDay/24:0,now,r,info,extPerHour(br),paceShape(accs,br.ok?br.total/24:0,now));
+    return{accs,br,info,rec:r}});
+  if(rec)Object.assign(rec,v.rec);
+  return{accs:v.accs,br:v.br,info:v.info};
 }
 // First weekly reset of any of the given accounts strictly after t (unix s).
 const resumeAfter=(accs,t)=>Math.min(...accs.map(a=>{const w=weeklyOf(a),d=w.duration_sec||7*DAY;let r=Date.parse(w.reset_at)/1000;if(!(r>0))return Infinity;while(r<=t)r+=d;return r}));
 // The 7-day chart's own run: only the accounts not hidden there, with the pace scaled by the scenario.
-function chartForecast(now,rec){
-  // When every projectable account is hidden (the visible ones dropped out for now), show them all, keeping the choice.
-  const all=runwayAccs(),vis=all.filter(a=>!tlo.hide.has(a.auth_id)),accs=vis.length?vis:all,br=burnRate(accs),m=SCEN[tlo.scen].m,info={};
-  const ext=extPerHour(br);if(ext)for(const id in ext)ext[id]*=m;
-  if(rec)rec.hzH=TL_FUT/3600;
-  if(accs.length)simulate(accs,br.ok?br.perDay*m/24:0,now,rec,info,ext);
-  return{accs,br,info,m};
-}
+function chartForecast(now,resets){
+  return memo("chart"+(resets?":rs":""),[...simDeps(now),tlo.scen,[...tlo.hide].join(","),resets?JSON.stringify(resets):""],()=>{
+    // When every projectable account is hidden (the visible ones dropped out for now), show them all, keeping the choice.
+    const all=runwayAccs(),vis=all.filter(a=>!tlo.hide.has(a.auth_id)),accs=vis.length?vis:all,br=burnRate(accs),m=SCEN[tlo.scen].m,info={},r={hzH:TL_FUT/3600};
+    const ext=extPerHour(br);if(ext)for(const id in ext)ext[id]*=m;
+    if(accs.length)simulate(accs,br.ok?br.perDay*m/24:0,now,r,info,ext,paceShape(accs,br.ok?br.total/24:0,now),resets);
+    return{accs,br,info,m,rec:r}})}
+// Hours with every chart account at 0% in a run's series (rec.ts/rec.tot), and when the first such stretch starts.
+function dryStats(rec,t0){let h=0,first=null;
+  for(let k=1;k<rec.ts.length;k++){if(rec.tot[k-1]<=.5&&rec.tot[k]<=.5){h+=(rec.ts[k]-rec.ts[k-1])/3600;if(first==null)first=rec.ts[k-1]}}
+  if(first==null)for(let k=0;k<rec.ts.length;k++)if(rec.ts[k]>t0+60&&rec.tot[k]<=.5){first=rec.ts[k];break}
+  return{h,first}}
+// "Resets ótimos": where the reset credits of the chart's accounts gain the most in this run. Greedy: at the moment
+// the pool would run dry, try each credit (Fable, weekly, full; 5h ones do not move the weekly runway), keep the one
+// that removes the most hours without quota (at least 1h), and repeat with the next dry moment. A Fable reset is
+// modelled the way it is used: Fable spends the account's allowance first, the reset gives that weekly % back, and the
+// account then serves the Fable share with other models until its weekly reset.
+// {plan:[{id,kind,at,gain,label}], before, after, rec (with the plan), credits (count usable)}
+const RS_PLAN_KINDS={fable:"Reset do Fable",weekly:"Reset semanal",full:"Reset completo"};
+function resetPlan(now){
+  return memo("rsplan",[...simDeps(now),tlo.scen,[...tlo.hide].join(",")],()=>{
+    const base=chartForecast(now),t0=now/1000,credits=[];
+    for(const a of base.accs){const rc=a.reset_credits;for(const o of (rc&&rc.options)||[])if(o.available>0&&RS_PLAN_KINDS[o.kind])credits.push({id:a.auth_id,kind:o.kind,n:o.available,a})}
+    const before=dryStats(base.rec,t0);let plan=[],cur=base,curDry=before;
+    if(!credits.length||!base.br.ok)return{plan,before,after:before,rec:base.rec,credits:credits.length};
+    for(let it=0;it<6;it++){if(curDry.first==null)break;
+      const at=Math.max(t0,curDry.first);let best=null;
+      for(const c of credits){if(plan.filter(p=>p.id===c.id&&p.kind===c.kind).length>=c.n)continue;
+        const cand=[...plan,{id:c.id,kind:c.kind,at,...(c.kind==="fable"?{full:true}:{})}],r=chartForecast(now,cand),d=dryStats(r.rec,t0);
+        const red=curDry.h-d.h;if(red>=1&&(!best||red>best.red+1e-6))best={c,r,d,red,cand}}
+      if(!best)break;
+      plan=best.cand;cur=best.r;curDry=best.d}
+    const red=cur.rec.redeemed||[];
+    plan=plan.map(p=>{const g=red.find(x=>x.id===p.id&&x.kind===p.kind&&x.at===p.at);return{...p,gain:g?g.gain:0,label:RS_PLAN_KINDS[p.kind]}});
+    return{plan,before,after:curDry,rec:cur.rec,credits:credits.length}})}
 // Highest proxy pace (%/h) that keeps the pool above 0% for the next 7 days, with outside-the-proxy use
 // (scaled by the scenario m) unchanged. 0 when outside use alone empties it. Bisection over simulate().
 // any=true when no pace empties it (the 5h limits keep the drain under the refills): there is no ceiling to show.
 function safeRate(accs,br,m,now){
+  return memo("safe",[...simDeps(now),accs.map(a=>a.auth_id).join(","),m],()=>safeRate0(accs,br,m,now))}
+function safeRate0(accs,br,m,now){
   const ext=extPerHour(br);if(ext)for(const id in ext)ext[id]*=m;
   const ok=p=>simulate(accs,p,now,null,null,ext)>=7*24;
   if(!ok(0))return{p:0,ext:ext?Object.values(ext).reduce((a,b)=>a+b,0):0};
@@ -1565,9 +1683,10 @@ const TL_WIN={"24h":86400,"3d":3*86400},TL_MIN=2*3600;
 // The chart reaches every recorded sample back and TL_FUT ahead; it opens on the last TL_PAST and all of TL_FUT ("2w").
 const TL_PAST=15*86400,TL_FUT=14*86400;
 // Linear value of a [[t,v]…] series at t (clamped to its ends).
-function atPts(p,t){if(t<=p[0][0])return p[0][1];
-  for(let k=1;k<p.length;k++)if(p[k][0]>=t){const a=p[k-1],b=p[k],u=b[0]>a[0]?(t-a[0])/(b[0]-a[0]):1;return a[1]+(b[1]-a[1])*u}
-  return p[p.length-1][1]}
+function atPts(p,t){if(t<=p[0][0])return p[0][1];if(t>p[p.length-1][0])return p[p.length-1][1];
+  // First k with p[k][0] >= t (binary search: the series can span months).
+  let lo=1,hi=p.length-1;while(lo<hi){const m=(lo+hi)>>1;if(p[m][0]>=t)hi=m;else lo=m+1}
+  const a=p[lo-1],b=p[lo],u=b[0]>a[0]?(t-a[0])/(b[0]-a[0]):1;return a[1]+(b[1]-a[1])*u}
 // The part of a series inside [a,b], with interpolated end points.
 function clipPts(p,a,b){const s=Math.max(a,p[0][0]),e=Math.min(b,p[p.length-1][0]);
   if(s>e)return[];
@@ -1597,18 +1716,23 @@ function xTicks(V0,V1){const span=V1-V0,out=[],d=new Date(V0*1000);
       if(m<V0||dt.getHours()%sh)continue;
       out.push({t:m,l:dt.getHours()===0?fmtWd(dt):dt.getHours()+"h"})}}
   return out}
+// tlBrush: a brush selection is being drawn (a re-render would drop it; the render waits for its end).
+// tlPtr: the last mouse position over the plot, to put the tooltip back after a re-render.
+let tlBrush=false,tlBrushWait=false,tlPtr=null;
 function renderTimeline(){
+  // A brush whose release got lost (no band on screen any more) does not hold the chart.
+  if(tlBrush){if(document.querySelector(".tl-brush")){tlBrushWait=true;return}tlBrush=tlBrushWait=false}
   const el=$("#tl"),now=Date.now(),allAccs=runwayAccs();
   if(!allAccs.length){el.dataset.key="";el.innerHTML=`<div class="tl-empty">Nenhuma conta com limite semanal para projetar.</div>`;return}
   // Re-rendering would close an open <select>.
   if(el.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
-  const rec={},cf=chartForecast(now,rec),accs=cf.accs,br=cf.br,sm=cf.m,perHour=br.ok?br.total*sm/24:0,rateMode=tlo.view==="rate";
-  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,tlo.cmp,state.qarchAt||0,state.burn,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+dispName(a)).join("|")].join("/");
+  const cf=chartForecast(now),rec=cf.rec,accs=cf.accs,br=cf.br,sm=cf.m,perHour=br.ok?br.total*sm/24:0,rateMode=tlo.view==="rate";
+  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,tlo.cmp,tlo.pj,tlo.rs,state.pjAt||0,state.qarchAt||0,state.burn,state.shape,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+dispName(a)).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
   const PH=innerWidth<640?240:280,TOP=44,BOT=PH-6,HZ=TL_FUT,t0=now/1000,ts=rec.ts,tot=rec.tot,K=ts.length;
   let cap=rec.cap;
-  const past=pastSeries(accs,t0,tot[0],Infinity),F0=past?past[0][0]:t0,F1=t0+HZ;
+  const past=memo("past",[state.quota7,state.qarch,accs.map(a=>a.auth_id).join(","),Math.floor(now/60e3),Math.round(tot[0]*10)],()=>pastSeries(accs,t0,tot[0],Infinity)),F0=past?past[0][0]:t0,F1=t0+HZ;
   // Visible range: the whole chart ("all"), the last 15 days and the 2 weeks ahead ("2w"), a preset window (starts
   // 2h before "agora"), 7 days (2 back) or a custom zoom.
   let V0=F0,V1=F1,custom=false;
@@ -1623,9 +1747,8 @@ function renderTimeline(){
   let burnPast=[],burnFut=[],refH=0;
   const sr0=br.ok?safeRate(accs,br,sm,now):null,sr=sr0&&!sr0.any?sr0:null,safeH=sr?sr.p+sr.ext:0;
   if(rateMode){
-    const segs=[];
-    for(const a of accs){const q=qAllOf(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);for(let k=1;k<q.length;k++)segs.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w])}
-    burnPast=F0<t0-60?burnBuckets(segs,F0,t0):[];
+    burnPast=F0<t0-60?memo("burnPast",[state.quota7,state.qarch,accs.map(a=>a.auth_id).join(","),Math.floor(now/60e3)],()=>
+      burnBuckets(accs.flatMap(a=>wSegs(a.auth_id).filter(g=>g[0]<t0)),F0,t0)):[];
     const fs=[];for(let k=1;k<K;k++)fs.push([ts[k-1],tot[k-1],ts[k],tot[k]]);
     burnFut=burnBuckets(fs,t0,F1);
     refH=refillPerDay(accs)/24;
@@ -1654,11 +1777,26 @@ function renderTimeline(){
   const zv=zs.map(([s,e])=>({s,e,open:e>=t0+HZ-1,vs:Math.max(s,V0),ve:Math.min(e,V1)})).filter(z=>z.ve>z.vs);
   for(const z of zv)if(z.open)z.e=resumeAfter(accs,z.e);
 
-  // "Previsto × real": the summed remaining of the shown accounts that the forecasts stored each hour (postForecast)
-  // predicted tlo.cmp hours ahead, at the time they predicted it; only targets already passed, and only hours that
-  // have a forecast for every shown account. [t, predicted, real].
-  const cmpOn=!!tlo.cmp&&!!past&&!rateMode,cmpPts=[];let cmpErr=null,cmpLine="";
-  if(cmpOn){const fc={...(state.fcArch||{}),...((state.hist&&state.hist.forecasts)||{})},k=FC_H.indexOf(tlo.cmp);
+  // "Previsto × real". With stored projections (state.pj, one per hour while the page is open): the list of them
+  // and the chosen one drawn whole over the chart, summed over the shown accounts. Until there are any: the hourly
+  // point forecasts made tlo.cmp hours before each moment ([t, predicted, real], targets already passed).
+  const cmpOn=!!tlo.cmp&&!!past&&!rateMode,cmpPts=[];let cmpErr=null,cmpLine="",pjList=[],pjSel=null;
+  if(cmpOn&&state.pj){const ids=accs.map(a=>a.auth_id);
+    pjList=memo("pjList",[state.pj,ids.join(","),past],()=>Object.entries(state.pj).map(([hk,c])=>{
+      if(!c||!c.accs||!ids.every(id=>c.accs[id]&&c.accs[id].length>1))return null;
+      const n=Math.min(...ids.map(id=>c.accs[id].length)),pts=[];
+      for(let k=0;k<n;k++){let v=0;for(const id of ids)v+=c.accs[id][k];pts.push([c.at+k*c.step,v])}
+      let e=0,sg=0,ne=0;for(const p of pts){if(p[0]>t0)break;if(p[0]<F0)continue;const d=atPts(past,p[0])-p[1];e+=Math.abs(d);sg+=d;ne++}
+      let z=null,mn=pts[0];for(const p of pts){if(z==null&&p[1]<=.5)z=p[0];if(p[1]<mn[1])mn=p}
+      return{hk:+hk,at:c.at,pace:c.pace||0,pts,mae:ne>1?e/ne:null,bias:ne>1?sg/ne:0,ne,z,mn}}).filter(Boolean).sort((x,y)=>y.at-x.at));
+    if(pjList.length){
+      // Default: the one made about a day ago, so there is something to compare with.
+      pjSel=pjList.find(x=>x.hk===tlo.pj)||pjList.reduce((b,x)=>Math.abs(x.at-(t0-DAY))<Math.abs(b.at-(t0-DAY))?x:b,pjList[0]);
+      const st=pjSel.pts,vis=st.filter((p,k)=>(st[k+1]?st[k+1][0]:p[0])>=V0&&(st[k-1]?st[k-1][0]:p[0])<=V1);
+      if(vis.length)cmpLine=`<path class="tl-cmp" d="${vis.map((p,k)=>(k?"L":"M")+fx(p)).join("")}" ${NS}/>`
+        +(st[0][0]>=V0&&st[0][0]<=V1?`<path class="tl-cmp start" d="M${fx(st[0])}l0.01,0" ${NS}/>`:"");
+      if(pjSel.mae!=null)cmpErr={mae:pjSel.mae,bias:pjSel.bias,n:pjSel.ne}}}
+  if(cmpOn&&!pjList.length){const fc={...(state.fcArch||{}),...((state.hist&&state.hist.forecasts)||{})},k=FC_H.indexOf(tlo.cmp);
     for(const hk of Object.keys(fc).map(Number).sort((a,b)=>a-b)){const tt=hk+tlo.cmp*3600;if(tt>t0-60||tt<F0)continue;let sum=0,ok=true;
       for(const a of accs){const sn=fc[hk][a.auth_id],v=sn&&sn.w?sn.w[k]:null;if(v==null){ok=false;break}sum+=v}
       if(ok)cmpPts.push([tt,sum,atPts(past,tt)])}
@@ -1669,6 +1807,11 @@ function renderTimeline(){
     for(const p of cmpPts){if(p[0]<V0-3600||p[0]>V1+3600){prev=null;continue}
       const join=prev&&p[0]-prev[0]<=5400;d+=(join?"L":"M")+fx(p)+(join?"":"l0.01,0");prev=p}
     if(d)cmpLine=`<path class="tl-cmp" d="${d}" ${NS}/>`}
+  if(cmpOn)loadProjections();
+  const hasCredits=accs.some(a=>((a.reset_credits&&a.reset_credits.options)||[]).some(o=>o.available>0&&RS_PLAN_KINDS[o.kind]));
+  const rsP=tlo.rs&&hasCredits&&!rateMode&&br.ok?resetPlan(now):null;let rsLine="";
+  if(rsP&&rsP.plan.length){const st=clipPts(rsP.rec.ts.map((t,k)=>[t,rsP.rec.tot[k]]),V0,V1);
+    if(st.length>1)rsLine=`<path class="tl-line rs" d="${st.map((p,k)=>(k?"L":"M")+fx(p)).join("")}" ${NS}/>`}
   // At most 4 ticks: 0, steps of whole accounts, and the full capacity.
   let yt=[];
   if(rateMode)yt=niceScale(cap,4).ticks;
@@ -1683,7 +1826,7 @@ function renderTimeline(){
       <stop offset="0" stop-color="var(--claude)" stop-opacity="var(--tl-a)"/><stop offset="1" stop-color="var(--claude)" stop-opacity="0"/></linearGradient></defs>
     ${grid}${zrect}${areaD?`<path d="${areaD}" fill="url(#tlGrad)" stroke="none"${past?` opacity=".45"`:""}/>`:""}${pastArea}
     <line class="capl" x1="0" x2="1000" y1="${Y(cap)}" y2="${Y(cap)}" ${NS}/>
-    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past&&nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}${cmpLine}${lineD?`<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`:""}`;
+    <line class="base" x1="0" x2="1000" y1="${BOT}" y2="${BOT}" ${NS}/>${past&&nowVis?`<line class="gnow" x1="${X(t0).toFixed(1)}" x2="${X(t0).toFixed(1)}" y1="16" y2="${BOT}" ${NS}/>`:""}${pastLine}${cmpLine}${rsLine}${lineD?`<path class="tl-line${past?" proj":""}" d="${lineD}" ${NS}/>`:""}`;
   const yfmt=v=>rateMode?((v)>0&&(v)<1?fmt1((v)):Math.round((v)*10)/10).toString().replace(".",",")+"%/h":Math.round((v))+"%";
   const ylab=yt.map(v=>`<span style="top:${Y(v)}px">${yfmt(v)}</span>`).join("");
   let capLabel=`<div class="tl-capl" style="top:${Y(cap)+4}px">${rec.cap===100?"conta cheia":`${rec.cap}% = ${rec.cap/100} contas cheias`}</div>`;
@@ -1704,18 +1847,18 @@ function renderTimeline(){
   // Which account was spent, hour by hour: the recorded part from each account's weekly drops, the
   // projection from the simulation. Drawn as a strip on the baseline, faded in the projection.
   const pastUse=[],idle=[],pastRuns=[];
-  if(past){const segsOf=accs.map(a=>{const q=qAllOf(a.auth_id).filter(p=>p.w!=null&&p.t<=t0).sort((x,y)=>x.t-y.t),sg=[];
-      for(let k=1;k<q.length;k++)if(q[k-1].w>q[k].w&&q[k].t>q[k-1].t)sg.push([q[k-1].t,q[k-1].w,q[k].t,q[k].w]);return sg});
+  if(past){const ids=accs.map(a=>a.auth_id).join(","),segsOf=accs.map(a=>wSegs(a.auth_id));
     // The hourly split and the strip only cover the visible past (plus a margin): the history is unbounded.
     const U0=Math.max(F0,V0-6*3600),U1=Math.min(t0,V1+6*3600),segsV=segsOf.map(sg=>sg.filter(g=>g[2]>U0&&g[0]<U1));
     for(let h=Math.floor(U0/3600)*3600;h<U1;h+=3600){const s=Math.max(h,U0),e=Math.min(h+3600,U1);
-      const by=segsV.map(sg=>{let d=0;for(const[xs,xv,ys,yv]of sg){const ov=Math.min(ys,e)-Math.max(xs,s);if(ov>0)d+=(xv-yv)*ov/(ys-xs)}return d});
+      const by=accs.map(a=>spendIn(a.auth_id,s,e));
       let i=-1;by.forEach((d,k)=>{if(d>=.3&&(i<0||d>by[i]))i=k});
       pastUse.push({a:s,b:e,i,by})}
     // Stretches of 1h+ with no account's weekly dropping (no use at all), from the samples themselves.
-    const cov=segsOf.flat().map(g=>[g[0],g[2]]).sort((x,y)=>x[0]-y[0]);let at=F0;
-    for(const[a,b]of cov){if(a-at>=3600)idle.push([at,a]);at=Math.max(at,b)}
-    if(t0-at>=3600)idle.push([at,t0]);
+    idle.push(...memo("idle",[state.quota7,state.qarch,ids,Math.floor(now/60e3)],()=>{const out=[];
+      const cov=segsOf.flat().filter(g=>g[0]<t0).map(g=>[g[0],g[2]]).sort((x,y)=>x[0]-y[0]);let at=F0;
+      for(const[a,b]of cov){if(a-at>=3600)out.push([at,a]);at=Math.max(at,b)}
+      if(t0-at>=3600)out.push([at,t0]);return out}));
     // The strip uses the same samples: between consecutive sample times, the account dropping fastest.
     const rated=segsV.flatMap((sg,k)=>sg.map(g=>({a:g[0],b:g[2],k,r:(g[1]-g[3])/(g[2]-g[0])}))).sort((x,y)=>x.a-y.a);
     const cuts=U1>U0?[...new Set(rated.flatMap(g=>[g.a,g.b]).concat([U0,U1]))].filter(x=>x>=U0&&x<=U1).sort((x,y)=>x-y):[];
@@ -1747,7 +1890,11 @@ function renderTimeline(){
 
   const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?"últimos "+Math.round(pastH/24)+" dias":"últimas "+pastH+"h";
   const legend=past?`<span><i></i>Real (${pastLbl})</span><span><i class="proj"></i>Projeção</span><span data-tip="${esc("Faixa colorida embaixo: a conta gasta em cada hora (cheia no passado, clara na projeção).")}" tabindex="0"><i class="use"></i>Conta usada</span>`
-    +(cmpOn?`<span tabindex="0" data-tip="${esc(`Pontilhado: o total que a página previu ${tlo.cmp}h antes de cada momento (ela guarda uma previsão por hora enquanto está aberta). A linha cheia é o que aconteceu.`
+    +(rsLine?`<span><i class="rs"></i>Com resets ótimos</span>`:"")
+    +(pjSel?`<span tabindex="0" data-tip="${esc(`Pontilhado: a projeção que a página fez ${hm(pjSel.at)}, inteira (2 semanas), somando as contas mostradas. A linha cheia é o que aconteceu; o tracejado é a projeção de agora.`
+      +(cmpErr?`\nErro médio até agora: ±${fmt1(cmpErr.mae)} p.p. em ${cmpErr.n} pontos (a cada 2h).\nEm média o real ficou ${Math.abs(cmpErr.bias)<.5?"igual ao previsto":cmpErr.bias>0?`${fmt1(cmpErr.bias)} p.p. acima (gastou menos que o previsto)`:`${fmt1(-cmpErr.bias)} p.p. abaixo (gastou mais que o previsto)`}.`:"")
+      +"\nEscolha outra projeção na lista abaixo do gráfico.")}"><i class="cmp"></i>Projeção de ${esc(hm(pjSel.at))}${cmpErr?` · erro ±${fmt1(cmpErr.mae)} p.p.`:""}</span>`
+    :cmpOn?`<span tabindex="0" data-tip="${esc(`Pontilhado: o total que a página previu ${tlo.cmp}h antes de cada momento (ela guarda uma previsão por hora enquanto está aberta). A linha cheia é o que aconteceu.`
       +(cmpErr?`\nErro médio: ±${fmt1(cmpErr.mae)} p.p. em ${cmpErr.n} ${cmpErr.n===1?"previsão":"previsões"}.\nEm média o real ficou ${Math.abs(cmpErr.bias)<.5?"igual ao previsto":cmpErr.bias>0?`${fmt1(cmpErr.bias)} p.p. acima do previsto (gastou menos que o previsto)`:`${fmt1(-cmpErr.bias)} p.p. abaixo do previsto (gastou mais que o previsto)`}.`:"\nAinda não há previsões com esse prazo vencido para as contas mostradas.")
       +(tlo.hide.size?"\nSó soma as contas mostradas.":""))}"><i class="cmp"></i>Previsto ${tlo.cmp}h antes${cmpErr?` · erro ±${fmt1(cmpErr.mae)} p.p.`:" · sem dados ainda"}</span>`:""):`<span><i></i>${rateMode?"Consumo por hora":"Capacidade restante somada"}</span>`;
   const rate=br.ok
@@ -1762,13 +1909,14 @@ function renderTimeline(){
   // Controls row: view, pace window (global), scenario and accounts (this chart only).
   const segOf=(attr,cur,opts,label)=>`<div class="seg" role="group" aria-label="${esc(label)}">${opts.map(([v,l,tip])=>`<button type="button" data-${attr}="${v}" aria-pressed="${cur===v}"${cur===v?` class="on"`:""}${tip?` data-tip="${esc(tip)}"`:""}>${l}</button>`).join("")}</div>`;
   const accMenu=`<div class="tl-accm"><button type="button" class="tl-accb${tlo.hide.size?" on":""}" data-accmenu="1" aria-haspopup="true" aria-expanded="${tlo.menu}">${accs.length}/${allAccs.length} contas<svg class="i" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button>${tlo.menu?`<div class="tl-menu">${allAccs.map(a=>`<label><input type="checkbox" data-hide="${esc(a.auth_id)}"${tlo.hide.has(a.auth_id)?"":" checked"}${!tlo.hide.has(a.auth_id)&&accs.length===1?" disabled":""}><i class="adot" style="--c:${ACC[a.auth_id]}"></i><span>${esc(nm(a))}</span></label>`).join("")}<div class="tl-menu-n">Só muda este gráfico e o resumo acima dele.</div></div>`:""}</div>`;
-  const nAdj=(state.burn!=="auto")+(tlo.scen!=="same")+(tlo.hide.size>0);
+  const nAdj=(state.burn!=="auto")+(tlo.scen!=="same")+(tlo.hide.size>0)+(state.shape!=="day");
   {const tt=$("#tlTitle");if(tt)tt.textContent=custom?"Projeção":tlz.preset==="24h"?"Próximas 24h":tlz.preset==="3d"?"Próximos 3 dias":tlz.preset==="week"?"Próximos 7 dias":"Histórico e projeção"}
-  const ctl=`<div class="tl-ctl">${segOf("view",tlo.view,[["left","Restante","Quanto resta, somando as contas"],["rate","Consumo","Quanto sai por hora (%/h)"]],"O que mostrar")}<button type="button" class="tl-adv" data-adv="1" aria-expanded="${!!tlo.adv}" aria-controls="tlSet" aria-label="Ajustes da projeção">${ICON_SLIDERS}<span class="tl-adv-l">Ajustes</span>${nAdj?`<span class="tl-badge">${nAdj}</span>`:""}</button>${past&&!rateMode?`<button type="button" class="tl-accb${tlo.cmp?" on":""}" data-cmp="1" aria-pressed="${!!tlo.cmp}" data-tip="${esc("Mostra, sobre o histórico, o que a projeção tinha previsto e compara com o que aconteceu. O prazo da previsão fica em Ajustes.")}">Previsto × real</button>`:""}<div class="spacer"></div><div class="tl-zg">${tools}${nav}</div></div>
+  const ctl=`<div class="tl-ctl">${segOf("view",tlo.view,[["left","Restante","Quanto resta, somando as contas"],["rate","Consumo","Quanto sai por hora (%/h)"]],"O que mostrar")}<button type="button" class="tl-adv" data-adv="1" aria-expanded="${!!tlo.adv}" aria-controls="tlSet" aria-label="Ajustes da projeção">${ICON_SLIDERS}<span class="tl-adv-l">Ajustes</span>${nAdj?`<span class="tl-badge">${nAdj}</span>`:""}</button>${past&&!rateMode?`<button type="button" class="tl-accb${tlo.cmp?" on":""}" data-cmp="1" aria-pressed="${!!tlo.cmp}" data-tip="${esc("Mostra, sobre o histórico, o que a projeção tinha previsto e compara com o que aconteceu. O prazo da previsão fica em Ajustes.")}">Previsto × real</button>`:""}${hasCredits&&!rateMode?`<button type="button" class="tl-accb${tlo.rs?" on":""}" data-rs="1" aria-pressed="${tlo.rs}" data-tip="${esc("Mostra onde usar os resets que você tem para render mais: no momento em que todas as contas zerariam, na conta em que o reset devolve mais. Desenha a projeção com eles.")}">Resets ótimos</button>`:""}<div class="spacer"></div><div class="tl-zg">${tools}${nav}</div></div>
     <div class="tl-ctl tl-set${tlo.adv?" open":""}" id="tlSet">
       <div class="tl-field"><span class="tl-lab" id="tlRitmo">Ritmo calculado com</span>${segOf("burn",state.burn,[["auto","Auto","Automático: as últimas horas pesam mais (meia-vida 12h), misturado com a média da semana enquanto há pouco histórico"],["1","1h","Só a última hora"],["3","3h","Só as últimas 3 horas"],["6","6h","Só as últimas 6 horas"]],"Ritmo calculado com")}</div>
+      <div class="tl-field"><span class="tl-lab">Ritmo ao longo do dia</span>${segOf("shape",state.shape,[["day","Pelo horário","O ritmo segue o seu padrão de uso por hora do dia (últimos 14 dias) e, com o tempo, volta para a média da semana. Nos testes com o seu histórico errou menos que o constante."],["flat","Constante","O ritmo atual, igual a qualquer hora, por toda a projeção"]],"Ritmo ao longo do dia")}</div>
       <div class="tl-field"><label class="tl-lab" for="tlScen">Se eu continuar</label><select class="sel" id="tlScen" data-scen="1">${Object.entries(SCEN).map(([v,o])=>`<option value="${v}"${tlo.scen===v?" selected":""}>${esc(o.l)}</option>`).join("")}</select></div>
-      ${tlo.cmp&&!rateMode?`<div class="tl-field"><span class="tl-lab">Previsão feita</span>${segOf("cmph",String(tlo.cmp),FC_H.map(h=>[String(h),h+"h antes",`Compara com a previsão feita ${h}h antes de cada momento`]),"Previsão feita")}</div>`:""}
+      ${tlo.cmp&&!rateMode&&!pjList.length?`<div class="tl-field"><span class="tl-lab">Previsão feita</span>${segOf("cmph",String(tlo.cmp),FC_H.map(h=>[String(h),h+"h antes",`Compara com a previsão feita ${h}h antes de cada momento`]),"Previsão feita")}</div>`:""}
       <div class="tl-field">${accMenu}</div></div>`;
   // Summary strip (this chart's run).
   // The next account to run dry from here on; accounts already at 0% are only counted.
@@ -1776,7 +1924,7 @@ function renderTimeline(){
   const zf=zs.find(z=>z[0]>t0-60),firstEmpty=zeroes.filter(([,f])=>f.zero*1000>now+60e3).sort((a,b)=>a[1].zero-b[1].zero)[0];
   const nxt=evs.find(e=>e.gain>=1)||evs[0];
   const wH=state.burn==="auto"?3:+state.burn;
-  let d3=0,c3=0;for(const a of accs){const r=recentUse(quota7Of(a.auth_id),t0,wH);if(r.n>1){d3+=r.drop;c3=Math.max(c3,r.coveredH)}}
+  let d3=0,c3=0;for(const a of accs){const r=recentUse(quota7Of(a.auth_id),t0,wH,a.auth_id);if(r.n>1){d3+=r.drop;c3=Math.max(c3,r.coveredH)}}
   const measured=` · <span data-tip="${esc(`Quanto as recargas semanais devolvem, em média (≈${Math.round(refillPerDay(accs))}%/dia)`+(c3>0?`\nMedido nas últimas ${wH}h: ${fmt1(d3/Math.max(c3,.5))}%/h`:""))}" tabindex="0">recargas devolvem <b>~${fmt1(refillPerDay(accs)/24)}%/h</b></span>`;
   const stItem=(k,v,sub,tip,cls)=>`<div class="tl-st${cls?" "+cls:""}"${tip?` data-tip="${esc(tip)}" tabindex="0"`:""}><div class="k">${k}</div><div class="v tabular">${v}</div>${sub?`<div class="s">${sub}</div>`:""}</div>`;
   const zCls=!br.ok||!zf?"good":"crit";
@@ -1799,10 +1947,7 @@ function renderTimeline(){
   // counting 100%. A rise of 10+ points is a reset: what is below 100% at the sample after it was spent after the reset.
   const sp0=Math.max(V0,F0),sp1=Math.min(V1,t0);let spentItem;
   if(sp1-sp0<60)spentItem=stItem("Total gasto","—","período só no futuro","O período escolhido ainda não aconteceu: só tem projeção.");
-  else{const per=accs.map(a=>{const q=qAllOf(a.auth_id).filter(p=>p.w!=null).sort((x,y)=>x.t-y.t);let d=0;
-      for(let k=1;k<q.length;k++){const[x,y]=[q[k-1],q[k]];if(!(y.t>x.t))continue;
-        if(x.w>y.w){const ov=Math.min(y.t,sp1)-Math.max(x.t,sp0);if(ov>0)d+=(x.w-y.w)*ov/(y.t-x.t)}
-        else if(y.w-x.w>=10&&y.t>sp0&&y.t<=sp1)d+=Math.max(0,100-y.w)}return[a,d]});
+  else{const per=accs.map(a=>[a,spendIn(a.auth_id,sp0,sp1)]);
     const spentTot=per.reduce((x,[,d])=>x+d,0),hrs=(sp1-sp0)/3600;
     spentItem=stItem("Total gasto",`${fmt1(spentTot)}%`,`${hrs>=36?Math.round(hrs/24)+" dias · ":""}desde ${esc(hm(sp0))}${sp1<t0-60?" até "+esc(hm(sp1)):""} · ~${fmt1(spentTot/Math.max(hrs,1/60))}%/h`,
       `Gasto de verdade no período do gráfico (${hm(sp0)} → ${sp1<t0-60?hm(sp1):"agora"}), sem a projeção.\nCada conta vale 100%; o total soma as contas mostradas.\n`
@@ -1820,14 +1965,31 @@ function renderTimeline(){
     if(fullStats)advice=pa;else{state.runAdv=pa;const ra=$("#runAdv");if(ra)ra.innerHTML=pa}
     const seen=new Set(),waste=evs.filter(e=>{if(seen.has(e.a.auth_id))return false;seen.add(e.a.auth_id);return e.before>=5&&e.at<=t0+2*DAY}).sort((a,b)=>b.before-a.before)[0];
     if(waste&&fullStats)advice+=`<div class="tl-tip warn"><i class="adot" style="--c:${ACC[waste.a.auth_id]}"></i><span><b>${esc(nm(waste.a).split("@")[0])}</b> vai perder <b>~${Math.round(waste.before)}% da cota dela</b> no reset (${esc(hm(waste.at))}): use antes do reset, o que sobrar se perde.</span></div>`}
+  // "Resets ótimos": what to redeem, where, and what it changes.
+  if(rsP){const fh=h=>h<.5?"nenhuma hora":fmtLeft(h*3600e3);
+    if(rsP.plan.length){
+      const items=rsP.plan.map(r=>{const a=accs.find(x=>x.auth_id===r.id),wk=a&&weeklyOf(a),fa=wk&&wk.fable_allowance>0?wk.fable_allowance:0;
+        return `<b>${esc(r.label)}</b> da <b>${esc(a?nm(a).split("@")[0]:r.id)}</b> em <b>${esc(hm(r.at))}</b>${r.at<=t0+3600?" (agora)":" (quando todas zerarem)"}: <b>+${Math.round(r.gain)}%</b>`
+          +(r.kind==="fable"&&fa?` · antes, gaste os ${fa}% de Fable dessa conta no Fable`:"")}).join("<br>");
+      advice+=`<div class="tl-tip good">${ICON_CHECK}<span>${items}<br>Tempo sem cota nas próximas 2 semanas: <b>${fh(rsP.before.h)} → ${fh(rsP.after.h)}</b> (linha verde).`
+        +(rsP.plan.some(r=>r.kind==="fable")?" Depois de um reset do Fable, a projeção usa outros modelos nessa conta no lugar do Fable até o reset semanal dela.":"")+`</span></div>`}
+    else advice+=`<div class="tl-tip">${ICON_CHECK}<span>${rsP.before.h<.5?"<b>Guarde os resets:</b> no ritmo atual a cota dá conta das próximas 2 semanas sem eles.":`<b>Os resets que você tem não diminuem o tempo sem cota agora</b> (${fh(rsP.before.h)} nas próximas 2 semanas): o que eles devolveriam no momento em que as contas zeram é pouco.`}</span></div>`}
+  // The stored projections, newest first: when, what it foresaw, the pace it assumed and how far off it has been.
+  const pjHtml=()=>{
+    if(!pjList.length)return `<div class="tl-pj"><div class="tl-pj-h"><b>Projeções guardadas</b></div><div class="tl-pj-e">${state.pjAt?"Ainda não há projeções completas guardadas para estas contas. A página guarda uma por hora enquanto está aberta; até lá, o pontilhado mostra a previsão feita "+tlo.cmp+"h antes de cada momento.":"Carregando…"}</div></div>`;
+    const ec=m=>m==null?"":m<=5?"good":m<=15?"warn":"crit";
+    return `<div class="tl-pj"><div class="tl-pj-h"><b>Projeções guardadas</b><span>${pjList.length} · uma por hora com a página aberta (a cada 6h depois de 3 dias) · clique para comparar</span></div>
+      <div class="tl-pj-l"><div class="tl-pj-r hd" aria-hidden="true"><span>Feita</span><span>O que previa</span><span>Ritmo</span><span>Erro até agora</span></div>${pjList.map(x=>{const on=x===pjSel;
+        const what=x.z?`zerava <b>${esc(hm(x.z))}</b>`:`não zerava · mín. <b>${Math.round(x.mn[1])}%</b> ${esc(hm(x.mn[0]))}`;
+        return `<button type="button" class="tl-pj-r${on?" on":""}" data-pj="${x.hk}" aria-pressed="${on}"><span><b>${esc(hm(x.at))}</b></span><span>${what}</span><span class="tabular">${x.pace?fmt1(x.pace)+"%/h":"—"}</span><span class="tabular ${ec(x.mae)}">${x.mae!=null?`±${fmt1(x.mae)} p.p.`:"cedo demais"}</span></button>`}).join("")}</div></div>`};
   // Re-rendering replaces the focused control: remember it to focus its counterpart afterwards.
-  const ae=document.activeElement,fsel=ae&&el.contains(ae)?["z","view","burn","accmenu","hide","scen","adv","cmp","cmph"].map(k=>ae.dataset&&ae.dataset[k]!=null?`[data-${k}="${CSS.escape(ae.dataset[k])}"]`:null).find(Boolean)||(ae.id==="tlPlot"?"#tlPlot":null):null;
+  const ae=document.activeElement,fsel=ae&&el.contains(ae)?["z","view","burn","accmenu","hide","scen","adv","cmp","cmph","shape","pj","rs"].map(k=>ae.dataset&&ae.dataset[k]!=null?`[data-${k}="${CSS.escape(ae.dataset[k])}"]`:null).find(Boolean)||(ae.id==="tlPlot"?"#tlPlot":null):null;
   const summary=`${rateMode?"Consumo por hora":"Capacidade semanal restante"}, ${fmtRange(V0)} a ${fmtRange(V1)}. Agora ${Math.round(tot[0])}% de ${rec.cap}%. `+(zf?`Todas zeram ${hm(zf[0])}.`:"Não zeram nas próximas 2 semanas.")+(nxt?` Próxima recarga ${hm(nxt.at)}, +${Math.round((nxt.gain))}%.`:"");
   el.innerHTML=`${ctl}${stats}${advice?`<div class="tl-tips">${advice}</div>`:""}<div class="tl-cap"><div class="tl-leg">${legend}</div></div>
     <div class="tl-chart"><div class="tl-y" aria-hidden="true">${ylab}</div>
       <div class="tl-plot${zoomed?" zoomed":""}" id="tlPlot" tabindex="0" role="img" aria-label="${esc(summary+" Use ← e → para percorrer.")}"><svg viewBox="0 0 1000 ${PH}" preserveAspectRatio="none" aria-hidden="true"${zoomed?` style="overflow:hidden"`:""}>${svg}</svg>${zlab}${capLabel}
         <div class="tl-hover" id="tlHover"></div><i class="tl-hdot" id="tlHdot"></i><div class="tip" id="tlTip" role="status" aria-live="polite"></div></div></div>
-    <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>`;
+    <div class="tl-x"><div></div><div class="tl-xl" id="tlXl"></div></div>${cmpOn?pjHtml():""}`;
   if(fsel){const n=el.querySelector(fsel);if(n)n.focus({preventScroll:true})}
   el.onclick=ev=>{const t=ev.target.closest?ev.target:null;if(!t)return;
     const z=t.closest("[data-z]"),vw=t.closest("[data-view]"),cm=t.closest("[data-cmp]"),ch=t.closest("[data-cmph]"),bu=t.closest("[data-burn]"),am=t.closest("[data-accmenu]"),hd=t.closest("[data-hide]"),ad=t.closest("[data-adv]");
@@ -1835,9 +1997,12 @@ function renderTimeline(){
       if(v==="prev"||v==="next"){const d=(v==="prev"?-1:1)*VS/2,a=Math.min(Math.max(F0,V0+d),F1-VS);tlz.rng=[a,a+VS];tlz.preset=null}
       else{tlz.rng=null;tlz.preset=v==="reset"?"2w":v}
       renderTimeline()}
+    else if(t.closest("[data-rs]")){tlo.rs=!tlo.rs;store.set("usage.tlrs",tlo.rs?"1":"0");renderTimeline()}
+    else if(t.closest("[data-pj]")){tlo.pj=+t.closest("[data-pj]").dataset.pj;renderTimeline()}
     else if(cm){tlo.cmp=tlo.cmp?0:tlo.cmpH;store.set("usage.tlcmp",String(tlo.cmp));renderTimeline()}
     else if(ch){tlo.cmp=tlo.cmpH=+ch.dataset.cmph;store.set("usage.tlcmp",String(tlo.cmp));store.set("usage.tlcmpH",String(tlo.cmpH));renderTimeline()}
     else if(vw){tlo.view=vw.dataset.view;store.set("usage.tlview",tlo.view);renderTimeline()}
+    else if(t.closest("[data-shape]")){state.shape=t.closest("[data-shape]").dataset.shape;store.set("usage.shape",state.shape);el.dataset.key="";renderAll()}
     else if(bu){state.burn=bu.dataset.burn;store.set("usage.burn",state.burn);el.dataset.key="";renderAll()}
     else if(am){tlo.menu=!tlo.menu;renderTimeline()}
     else if(ad){tlo.adv=!tlo.adv;renderTimeline()}
@@ -1894,6 +2059,12 @@ function renderTimeline(){
       ov+=`<i class="tl-dot" style="left:${P(q[k].t).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
       const{l,top}=place(x,yt2,txt);
       ov+=lead(x,top,yt2,a)+`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>${esc(narrow?initials(nm(a)):shortN(a))}</span> +${Math.round(g)}%</div>`}}
+  // Reset credits of the optimal plan: where to redeem each one.
+  if(rsP)for(const r of rsP.plan){if(r.at<V0||r.at>V1)continue;const a=accs.find(x=>x.auth_id===r.id);if(!a)continue;
+    const x=P(r.at)/100*W,yt2=Y(atPts(rsP.rec.ts.map((t,k)=>[t,rsP.rec.tot[k]]),r.at+3600)),txt=`↻ ${narrow?initials(nm(a)):shortN(a)} +${Math.round(r.gain)}%`;
+    ov+=`<i class="tl-dot rs" style="left:${P(r.at).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
+    const{l,top}=place(x,yt2,txt);
+    ov+=lead(x,top,yt2,a)+`<div class="tl-chip rs" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>↻ ${esc(narrow?initials(nm(a)):shortN(a))}</span> +${Math.round(r.gain)}%</div>`}
   if(minOn){const tm=prc[mk][0],vm=prc[mk][1],ym=Y(vm),l=Math.max(60,Math.min(W-60,P(tm)/100*W)),below=ym+26<=BOT;
     ov+=`<i class="tl-dot min" style="left:${P(tm).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
       +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(hm(tm))}</div>`}
@@ -1910,9 +2081,11 @@ function renderTimeline(){
     const u=Math.max(0,Math.min(1,(t-ta[k-1])/Math.max(1e-6,ta[k]-ta[k-1])));
     return va[k-1]+(va[k]-va[k-1])*u};
   const valAt=t=>lerp(ts,tot,t),pt=past&&past.map(p=>p[0]),pv=past&&past.map(p=>p[1]);
-  // The compared forecast nearest to t, within 40 min.
-  const cmpNear=t=>{let b=null;for(const p of cmpPts)if(Math.abs(p[0]-t)<=2400&&(!b||Math.abs(p[0]-t)<Math.abs(b[0]-t)))b=p;return b};
-  plot.onpointermove=plot.onpointerdown=ev=>{
+  // The compared forecast at t: [t, predicted, real]; the chosen projection (interpolated) or the hourly point
+  // forecast nearest to t, within 40 min.
+  const cmpNear=t=>{if(pjSel){const p=pjSel.pts;return t>=p[0][0]&&t<=p[p.length-1][0]?[t,atPts(p,t),t<t0?atPts(past,t):null]:null}
+    let b=null;for(const p of cmpPts)if(Math.abs(p[0]-t)<=2400&&(!b||Math.abs(p[0]-t)<Math.abs(b[0]-t)))b=p;return b};
+  plot.onpointermove=plot.onpointerdown=ev=>{tlPtr=ev.pointerType==="touch"?null:{x:ev.clientX,y:ev.clientY};
     if((drag&&drag.on)||tlPan)return;
     const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=V0+x/r.width*VS;
     if(past&&t<t0){
@@ -1920,7 +2093,7 @@ function renderTimeline(){
       hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
       tip.innerHTML=`<div class="d">${esc(hm(t))} · real</div>
         <div class="r tot"><span>Total real</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
-        ${(c=>c?`<div class="r"><span><i class="adot" style="--c:var(--st-warn)"></i>Previsto ${tlo.cmp}h antes</span><b class="tabular">${Math.round(c[1])}% · ${signed(c[2]-c[1])} p.p.</b></div>`:"")(cmpNear(t))}
+        ${(c=>c?`<div class="r"><span><i class="adot" style="--c:var(--st-warn)"></i>${pjSel?"Projeção de "+esc(hm(pjSel.at)):`Previsto ${tlo.cmp}h antes`}</span><b class="tabular">${Math.round(c[1])}% · ${signed(c[2]-c[1])} p.p.</b></div>`:"")(cmpNear(t))}
         <div class="d" style="margin:6px 0 2px">Usada nessa hora</div>
         ${(u=>{const l=u?u.by.map((d,k)=>[d,k]).filter(p=>p[0]>=.1).sort((x,y)=>y[0]-x[0]):[];
           return l.length?l.map(([d,k])=>`<div class="r"><span><i class="adot" style="--c:${ACC[accs[k].auth_id]}"></i>${esc(nm(accs[k]).split("@")[0])}</span><b class="tabular">−${fmt1(d)}%</b></div>`).join(""):(r=>r&&r.i>=0?`<div class="r"><span><i class="adot" style="--c:${ACC[accs[r.i].auth_id]}"></i>${esc(nm(accs[r.i]).split("@")[0])}</span><b class="tabular">&lt;1%</b></div>`:`<div class="r"><span>Nenhuma conta gasta</span><b></b></div>`)(pastRuns.find(r=>t>=r.a&&t<r.b))})(pastUse.find(u=>t>=u.a&&t<u.b))}
@@ -1933,6 +2106,7 @@ function renderTimeline(){
     hl.style.left=x+"px";hl.style.opacity=.6;hd.style.left=x+"px";hd.style.top=Y(v)+"px";hd.style.opacity=1;
     tip.innerHTML=`<div class="d">${Math.abs(x-xn)<2?"agora":esc(hm(t))}${past?" · projeção":""}</div>
       <div class="r tot"><span>Total projetado</span><b class="tabular">${Math.round(v)}% de ${cap}%</b></div>
+      ${(c=>c?`<div class="r"><span><i class="adot" style="--c:var(--st-warn)"></i>Projeção de ${esc(hm(pjSel.at))}</span><b class="tabular">${Math.round(c[1])}%</b></div>`:"")(pjSel&&cmpNear(t))}
       <div class="d" style="margin:6px 0 2px">Usando nessa hora</div>
       <div class="r">${ua?`<span><i class="adot" style="--c:${ACC[ua.auth_id]}"></i>${esc(nm(ua).split("@")[0])}</span><b>${ua.mode==="last"?"reserva":""}</b>`:`<span>Nenhuma conta disponível</span><b></b>`}</div>
       <div class="d" style="margin:6px 0 2px">${next?"Próxima recarga":"Nenhuma recarga até o fim do gráfico"}</div>
@@ -1941,7 +2115,7 @@ function renderTimeline(){
     let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
     tip.style.left=lx+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"};
   if(rateMode){const fut=[[t0,burnPast.length?burnPast[burnPast.length-1][1]:burnFut.length?burnFut[0][1]:0],...burnFut];
-    plot.onpointermove=plot.onpointerdown=ev=>{
+    plot.onpointermove=plot.onpointerdown=ev=>{tlPtr=ev.pointerType==="touch"?null:{x:ev.clientX,y:ev.clientY};
       if((drag&&drag.on)||tlPan)return;
       const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left)),t=V0+x/r.width*VS,isPast=t<t0&&burnPast.length>1;
       const src=isPast?burnPast:fut;if(src.length<2||t<src[0][0]-1800){tip.style.display="none";hd.style.opacity=0;hl.style.opacity=0;return}
@@ -1954,8 +2128,11 @@ function renderTimeline(){
       tip.style.display="block";const tw=tip.offsetWidth,th=tip.offsetHeight;
       let lx=x+14;if(lx+tw>r.width)lx=x-14-tw;if(lx<0)lx=Math.max(0,Math.min(r.width-tw,x-tw/2));
       tip.style.left=lx+"px";tip.style.top=(Y(v)>r.height/2?6:Math.max(6,r.height-th-10))+"px"}}
-  plot.onpointerleave=ev=>{if(ev&&ev.pointerType==="touch")return;if((drag&&drag.on)||tlPan)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
+  plot.onpointerleave=ev=>{if(ev&&ev.pointerType==="touch")return;tlPtr=null;if((drag&&drag.on)||tlPan)return;drag=null;tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0};
   // Keyboard: ←/→ move the cursor by 1h (shift: 6h), Home/End jump, Esc hides it.
+  // Re-rendered under the mouse (data refresh, a control): show the tooltip again where it was.
+  if(tlPtr&&!tlPan){const r=plot.getBoundingClientRect();
+    if(tlPtr.x>=r.left&&tlPtr.x<=r.right&&tlPtr.y>=r.top&&tlPtr.y<=r.bottom)plot.onpointermove({clientX:tlPtr.x,clientY:tlPtr.y,pointerType:"mouse"});else tlPtr=null}
   let kt=null;
   const kshow=()=>{const r=plot.getBoundingClientRect();plot.onpointermove({clientX:r.left+(kt-V0)/VS*r.width,clientY:r.top+20})};
   plot.onfocus=()=>{if(plot.matches(":focus-visible")){kt=kt==null?Math.max(V0,Math.min(V1,t0)):kt;kshow()}};
@@ -1974,21 +2151,25 @@ function renderTimeline(){
     if(ev.pointerType==="touch")return;
     drag={x0:Math.max(0,Math.min(plot.clientWidth,ev.clientX-plot.getBoundingClientRect().left)),x:0,on:false,id:ev.pointerId}});
   plot.addEventListener("pointermove",ev=>{if(!drag)return;
+    if(drag.on&&ev.buttons===0&&ev.pointerType==="mouse"){drag=null;band.remove();brushEnd();return}
     // The button was released outside the plot before the brush started.
     if(!drag.on&&ev.buttons===0){drag=null;return}
     const r=plot.getBoundingClientRect(),x=Math.max(0,Math.min(r.width,ev.clientX-r.left));
     if(!drag.on){if(Math.abs(x-drag.x0)<5)return;
-      drag.on=true;try{plot.setPointerCapture(drag.id)}catch(_){}
+      drag.on=true;tlBrush=true;try{plot.setPointerCapture(drag.id)}catch(_){}
       plot.appendChild(band);tip.style.display="none";hl.style.opacity=0;hd.style.opacity=0}
     drag.x=x;band.style.left=Math.min(drag.x0,x)+"px";band.style.width=Math.abs(x-drag.x0)+"px"});
+  const brushEnd=()=>{tlBrush=false;if(tlBrushWait){tlBrushWait=false;el.dataset.key="";renderTimeline()}};
   plot.addEventListener("pointerup",()=>{
-    const d=drag;drag=null;band.remove();if(!d||!d.on)return;
+    const d=drag;drag=null;band.remove();if(!d||!d.on)return;tlBrush=tlBrushWait=false;
     const w=plot.clientWidth||1;let ta=V0+Math.min(d.x0,d.x)/w*VS,tb=V0+Math.max(d.x0,d.x)/w*VS;
     if(tb-ta<TL_MIN){const c=(ta+tb)/2;ta=c-TL_MIN/2;tb=c+TL_MIN/2}
     if(ta<F0){tb+=F0-ta;ta=F0}
     if(tb>F1){ta=Math.max(F0,ta-(tb-F1));tb=F1}
     tlz.rng=[ta,tb];tlz.preset=null;renderTimeline()});
-  plot.addEventListener("pointercancel",()=>{drag=null;band.remove()});
+  plot.addEventListener("pointercancel",()=>{drag=null;band.remove();brushEnd()});
+  // A release that never reaches the plot (outside the window, alt-tab) ends the brush instead of holding the chart.
+  plot.addEventListener("lostpointercapture",()=>{if(drag&&drag.on){drag=null;band.remove();brushEnd()}});
   plot.addEventListener("dblclick",()=>{if(tlz.rng||tlz.preset!=="2w"){tlz.rng=null;tlz.preset="2w";renderTimeline()}});
   let wacc=0,wraf=0;
   // Vertical wheel zooms around the pointer; shift or horizontal wheel pans while zoomed.
@@ -2357,7 +2538,7 @@ function renderModal(){
     if(f.zero!=null){const z=f.zero*1000-now;fv=z<=60000?"esgotada":fmtLeft(z);if(z>60000)fkey="Esgota em";fs=z<=60000?`volta em ${fmtLeft(f.at*1000-now)}`:`${fmtLeft((f.at-f.zero)*1000)} antes do reset · `+(ext>=.05?"contando o uso fora do proxy":"depois o proxy passa para a próxima");fc=z<=60000?"":"warn"}
     else{fkey="Sobra no reset";fv=`~${Math.round(f.before)}%`;fs="no ritmo atual";fc="good"}}
   const ownTxt=own.measured!=null?`${fmt1(own.measured/24)}%/h`:"—";
-  const r3=recentUse(quota7Of(a.auth_id),now/1000,3);
+  const r3=recentUse(quota7Of(a.auth_id),now/1000,3,a.auth_id);
   const stats=stat("Semanal",wl!=null?wl+"%":"—",rs(wk),wk?winInfo(wk,now,winFc(a,wk,now,pf)).tip:"",wl!=null?lvl(wl):"")
     +stat("Janela de 5h",sl!=null?sl+"%":"—",sh?rs(sh):"esta conta não tem limite de 5h",sh?winInfo(sh,now,winFc(a,sh,now,pf)).tip:"",sl!=null?lvl(sl):"")
     +stat(fkey,fv,fs,pf.br.ok?paceTipFull(pf.br):"",fc)
@@ -2655,18 +2836,23 @@ function seriesAt(ts,ys,t){
 function forecastSnapshot(now){
   const rec={},pf=poolForecast(now,rec);if(!pf.br.ok||!rec.ts||rec.ts.length<2)return null;
   const t0=now/1000,out={};
-  pf.accs.forEach((a,i)=>{const w=[],f=[];
-    for(const H of FC_H){const t=t0+H*3600;w.push(seriesAt(rec.ts,rec.lefts.map(l=>l[i]),t));f.push(seriesAt(rec.ts,rec.flefts.map(l=>l[i]),t))}
-    if(w.some(v=>v!=null))out[a.auth_id]={w,f}});
-  return Object.keys(out).length?out:null;
+  const curve={step:CURVE_STEP,pace:pf.br.ok?pf.br.total/24:0,accs:{}},n=Math.floor(TL_FUT/CURVE_STEP);
+  pf.accs.forEach((a,i)=>{const w=[],f=[],col=rec.lefts.map(l=>l[i]);
+    for(const H of FC_H){const t=t0+H*3600;w.push(seriesAt(rec.ts,col,t));f.push(seriesAt(rec.ts,rec.flefts.map(l=>l[i]),t))}
+    if(w.some(v=>v!=null))out[a.auth_id]={w,f};
+    const c=[];for(let k=0;k<=n;k++){const v=seriesAt(rec.ts,col,t0+k*CURVE_STEP);if(v==null)break;c.push(Math.round(v))}
+    if(c.length>1)curve.accs[a.auth_id]=c});
+  return Object.keys(out).length?{accounts:out,curve}:null;
 }
+// The whole projection is posted with the hourly forecast every CURVE_STEP s for TL_FUT (see "Previsto × real").
+const CURVE_STEP=7200;
 let fcPostedHour=0;
 // Once an hour per tab; the server keeps the first post of each hour, so other tabs and repeats are harmless.
 function postForecast(){if(MINI)return;
   if(DEMO)return;const now=Date.now(),hour=Math.floor(now/3600e3);
   if(hour===fcPostedHour||!state.data||now-state.dataNow>10*60e3)return;
   const snap=forecastSnapshot(now);if(!snap)return;fcPostedHour=hour;
-  fetch("/usage/api/forecast",{method:"POST",headers:{"Content-Type":"application/json","X-Usage-UI":"1"},body:JSON.stringify({accounts:snap})}).then(r=>{if(!r.ok)fcPostedHour=0}).catch(()=>{fcPostedHour=0});
+  fetch("/usage/api/forecast",{method:"POST",headers:{"Content-Type":"application/json","X-Usage-UI":"1"},body:JSON.stringify(snap)}).then(r=>{if(!r.ok)fcPostedHour=0}).catch(()=>{fcPostedHour=0});
 }
 // Sample value of `field` nearest to t (within 20 min), or null.
 function sampleAt(pts,field,t){
@@ -2893,6 +3079,12 @@ async function load(refresh,poll){
     noticeActive();postForecast();loadArchive();
   }catch(e){if(seq===loadSeq){toast("Falha ao carregar: "+e.message,true);if(MINI)miniError(e.message)}}
 }
+// Stored projections for "Previsto × real": fetched while the comparison is on, again every 20 min.
+let pjBusy=false;
+function loadProjections(){
+  if(DEMO||pjBusy||(state.pjAt&&Date.now()-state.pjAt<20*60e3))return;pjBusy=true;
+  fetch("/usage/api/projections",{cache:"no-store",headers:{"X-Usage-UI":"1"}}).then(r=>r.ok?r.json():null).then(j=>{
+    if(j){state.pj=j.curves||{};state.pjAt=Date.now();renderTimeline()}}).catch(()=>{}).finally(()=>{pjBusy=false})}
 // Samples older than the view's 8 days, for the long-range chart: refreshed every 30 min (they only grow by the hour).
 let archBusy=false;
 function loadArchive(){

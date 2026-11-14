@@ -150,6 +150,8 @@ type historyData struct {
 	Providers map[string]string `json:"providers"`
 	// Forecasts maps unix hour -> auth ID -> what the page predicted then (see RecordForecast).
 	Forecasts map[int64]map[string]*forecastSnap `json:"fc,omitempty"`
+	// Curves maps unix hour -> the whole projection the page made then (see recordCurveLocked).
+	Curves map[int64]*curveSnap `json:"curves,omitempty"`
 }
 
 // History records request activity and quota samples for the charts on /usage.

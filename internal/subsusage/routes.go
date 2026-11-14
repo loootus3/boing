@@ -262,6 +262,10 @@ func Register(engine *gin.Engine, h Handlers) {
 		c.Header("Cache-Control", "no-store")
 		c.JSON(http.StatusOK, DefaultHistory().ViewWith(c.Query("range"), c.Query("heat"), time.Now().In(queryLocation(c.Query("tz")))))
 	})
+	g.GET("/api/projections", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-store")
+		c.JSON(http.StatusOK, gin.H{"curves": DefaultHistory().Curves()})
+	})
 	g.GET("/api/quota_archive", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		quota, fc := DefaultHistory().QuotaArchive(time.Now())
