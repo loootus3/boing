@@ -24,6 +24,11 @@ const (
 	quotaKeepDuration  = 8 * 24 * time.Hour
 	quotaPointSpacing  = 10 * time.Minute
 	historyFlushPeriod = 2 * time.Minute
+	// Proxied Claude requests less than activeJoin apart share an activity span; each request
+	// counts as activeTail of use; spans are kept for activeKeepDuration.
+	activeJoin         = 10 * time.Minute
+	activeTail         = time.Minute
+	activeKeepDuration = 60 * 24 * time.Hour
 	// historyVersion 2 stores fresh input, cache reads and cache writes separately; version 3
 	// adds per-model token counts for cost estimates.
 	historyVersion = 3
@@ -150,6 +155,11 @@ type historyData struct {
 	Providers map[string]string `json:"providers"`
 	// Forecasts maps unix hour -> auth ID -> what the page predicted then (see RecordForecast).
 	Forecasts map[int64]map[string]*forecastSnap `json:"fc,omitempty"`
+	// Active holds the spans [start, end] (unix s) with proxied Claude requests, oldest first and
+	// disjoint (see markActiveLocked). ActiveFrom is where they begin: earlier activity is only
+	// known by the hour, from Hours.
+	Active     [][2]int64 `json:"act,omitempty"`
+	ActiveFrom int64      `json:"act_from,omitempty"`
 }
 
 // History records request activity and quota samples for the charts on /usage.
@@ -268,6 +278,12 @@ func (h *History) pruneLocked(now time.Time) {
 		h.data.Quota[id] = append(kept, points[i:]...)
 		h.dirty = true
 	}
+	if minAct := now.Add(-activeKeepDuration).Unix(); h.data.ActiveFrom != 0 && h.data.ActiveFrom < minAct {
+		i := sort.Search(len(h.data.Active), func(i int) bool { return h.data.Active[i][1] >= minAct })
+		h.data.Active = h.data.Active[i:]
+		h.data.ActiveFrom = minAct
+		h.dirty = true
+	}
 	for id := range h.data.Providers {
 		if _, ok := h.data.Hours[id]; ok {
 			continue
@@ -352,6 +368,7 @@ func (h *History) HandleUsage(ctx context.Context, record usage.Record) {
 			cs.Cost += c.Total
 		}
 		health.recordTTFT(at, record.TTFT)
+		h.markActiveLocked(at)
 	}
 	h.data.Providers[authID] = provider
 	if h.lastUsed == nil {
@@ -361,6 +378,61 @@ func (h *History) HandleUsage(ctx context.Context, record usage.Record) {
 		h.lastUsed[authID] = at
 	}
 	h.dirty = true
+}
+
+// markActiveLocked adds a request at `at` to the activity spans, joining the spans it comes within
+// activeJoin of. Requests arrive about in order, so the insertion point is near the end.
+func (h *History) markActiveLocked(at time.Time) {
+	s, e, join := at.Unix(), at.Add(activeTail).Unix(), int64(activeJoin/time.Second)
+	if h.data.ActiveFrom == 0 {
+		h.data.ActiveFrom = s
+	}
+	a := h.data.Active
+	i := len(a)
+	for i > 0 && a[i-1][0] > s {
+		i--
+	}
+	a = slices.Insert(a, i, [2]int64{s, e})
+	if i > 0 && s <= a[i-1][1]+join {
+		i--
+	}
+	for i+1 < len(a) && a[i+1][0] <= a[i][1]+join {
+		a[i][1] = max(a[i][1], a[i+1][1])
+		a = slices.Delete(a, i+1, i+2)
+	}
+	h.data.Active = a
+}
+
+// activeSpansLocked returns the spans with proxied Claude requests from `from` on: the recorded
+// spans, and before ActiveFrom each hour with a Claude request as a whole span.
+func (h *History) activeSpansLocked(from int64) [][2]int64 {
+	until := h.data.ActiveFrom
+	if until == 0 {
+		until = math.MaxInt64
+	}
+	var hours []int64
+	for id, byHour := range h.data.Hours {
+		if h.data.Providers[id] != "claude" {
+			continue
+		}
+		for hour, st := range byHour {
+			if st != nil && st.Requests > 0 && hour+3600 > from && hour < until {
+				hours = append(hours, hour)
+			}
+		}
+	}
+	slices.Sort(hours)
+	out := [][2]int64{}
+	for _, hour := range slices.Compact(hours) {
+		e := min(hour+3600, until)
+		if n := len(out); n > 0 && out[n-1][1] >= hour {
+			out[n-1][1] = e
+		} else {
+			out = append(out, [2]int64{hour, e})
+		}
+	}
+	i := sort.Search(len(h.data.Active), func(i int) bool { return h.data.Active[i][1] >= from })
+	return append(out, h.data.Active[i:]...)
 }
 
 // LastUsed returns the time of the last proxied request of a credential since the process
@@ -570,6 +642,9 @@ type HistoryView struct {
 	Clients map[string]ClientTotals `json:"clients"`
 	// Forecasts maps unix hour -> auth ID -> the forecast stored for that hour.
 	Forecasts map[int64]map[string]*forecastSnap `json:"forecasts"`
+	// Active lists the spans [start, end] (unix s) with proxied Claude requests since the oldest
+	// stored quota sample: minute resolution where recorded, whole hours before (see activeSpansLocked).
+	Active [][2]int64 `json:"active"`
 }
 
 // ClientTotals summarizes one client app over the selected range.
@@ -799,6 +874,13 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 	// Forecasts of the quota retention only (the poll stays small); older ones come with QuotaArchive.
 	view.Forecasts = h.forecastsView(minQuota, math.MaxInt64)
 	view.HourModels = hourModels(h.data.Hours, h.data.Providers, minQuota)
+	oldest := minQuota
+	for _, points := range h.data.Quota {
+		if len(points) > 0 {
+			oldest = min(oldest, points[0].T)
+		}
+	}
+	view.Active = h.activeSpansLocked(oldest)
 	view.roundCosts()
 	return view
 }

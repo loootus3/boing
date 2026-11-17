@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -260,5 +261,44 @@ func TestHourModelsFoldsVariantsAndSkipsOthers(t *testing.T) {
 	m := got["c"][7200]
 	if m["claude-fable-5-2"] != 40 || m["claude-opus-5-5"] <= 25 {
 		t.Fatalf("got %+v", m)
+	}
+}
+
+func TestMarkActiveJoinsNearbyRequests(t *testing.T) {
+	h := &History{data: newHistoryData()}
+	base := time.Unix(1_800_000_000, 0)
+	for _, m := range []int{0, 5, 14, 90, 22, 200} {
+		h.markActiveLocked(base.Add(time.Duration(m) * time.Minute))
+	}
+	b := base.Unix()
+	want := [][2]int64{{b, b + 23*60}, {b + 90*60, b + 91*60}, {b + 200*60, b + 201*60}}
+	if !slices.Equal(h.data.Active, want) {
+		t.Fatalf("Active = %v, want %v", h.data.Active, want)
+	}
+	// A late request between two spans joins both.
+	for m := 30; m < 90; m += 9 {
+		h.markActiveLocked(base.Add(time.Duration(m) * time.Minute))
+	}
+	want = [][2]int64{{b, b + 91*60}, {b + 200*60, b + 201*60}}
+	if !slices.Equal(h.data.Active, want) {
+		t.Fatalf("after late requests Active = %v, want %v", h.data.Active, want)
+	}
+	if h.data.ActiveFrom != b {
+		t.Fatalf("ActiveFrom = %d, want %d", h.data.ActiveFrom, b)
+	}
+}
+
+func TestActiveSpansFillsHoursBeforeRecording(t *testing.T) {
+	h := &History{data: newHistoryData()}
+	h.data.Providers["c"] = "claude"
+	h.data.Providers["x"] = "codex"
+	h.data.Hours["c"] = map[int64]*hourStat{3600: {Requests: 1}, 7200: {Requests: 2}, 14400: {Requests: 1}}
+	h.data.Hours["x"] = map[int64]*hourStat{10800: {Requests: 5}}
+	h.data.ActiveFrom = 15000
+	h.data.Active = [][2]int64{{15000, 15100}}
+	got := h.activeSpansLocked(0)
+	want := [][2]int64{{3600, 10800}, {14400, 15000}, {15000, 15100}}
+	if !slices.Equal(got, want) {
+		t.Fatalf("spans = %v, want %v", got, want)
 	}
 }

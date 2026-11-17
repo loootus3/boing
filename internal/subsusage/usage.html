@@ -1817,9 +1817,11 @@ function renderTimeline(){
       const by=accs.map(a=>spendIn(a.auth_id,s,e));
       let i=-1;by.forEach((d,k)=>{if(d>=.3&&(i<0||d>by[i]))i=k});
       pastUse.push({a:s,b:e,i,by})}
-    // Stretches of 1h+ with no account's weekly dropping (no use at all), from the samples themselves.
-    idle.push(...memo("idle",[state.quota7,state.qarch,ids,Math.floor(now/60e3)],()=>{const out=[];
-      const cov=segsOf.flat().filter(g=>g[0]<t0).map(g=>[g[0],g[2]]).sort((x,y)=>x[0]-y[0]);let at=F0;
+    // Stretches of 1h+ without use: no proxied request (server spans, minute resolution) and no weekly
+    // drop (use outside the proxy). The weekly moves in whole percents, so drops alone miss slow use.
+    const actSp=state.hist&&state.hist.active;
+    idle.push(...memo("idle",[state.quota7,state.qarch,actSp,ids,Math.floor(now/60e3)],()=>{const out=[];
+      const cov=segsOf.flat().map(g=>[g[0],g[2]]).concat(actSp||[]).filter(g=>g[0]<t0).sort((x,y)=>x[0]-y[0]);let at=F0;
       for(const[a,b]of cov){if(a-at>=3600)out.push([at,a]);at=Math.max(at,b)}
       if(t0-at>=3600)out.push([at,t0]);return out}));
     // The strip uses the same samples: between consecutive sample times, the account dropping fastest.
@@ -1835,7 +1837,9 @@ function renderTimeline(){
     // Usage arrives in whole percents, so a slow drain skips samples: only a pause of 1h+ (the idle
     // brackets) stays blank, shorter ones take the colour of the account around them.
     const mr=[];for(const r of pastRuns){const l=mr[mr.length-1];if(l&&l.i===r.i)l.b=r.b;else mr.push({...r})}
-    mr.forEach((r,k)=>{if(r.i<0&&r.b-r.a<3600){const n=mr[k-1]&&mr[k-1].i>=0?mr[k-1]:mr[k+1];if(n&&n.i>=0)r.i=n.i}});
+    // Blank runs outside the idle brackets had use too (proxied requests): they take a neighbour's colour.
+    const inIdle=r=>idle.some(([a,b])=>a<r.b-60&&b>r.a+60);
+    mr.forEach((r,k)=>{if(r.i<0&&(r.b-r.a<3600||!inIdle(r))){const n=mr[k-1]&&mr[k-1].i>=0?mr[k-1]:mr[k+1];if(n&&n.i>=0)r.i=n.i}});
     pastRuns.length=0;pastRuns.push(...mr)}
   {const runs=[];
     const add=(a,b,i,fut)=>{const l=runs[runs.length-1];if(l&&l.i===i&&l.fut===fut&&Math.abs(l.b-a)<1)l.b=b;else runs.push({a,b,i,fut})};
