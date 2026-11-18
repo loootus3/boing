@@ -183,3 +183,10 @@ func TestViewByModelAndPrevious(t *testing.T) {
 		t.Error("history reaches before the previous window, should be complete")
 	}
 }
+
+func TestSonnet55CacheReadPrice(t *testing.T) {
+	c, ok := priceOf("claude-sonnet-5-5", &modelStat{CacheRead: 1e6})
+	if !ok || !near(c.CacheRead, 0.10) {
+		t.Fatalf("sonnet 5.5 cache read = %v (ok %v), want 0.10", c.CacheRead, ok)
+	}
+}

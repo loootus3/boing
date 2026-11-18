@@ -1238,7 +1238,7 @@ function simulate(accs,perHour,now,rec,info,ext,shape,resets){
       let gain=0;
       // full: the account's Fable allowance was spent on Fable first (how these credits are used), not just the
       // Fable the run happened to route there.
-      if(r.kind==="fable"){if(p.fallow){gain=Math.min(100-p.left,r.full?p.fallow:p.fallow-p.fab);p.fab=p.fallow;p.nofab=true}}
+      if(r.kind==="fable"){if(p.fallow){gain=Math.min(100-p.left,(p.fallow-p.fab)+(r.full?Math.min(p.fab,p.left):0));p.fab=p.fallow;p.nofab=true}}
       else if(r.kind==="weekly"||r.kind==="full"){gain=100-p.left;if(r.kind==="full"){p.s5=100;p.t5=null}}
       p.left+=gain;
       // Drawn as a step at the start of the hour (the run's previous point): the line jumps straight up.
@@ -1401,7 +1401,9 @@ function recentUse(points,now,hours=3,id){
 function recentUseHtml(a,now){
   const r=recentUse(quota7Of(a.auth_id),now/1000,3,a.auth_id);
   const tip=`Média da queda do % semanal nas últimas 3 horas (${r.n} ${r.n===1?"amostra":"amostras"})`;
-  const body=r.n<2?"ritmo: coletando":r.drop<=0?"sem uso nas últimas 3h":`semanal: <b>${fmt1(r.perHour)}%/h</b> nas últimas 3h`;
+  // The weekly moves in whole percents: light use leaves it flat, so "sem uso" also needs no proxied request.
+  const h0=Math.floor((now/1000-3*3600)/3600)*3600,proxied=r.drop<=0&&[0,1,2,3].some(k=>hourModelsOf(a.auth_id,h0+k*3600));
+  const body=r.n<2?"ritmo: coletando":r.drop>0?`semanal: <b>${fmt1(r.perHour)}%/h</b> nas últimas 3h`:proxied?"uso leve: semanal < 1% nas últimas 3h":"sem uso nas últimas 3h";
   return `<div class="recent" data-tip="${esc(tip+(r.n>=2&&r.drop>0?`\nQueda: −${fmt1(r.drop)}%`:""))}">${ICON_GAUGE}<span>${body}</span></div>`;
 }
 // Accounts whose weekly window feeds the pool: in use, connected, with a reset time.
@@ -1720,7 +1722,7 @@ function renderTimeline(){
   // Re-rendering would close an open <select>.
   if(el.contains(document.activeElement)&&document.activeElement.tagName==="SELECT")return;
   const cf=chartForecast(now),rec=cf.rec,accs=cf.accs,br=cf.br,sm=cf.m,perHour=br.ok?br.total*sm/24:0,rateMode=tlo.view==="rate";
-  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,tlo.rs,state.qarchAt||0,state.burn,state.shape,Object.values(ACC).join(","),allAccs.map(a=>a.auth_id+weeklyOf(a).used_percent+weeklyOf(a).reset_at+dispName(a)).join("|")].join("/");
+  const key=[Math.floor(now/60000),Math.round(perHour*100),el.clientWidth,tlz.preset+(tlz.rng?"@"+tlz.rng.map(Math.round):""),tlo.view,tlo.scen,[...tlo.hide].join(","),tlo.menu,!!tlo.adv,tlo.rs,state.qarchAt||0,state.burn,state.shape,Object.values(ACC).join(","),allAccs.map(a=>[a.auth_id,weeklyOf(a).used_percent,weeklyOf(a).reset_at,weeklyOf(a).fable_limit_percent,(shortOf(a)||{}).used_percent,a.mode,a.fable_rank,JSON.stringify(a.reset_credits||null),dispName(a)].join("~")).join("|")].join("/");
   if(el.dataset.key===key)return;el.dataset.key=key;
 
   const PH=innerWidth<640?240:280,TOP=44,BOT=PH-6,HZ=TL_FUT,t0=now/1000,ts=rec.ts,tot=rec.tot,K=ts.length;
@@ -1851,14 +1853,15 @@ function renderTimeline(){
   const zlab="";
   // Lowest point of the visible projection (skipped when it is its first point, or zero: the "zerado" label covers that).
   let mk=0;for(let k=1;k<prc.length;k++)if(prc[k][1]<prc[mk][1]-.05)mk=k;
-  const minOn=!rateMode&&prc.length>1&&mk>0&&prc[mk][1]>.5;
+  // The last point is the cut at the window's edge when the curve goes on: still falling there, it is no minimum.
+  const minOn=!rateMode&&prc.length>1&&mk>0&&prc[mk][1]>.5&&!(mk===prc.length-1&&ts[ts.length-1]>V1+60);
 
   const pastH=past?Math.round((t0-F0)/3600):0,pastLbl=pastH>=48?"últimos "+Math.round(pastH/24)+" dias":"últimas "+pastH+"h";
   const legend=past?`<span><i></i>Real (${pastLbl})</span><span><i class="proj"></i>Projeção</span><span data-tip="${esc("Faixa colorida embaixo: a conta gasta em cada hora (cheia no passado, clara na projeção).")}" tabindex="0"><i class="use"></i>Conta usada</span>`
     +(rsP?(()=>{const fh=h=>h<.5?"nenhuma hora":fmtLeft(h*3600e3);
       if(!rsP.plan.length)return `<span tabindex="0" data-tip="${esc(rsP.before.h<.5?"No ritmo atual a cota dá conta das próximas 2 semanas sem os resets: guarde-os.":`Os resets que você tem não diminuem o tempo sem cota agora (${fh(rsP.before.h)} nas próximas 2 semanas): no momento em que as contas zeram eles devolveriam pouco.`)}"><i class="rs"></i>${rsP.before.h<.5?"Resets: guarde":"Resets: não ajudam agora"}</span>`;
       const tip=(rsP.rec.redeemed||[]).map(r=>{const a=accs.find(x=>x.auth_id===r.id),fa=a&&weeklyOf(a).fable_allowance;
-          return `${RS_PLAN_KINDS[r.kind]} da ${a?nm(a).split("@")[0]:r.id}: ${hm(r.ta)}, +${Math.round(r.gain)}%`+(r.kind==="fable"&&fa>0?` (antes, gaste os ${fa}% de Fable dela)`:"")}).join("\n")
+          return `${RS_PLAN_KINDS[r.kind]} da ${a?nm(a).split("@")[0]:r.id}: ${hm(r.at)}, +${Math.round(r.gain)}%`+(r.kind==="fable"&&fa>0?` (antes, gaste os ${fa}% de Fable dela)`:"")}).join("\n")
         +`\nSem cota nas próximas 2 semanas: ${fh(rsP.before.h)} → ${fh(rsP.after.h)}.`
         +(rsP.plan.some(r=>r.kind==="fable")?"\nDepois de um reset do Fable, a conta usa outros modelos no lugar do Fable até o reset semanal dela.":"");
       return `<span tabindex="0" data-tip="${esc(tip)}"><i class="rs"></i>Com resets ótimos · ${fh(rsP.before.h)} → ${fh(rsP.after.h)} sem cota</span>`})():"")
@@ -2019,12 +2022,13 @@ function renderTimeline(){
   // Refills already seen in the recorded part: a rise of the weekly remaining between two samples.
   if(past)for(const a of accs){const q=qAllOf(a.auth_id).filter(p=>p.w!=null&&p.t<=t0);
     for(let k=q.length&&q[0].t-F0>3600?0:1;k<q.length;k++){const g=k?q[k].w-q[k-1].w:q[0].w;if(g<3||q[k].t<Math.max(V0,F0)||q[k].t>Math.min(V1,t0))continue;
-      const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),txt=`${lbl(a)} +${Math.round(g)}%`;
+      // k=0: the account's first sample after the chart start, an account added then, not a refill.
+      const x=P(q[k].t)/100*W,v=atPts(past,q[k].t),yt2=Y(v),tail=k?`+${Math.round(g)}%`:"conectada",txt=`${lbl(a)} ${tail}`;
       ov+=`<i class="tl-dot" style="left:${P(q[k].t).toFixed(2)}%;top:${yt2.toFixed(1)}px;--c:${ACC[a.auth_id]}"></i>`;
       // Over a long window the past refills are dots only: their labels would crowd out the projection's.
       if(VS>8*DAY)continue;
       const pl=place(x,yt2,txt);if(!pl)continue;const{l,top}=pl;
-      ov+=lead(x,top,yt2,a)+`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>${esc(lbl(a))}</span> +${Math.round(g)}%</div>`}}
+      ov+=lead(x,top,yt2,a)+`<div class="tl-chip past" style="left:${l.toFixed(1)}px;top:${top.toFixed(1)}px;--c:${ACC[a.auth_id]}"><span>${esc(lbl(a))}</span> ${tail}</div>`}}
   if(minOn){const tm=prc[mk][0],vm=prc[mk][1],ym=Y(vm),l=Math.max(60,Math.min(W-60,P(tm)/100*W)),below=ym+26<=BOT;
     ov+=`<i class="tl-dot min" style="left:${P(tm).toFixed(2)}%;top:${ym.toFixed(1)}px"></i>`
       +`<div class="tl-min" style="left:${l.toFixed(1)}px;top:${(below?ym+8:ym-24).toFixed(1)}px">mín. ${Math.round(vm)}% · ${esc(hm(tm))}</div>`}
@@ -2223,7 +2227,8 @@ function renderAccounts(){
   if(box.contains(document.activeElement)&&/^(SELECT|INPUT)$/.test(document.activeElement.tagName))return;
   const markup=accs.map(a=>{
       const mode=a.mode||"normal",email=a.email||a.auth_id,limited=/429/.test(a.error||"");
-      const exhausted=a.limit_reached||(a.windows||[]).some(w=>w.kind!=="model"&&w.used_percent>=100);
+      const live=(a.windows||[]).filter(w=>w.kind!=="model"&&!(w.reset_at&&Date.parse(w.reset_at)<=now)),
+        exhausted=live.some(w=>w.used_percent>=100)||a.limit_reached&&live.length===(a.windows||[]).filter(w=>w.kind!=="model").length;
       const s=shortOf(a),wk=weeklyOf(a);
       let h=`<div class="card acct${mode==="off"?" off":""}" data-acc="${esc(a.auth_id)}"><div class="acct-head"><div class="who">${who(email,ACC[a.auth_id],a.name)}<button type="button" class="acct-ren" data-rename="${esc(a.auth_id)}" data-tip="Renomear" aria-label="${esc("Renomear "+(a.name||email))}">${ICON_PEN}</button><button type="button" class="acct-more" data-open="${esc(a.auth_id)}" aria-label="${esc("Detalhes de "+email)}">Detalhes${ICON_CHEV}</button></div><div class="acct-sub">`;
       if(a.plan)h+=`<span class="badge outline">${esc(a.plan)}</span>`;

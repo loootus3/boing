@@ -763,6 +763,12 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 		view.Providers[id] = provider
 	}
 	prevStart := slotStart(-slots)
+	// The current period ends now, partway through its last slot: the previous one is cut at the same
+	// elapsed time, so the comparison is like for like (an hour counts when most of it is inside).
+	prevEnd := prevStart.Add(now.Sub(start))
+	if prevEnd.After(start) || !prevEnd.After(prevStart) {
+		prevEnd = start
+	}
 	earliest := int64(0)
 	// Sorted iteration everywhere costs are summed: float sums depend on the order, and an unchanged history
 	// must give byte-identical views (the page skips re-rendering on an unchanged poll).
@@ -785,7 +791,7 @@ func (h *History) ViewWith(rangeKey, heatKey string, now time.Time) HistoryView 
 					heatFirst, haveHeat = t, true
 				}
 			}
-			if provider == "claude" && !t.Before(prevStart) && t.Before(start) {
+			if provider == "claude" && !t.Before(prevStart) && t.Add(30*time.Minute).Before(prevEnd) {
 				prev.addHour(stat, provider)
 				continue
 			}

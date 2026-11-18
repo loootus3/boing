@@ -36,7 +36,7 @@ var modelPrices = map[string]modelPrice{
 	"claude-opus-4-8":   {Input: 5, Output: 25, CacheRead: 0.50},
 	"claude-opus-4-7":   {Input: 5, Output: 25, CacheRead: 0.50},
 	"claude-opus-4-6":   {Input: 5, Output: 25, CacheRead: 0.50},
-	"claude-sonnet-5-5": {Input: 2, Output: 10, CacheRead: 0.20},
+	"claude-sonnet-5-5": {Input: 2, Output: 10, CacheRead: 0.10},
 	"claude-sonnet-5":   {Input: 2, Output: 10, CacheRead: 0.20},
 	"claude-sonnet-4-6": {Input: 3, Output: 15, CacheRead: 0.30},
 	"claude-haiku-5-5": {Input: 0.10, Output: 0.50, CacheRead: 0.01,
